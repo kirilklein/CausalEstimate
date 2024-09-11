@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=64.0", "setuptools-scm>=8.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pycausal"
+dynamic = ["version"]
+description = "A library for estimates of causal effects."
+authors = [
+    { name = "Kiril Klein", email = "kikl@di.ku.dk" },
+]
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pandas",
+    "numpy",
+    "matplotlib",
+    "scikit-learn",
+    "scipy"
+
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8",
+    # Add other development dependencies here
+]
+[tool.setuptools_scm]
+[tool.setuptools.packages.find]
+where = ["."]
