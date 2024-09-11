@@ -1,6 +1,3 @@
-import numpy as np
-
-
 def check_required_columns(df, required_columns):
     """
     Check if all required columns are present in the DataFrame.

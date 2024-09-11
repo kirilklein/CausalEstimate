@@ -8,6 +8,7 @@ from pycausal.matching.distance import (
 from pycausal.utils.helpers import check_required_columns, check_unique_pid
 from pycausal.filter.filter import filter_by_column
 from pycausal.matching.assignment import assign_controls, validate_control_availability
+from pycausal.matching.helpers import check_ps_validity
 
 
 def match_optimal(
@@ -35,6 +36,7 @@ def match_optimal(
     """
     check_required_columns(df, [treatment_col, ps_col, pid_col])
     check_unique_pid(df, pid_col)
+    check_ps_validity(df, ps_col)
 
     treated_df = filter_by_column(df, treatment_col, 1)
     control_df = filter_by_column(df, treatment_col, 0)
