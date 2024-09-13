@@ -32,7 +32,7 @@ def match_optimal(
         pid_col (str): Column name for individual ID.
 
     Returns:
-        pd.DataFrame: DataFrame with matched treated and control IDs and distances.
+        pd.DataFrame: DataFrame with treated_pid, control_pid and distance columns.
     """
     check_required_columns(df, [treatment_col, ps_col, pid_col])
     check_unique_pid(df, pid_col)
