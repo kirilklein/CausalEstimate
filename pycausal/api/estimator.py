@@ -4,6 +4,7 @@ from pycausal.estimators.tmle import TMLE
 
 # !TODO: Write test for all functions
 
+
 class Estimator:
     def __init__(self, methods=None, effect_type="ATE", **kwargs):
         """
