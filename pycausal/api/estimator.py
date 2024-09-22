@@ -1,9 +1,8 @@
 import pandas as pd
 import numpy as np
-from pycausal.estimators.aipw import AIPW
 from pycausal.estimators.tmle import TMLE
-from pycausal.estimators.matching import Matching
 
+# !TODO: Write test for all functions
 
 class Estimator:
     def __init__(self, methods=None, effect_type="ATE", **kwargs):
@@ -29,9 +28,7 @@ class Estimator:
         Initialize the specified estimators based on the methods provided.
         """
         estimators = {
-            "AIPW": AIPW,
             "TMLE": TMLE,
-            "Matching": Matching,
             # Add other estimators as needed
         }
         initialized_estimators = []
