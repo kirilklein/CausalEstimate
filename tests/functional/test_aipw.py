@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from pycausal.estimators.functional.aipw import compute_aipw_ate
 
+
 class TestComputeAIPWATE(unittest.TestCase):
 
     def test_invalid_input_shapes(self):
@@ -16,5 +17,6 @@ class TestComputeAIPWATE(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat)
 
+
 # Run the unittests
-unittest.main(argv=[''], exit=False)
+unittest.main(argv=[""], exit=False)
