@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-from pycausal.estimators.functional.matching import compute_matching_ate
+from CausalEstimate.estimators.functional.matching import compute_matching_ate
 
 
 # Create the unittest class

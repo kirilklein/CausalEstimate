@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from pycausal.estimators.tmle import TMLE
+from CausalEstimate.estimators.tmle import TMLE
 
 # !TODO: Write test for all functions
 

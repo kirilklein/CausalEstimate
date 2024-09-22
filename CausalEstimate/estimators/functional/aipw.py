@@ -9,7 +9,7 @@ ATE:
         note: This also provides a variance estimator for the AIPW estimator.
 """
 
-from pycausal.estimators.functional.ipw import compute_ipw_ate
+from CausalEstimate.estimators.functional.ipw import compute_ipw_ate
 
 
 def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat):

@@ -1,4 +1,4 @@
-from pycausal.estimators.functional.tmle import compute_tmle_ate
+from CausalEstimate.estimators.functional.tmle import compute_tmle_ate
 import pandas as pd
 
 
