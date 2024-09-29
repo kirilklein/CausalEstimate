@@ -1,2 +1,5 @@
 *.egg-info
 *.pyc
+dist/
+__pycache__/
+notebooks/test*
