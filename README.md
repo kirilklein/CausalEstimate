@@ -1,12 +1,12 @@
-# PyCausal
+# CausalEstimate
 
-[![Unittests](https://github.com/kirilklein/pycausal/actions/workflows/unittest.yml/badge.svg)](https://github.com/kirilklein/pycausal/actions/workflows/unittest.yml)
-[![Lint using flake8](https://github.com/kirilklein/pycausal/actions/workflows/lint.yml/badge.svg)](https://github.com/kirilklein/pycausal/actions/workflows/lint.yml)
-[![Formatting using black](https://github.com/kirilklein/pycausal/actions/workflows/format.yml/badge.svg)](https://github.com/kirilklein/pycausal/actions/workflows/format.yml)
+[![Unittests](https://github.com/kirilklein/CausalEstimate/actions/workflows/unittest.yml/badge.svg)](https://github.com/kirilklein/CausalEstimate/actions/workflows/unittest.yml)
+[![Lint using flake8](https://github.com/kirilklein/CausalEstimate/actions/workflows/lint.yml/badge.svg)](https://github.com/kirilklein/CausalEstimate/actions/workflows/lint.yml)
+[![Formatting using black](https://github.com/kirilklein/CausalEstimate/actions/workflows/format.yml/badge.svg)](https://github.com/kirilklein/CausalEstimate/actions/workflows/format.yml)
 
 ---
 
-**PyCausal** is a Python tool designed to produce causal estimates from propensity scores. It provides functionalities for matching, weighting, and other causal inference techniques, helping researchers and data scientists derive meaningful insights from observational data.
+**CausalEstimate** is a Python tool designed to produce causal estimates from propensity scores. It provides functionalities for matching, weighting, and other causal inference techniques, helping researchers and data scientists derive meaningful insights from observational data.
 
 ---
 
@@ -38,7 +38,7 @@ Here is an example of how to use the matching functionality in a Jupyter noteboo
 ```python
 import numpy as np
 import pandas as pd
-from pycausal.matching import match_optimal
+from CausalEstimate.matching import match_optimal
 
 # Simulate data
 ps = np.array([0.3, 0.90, 0.5, 0.34, 0.351, 0.32, 0.35, 0.81, 0.79, 0.77, 0.90, 0.6, 0.52, 0.55])
@@ -74,7 +74,7 @@ To lint the code using flake8, run:
 
 ```sh
 pip install flake8
-flake8 pycausal tests
+flake8 CausalEstimate tests
 ```
 
 ### Formatting
@@ -83,7 +83,7 @@ To format the code using black, run:
 
 ```sh
 pip install black
-black pycausal tests
+black CausalEstimate tests
 ```
 
 ---

@@ -4,7 +4,7 @@ import pandas as pd
 from scipy.optimize import linear_sum_assignment
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import min_weight_full_bipartite_matching
-from pycausal.matching.helpers import is_sparse
+from CausalEstimate.matching.helpers import is_sparse
 
 
 def assign_controls(distance_matrix: np.array) -> Tuple[np.array, np.array]:

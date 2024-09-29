@@ -1,5 +1,5 @@
 import pandas as pd
-from pycausal.utils.helpers import check_required_columns
+from CausalEstimate.utils.helpers import check_required_columns
 
 
 def compute_matching_ate(
