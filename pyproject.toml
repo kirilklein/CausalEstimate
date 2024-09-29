@@ -21,7 +21,6 @@ classifiers = [
 dependencies = [
     "pandas",
     "numpy",
-    "matplotlib",
     "scikit-learn",
     "scipy",
     "statsmodels",
@@ -36,6 +35,7 @@ dev = [
     # Add other development dependencies here
 ]
 plotting = [
+    "matplotlib",
     "seaborn",
     "plotly",
 ]
