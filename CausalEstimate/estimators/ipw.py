@@ -1,4 +1,4 @@
-from pycausal.estimators.functional.ipw import (
+from CausalEstimate.estimators.functional.ipw import (
     compute_ipw_ate,
     compute_ipw_ate_stabilized,
     compute_ipw_att,

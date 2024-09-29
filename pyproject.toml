@@ -3,8 +3,8 @@ requires = ["setuptools>=64.0", "setuptools-scm>=8.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pycausal"
-dynamic = ["version"]
+name = "CausalEstimate"
+version = "0.1.0"
 description = "A library for estimates of causal effects."
 authors = [
     { name = "Kiril Klein", email = "kikl@di.ku.dk" },
@@ -40,5 +40,5 @@ plotting = [
     "plotly",
 ]
 [tool.setuptools.packages.find]
-include = ["pycausal"]
+include = ["CausalEstimate"]
 exclude = ["notebooks", "tests"]
