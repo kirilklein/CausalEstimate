@@ -1,4 +1,4 @@
-from pycausal.estimators.functional.aipw import compute_aipw_ate
+from CausalEstimate.estimators.functional.aipw import compute_aipw_ate
 import pandas as pd
 
 

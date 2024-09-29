@@ -1,5 +1,5 @@
 import unittest
-from pycausal.simulation.binary_simulation import (
+from CausalEstimate.simulation.binary_simulation import (
     simulate_binary_data,
     compute_ATE_theoretical_from_data,
     compute_ATE_theoretical_from_model,

@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from pycausal.estimators.functional.aipw import compute_aipw_ate
+from CausalEstimate.estimators.functional.aipw import compute_aipw_ate
 
 
 class TestComputeAIPWATE(unittest.TestCase):

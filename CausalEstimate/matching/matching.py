@@ -1,14 +1,14 @@
 import numpy as np
 import pandas as pd
 
-from pycausal.matching.distance import (
+from CausalEstimate.matching.distance import (
     compute_distance_matrix,
     filter_treated_w_insufficient_controls,
 )
-from pycausal.utils.helpers import check_required_columns, check_unique_pid
-from pycausal.filter.filter import filter_by_column
-from pycausal.matching.assignment import assign_controls, validate_control_availability
-from pycausal.matching.helpers import check_ps_validity
+from CausalEstimate.utils.helpers import check_required_columns, check_unique_pid
+from CausalEstimate.filter.filter import filter_by_column
+from CausalEstimate.matching.assignment import assign_controls, validate_control_availability
+from CausalEstimate.matching.helpers import check_ps_validity
 
 
 def match_optimal(

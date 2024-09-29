@@ -1,5 +1,5 @@
-from pycausal.matching.matching import match_optimal
-from pycausal.estimators.functional.matching import compute_matching_ate
+from CausalEstimate.matching.matching import match_optimal
+from CausalEstimate.estimators.functional.matching import compute_matching_ate
 
 
 class MATCHING:
