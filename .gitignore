@@ -3,3 +3,4 @@
 dist/
 __pycache__/
 notebooks/test*
+pycausal/_version.py

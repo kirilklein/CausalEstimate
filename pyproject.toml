@@ -39,5 +39,6 @@ plotting = [
     "seaborn",
     "plotly",
 ]
-[tool.setuptools_scm]
-write_to = "pycausal/_version.py"
+[tool.setuptools.packages.find]
+include = ["pycausal"]
+exclude = ["notebooks", "tests"]
