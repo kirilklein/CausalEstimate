@@ -27,7 +27,7 @@ To install the required dependencies, run:
 pip install -r requirements.txt
 ```
 
---- 
+---
 
 ## Usage
 
@@ -85,6 +85,7 @@ To format the code using black, run:
 pip install black
 black pycausal tests
 ```
+
 ---
 
 ## License
