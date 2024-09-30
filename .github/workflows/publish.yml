@@ -9,8 +9,6 @@ jobs:
   build:
     name: Build package
     runs-on: ubuntu-latest
-    outputs:
-      dist-folder: ${{ steps.build.outputs.dist-folder }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
@@ -25,11 +23,8 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel setuptools-scm build
 
       - name: Build package
-        id: build
         run: |
           python -m build
-        outputs:
-          dist-folder: dist
 
       - name: Upload package to GitHub artifacts
         uses: actions/upload-artifact@v3
@@ -37,10 +32,12 @@ jobs:
           name: dist
           path: dist/
 
-  testpypi:
+  testpypi-publish:
     name: Publish to TestPyPI
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      id-token: write
     steps:
       - name: Download package from build job
         uses: actions/download-artifact@v3
@@ -52,18 +49,18 @@ jobs:
         with:
           repository-url: https://test.pypi.org/legacy/
 
-  pypi:
+  pypi-publish:
     name: Publish to PyPI
     runs-on: ubuntu-latest
-    needs: testpypi  # Only run after TestPyPI succeeds
+    needs: testpypi-publish  # Only run after TestPyPI succeeds
+    permissions:
+      id-token: write
     steps:
       - name: Download package from build job
         uses: actions/download-artifact@v3
         with:
           name: dist
-
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_TOKEN }}
+
+
