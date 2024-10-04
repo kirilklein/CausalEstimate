@@ -5,7 +5,7 @@ from CausalEstimate.matching.distance import (
     compute_distance_matrix,
     filter_treated_w_insufficient_controls,
 )
-from CausalEstimate.utils.helpers import check_required_columns, check_unique_pid
+from CausalEstimate.utils.checks import check_required_columns, check_unique_pid
 from CausalEstimate.filter.filter import filter_by_column
 from CausalEstimate.matching.assignment import (
     assign_controls,

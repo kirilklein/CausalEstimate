@@ -1,12 +1,15 @@
-import pandas as pd
 import numpy as np
-from CausalEstimate.estimators.tmle import TMLE
+import pandas as pd
+from typing import Union, List
+from CausalEstimate.api.registry import ESTIMATOR_REGISTRY
 
 # !TODO: Write test for all functions
 
 
 class Estimator:
-    def __init__(self, methods=None, effect_type="ATE", **kwargs):
+    def __init__(
+        self, methods: Union[str, list] = None, effect_type: str = "ATE", **kwargs
+    ):
         """
         Initialize the Estimator class with one or more methods.
 
@@ -24,27 +27,22 @@ class Estimator:
         self.effect_type = effect_type
         self.estimators = self._initialize_estimators(effect_type, **kwargs)
 
-    def _initialize_estimators(self, effect_type, **kwargs):
+    def _initialize_estimators(self, effect_type: str, **kwargs) -> List[object]:
         """
         Initialize the specified estimators based on the methods provided.
         """
-        estimators = {
-            "TMLE": TMLE,
-            # Add other estimators as needed
-        }
-        initialized_estimators = []
+        estimators = []
 
         for method in self.methods:
-            if method in estimators:
-                initialized_estimators.append(
-                    estimators[method](effect_type=effect_type, **kwargs)
-                )
-            else:
+            if method not in ESTIMATOR_REGISTRY:
                 raise ValueError(f"Method '{method}' is not supported.")
-
-        return initialized_estimators
+            estimator_class = ESTIMATOR_REGISTRY.get(method)
+            estimator = estimator_class(effect_type=effect_type, **kwargs)
+            estimators.append(estimator)
+        return estimators
 
     def _validate_inputs(self, df, treatment_col, outcome_col):
+        #!TODO: Move this to base class and individual estimator classes
         """
         Validate the input DataFrame and columns for all estimators.
         """
@@ -60,7 +58,9 @@ class Estimator:
         if df[outcome_col].isnull().any():
             raise ValueError(f"Outcome column '{outcome_col}' contains NaN values.")
 
-    def _bootstrap_sample(self, df: pd.DataFrame, n_bootstraps: int):
+    def _bootstrap_sample(
+        self, df: pd.DataFrame, n_bootstraps: int
+    ) -> List[pd.DataFrame]:
         """
         Generate bootstrap samples.
         """
@@ -69,13 +69,15 @@ class Estimator:
 
     def compute_effect(
         self,
-        df,
-        treatment_col,
-        outcome_col,
-        bootstrap=False,
-        n_bootstraps=100,
+        df: pd.DataFrame,
+        treatment_col: str,
+        outcome_col: str,
+        ps_col: str,
+        bootstrap: bool = False,
+        n_bootstraps: int = 100,
+        method_args: dict = None,
         **kwargs,
-    ):
+    ) -> dict:
         """
         Compute treatment effects using the initialized estimators.
         Can also run bootstrap on all estimators if specified.
@@ -84,9 +86,11 @@ class Estimator:
             df (pd.DataFrame): The input DataFrame.
             treatment_col (str): The name of the treatment column.
             outcome_col (str): The name of the outcome column.
+            ps_col (str): The name of the propensity score column.
             bootstrap (bool): Whether to run bootstrapping for the estimators.
             n_bootstraps (int): Number of bootstrap iterations.
             sample_size (int): Size of each bootstrap sample.
+            method_args (dict): Additional arguments for each estimator.
             **kwargs: Additional arguments for the estimators.
 
         Returns:
@@ -95,7 +99,11 @@ class Estimator:
         # Validate input data and columns
         self._validate_inputs(df, treatment_col, outcome_col)
 
-        results = {method.__class__.__name__: [] for method in self.estimators}
+        # Initialize results dictionary
+        results = {type(estimator).__name__: [] for estimator in self.estimators}
+
+        # Ensure method_args is a dictionary
+        method_args = method_args or {}
 
         if bootstrap:
             # Perform bootstrapping
@@ -105,8 +113,14 @@ class Estimator:
                 # For each bootstrap sample, compute the effect using all estimators
                 for estimator in self.estimators:
                     method_name = type(estimator).__name__
+                    estimator_specific_args = method_args.get(method_name, {})
                     effect = estimator.compute_effect(
-                        sample, treatment_col, outcome_col, **kwargs
+                        sample,
+                        treatment_col,
+                        outcome_col,
+                        ps_col,
+                        **estimator_specific_args,
+                        **kwargs,
                     )
                     results[method_name].append(effect)
 
@@ -116,17 +130,33 @@ class Estimator:
                 effects_array = np.array(effects)
                 mean_effect = np.mean(effects_array)
                 std_err = np.std(effects_array)
-                final_results[method_name] = (mean_effect, std_err)
+                final_results[method_name] = {
+                    "effect": mean_effect,
+                    "std_err": std_err,
+                    "bootstrap": True,
+                    "n_bootstraps": n_bootstraps,
+                }
 
         else:
             # If no bootstrapping, compute the effect directly for each estimator
+            final_results = {}
+            # If no bootstrapping, compute the effect directly for each estimator
             for estimator in self.estimators:
                 method_name = type(estimator).__name__
+                estimator_specific_args = method_args.get(method_name, {})
                 effect = estimator.compute_effect(
-                    df, treatment_col, outcome_col, **kwargs
+                    df,
+                    treatment_col,
+                    outcome_col,
+                    ps_col,
+                    **estimator_specific_args,
+                    **kwargs,
                 )
-                results[method_name] = effect
-
-            final_results = results
+                final_results[method_name] = {
+                    "effect": effect,
+                    "std_err": None,
+                    "bootstrap": False,
+                    "n_bootstraps": 0,
+                }
 
         return final_results
