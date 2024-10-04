@@ -9,6 +9,7 @@ from CausalEstimate.estimators.functional.ipw import (
     compute_ipw_risk_ratio,
     compute_ipw_risk_ratio_treated,
 )
+from CausalEstimate.utils.checks import check_inputs
 
 
 @register_estimator
@@ -32,7 +33,7 @@ class IPW(BaseEstimator):
         A = df[treatment_col]
         Y = df[outcome_col]
         ps = df[ps_col]
-
+        check_inputs(A, Y, ps)
         if self.effect_type == "ATE":
             if self.kwargs.get("stabilized", False):
                 return compute_ipw_ate_stabilized(A, Y, ps)

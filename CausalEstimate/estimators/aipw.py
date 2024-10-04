@@ -1,8 +1,9 @@
 import pandas as pd
 
 from CausalEstimate.api.registry import register_estimator
-from CausalEstimate.estimators.functional.aipw import compute_aipw_ate
 from CausalEstimate.estimators.base import BaseEstimator
+from CausalEstimate.estimators.functional.aipw import compute_aipw_ate
+from CausalEstimate.utils.checks import check_inputs
 
 
 @register_estimator
@@ -30,6 +31,7 @@ class AIPW(BaseEstimator):
         ps = df[ps_col]
         Y1_hat = df[predicted_outcome_treated_col]
         Y0_hat = df[predicted_outcome_control_col]
+        check_inputs(A, Y, ps, Y1_hat=Y1_hat, Y0_hat=Y0_hat)
 
         if self.effect_type == "ATE":
             return compute_aipw_ate(A, Y, ps, Y1_hat, Y0_hat)
