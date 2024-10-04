@@ -79,14 +79,20 @@ def check_inputs(
 
 
 def check_binary_array(arr, name):
-    """Check if all values in the array are binary (0 or 1)"""
+    """Check if all values in the array are binary (0 or 1, including 0.0 and 1.0)"""
     arr = np.asarray(arr)
-    if not np.issubdtype(arr.dtype, np.integer) and not np.issubdtype(
-        arr.dtype, np.bool_
+
+    # Ensure array has an appropriate numeric or boolean type
+    if not (
+        np.issubdtype(arr.dtype, np.integer)
+        or np.issubdtype(arr.dtype, np.bool_)
+        or np.issubdtype(arr.dtype, np.floating)
     ):
-        raise ValueError(f"{name} must be of integer or boolean type.")
+        raise ValueError(f"{name} must be of integer, boolean, or floating-point type.")
+
+    # Check that all unique values are either 0 or 1 (including floats)
     unique_values = np.unique(arr)
-    if not set(unique_values).issubset({0, 1, False, True}):
+    if not set(unique_values).issubset({0, 1, 0.0, 1.0, False, True}):
         raise ValueError(f"{name} must contain only 0/1 or True/False values.")
 
 
