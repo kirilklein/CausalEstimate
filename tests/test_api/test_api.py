@@ -6,6 +6,7 @@ import numpy as np
 from CausalEstimate.api.estimator import Estimator
 from CausalEstimate.estimators.aipw import AIPW
 from CausalEstimate.estimators.tmle import TMLE
+from CausalEstimate.estimators.ipw import IPW
 
 
 class TestEstimator(unittest.TestCase):

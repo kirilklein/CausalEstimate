@@ -2,6 +2,7 @@ from CausalEstimate.api.registry import register_estimator
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
 from CausalEstimate.matching.matching import match_optimal
+from CausalEstimate.utils.checks import check_inputs
 
 
 @register_estimator
@@ -16,7 +17,7 @@ class MATCHING(BaseEstimator):
         """
 
         Y = df[outcome_col].values
-
+        check_inputs(df[treatment_col], Y, df[ps_col])
         df["index"] = df.index  # temporary index column
         matched = match_optimal(
             df,

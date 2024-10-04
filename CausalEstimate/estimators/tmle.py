@@ -1,8 +1,9 @@
 import pandas as pd
 
 from CausalEstimate.api.registry import register_estimator
-from CausalEstimate.estimators.functional.tmle import compute_tmle_ate
 from CausalEstimate.estimators.base import BaseEstimator
+from CausalEstimate.estimators.functional.tmle import compute_tmle_ate
+from CausalEstimate.utils.checks import check_inputs
 
 
 @register_estimator
@@ -32,7 +33,7 @@ class TMLE(BaseEstimator):
         Y0_hat = df[predicted_outcome_control_col]
         Y1_hat = df[predicted_outcome_treated_col]
         Yhat = df[predicted_outcome_col]
-
+        check_inputs(A, Y, ps, Y1_hat=Y1_hat, Y0_hat=Y0_hat, Yhat=Yhat)
         if self.effect_type == "ATE":
             return compute_tmle_ate(A, Y, ps, Y0_hat, Y1_hat, Yhat)
         else:
