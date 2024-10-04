@@ -1,11 +1,14 @@
-from CausalEstimate.estimators.functional.aipw import compute_aipw_ate
 import pandas as pd
 
+from CausalEstimate.api.registry import register_estimator
+from CausalEstimate.estimators.functional.aipw import compute_aipw_ate
+from CausalEstimate.estimators.base import BaseEstimator
 
-class IPW:
+
+@register_estimator
+class AIPW(BaseEstimator):
     def __init__(self, effect_type="ATE", **kwargs):
-        self.effect_type = effect_type
-        self.kwargs = kwargs
+        super().__init__(effect_type=effect_type, **kwargs)
 
     def compute_effect(
         self,
@@ -15,6 +18,7 @@ class IPW:
         ps_col: str,
         predicted_outcome_treated_col: str,
         predicted_outcome_control_col: str,
+        **kwargs,
     ) -> float:
         """
         Compute the effect using the functional IPW.
@@ -24,8 +28,10 @@ class IPW:
         A = df[treatment_col]
         Y = df[outcome_col]
         ps = df[ps_col]
+        Y1_hat = df[predicted_outcome_treated_col]
+        Y0_hat = df[predicted_outcome_control_col]
 
         if self.effect_type == "ATE":
-            return compute_aipw_ate(A, Y, ps)
+            return compute_aipw_ate(A, Y, ps, Y1_hat, Y0_hat)
         else:
             raise ValueError(f"Effect type '{self.effect_type}' is not supported.")

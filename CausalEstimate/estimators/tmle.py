@@ -1,11 +1,14 @@
-from CausalEstimate.estimators.functional.tmle import compute_tmle_ate
 import pandas as pd
 
+from CausalEstimate.api.registry import register_estimator
+from CausalEstimate.estimators.functional.tmle import compute_tmle_ate
+from CausalEstimate.estimators.base import BaseEstimator
 
-class TMLE:
+
+@register_estimator
+class TMLE(BaseEstimator):
     def __init__(self, effect_type="ATE", **kwargs):
-        self.effect_type = effect_type
-        self.kwargs = kwargs
+        super().__init__(effect_type=effect_type, **kwargs)
 
     def compute_effect(
         self,
@@ -16,6 +19,7 @@ class TMLE:
         predicted_outcome_col: str,
         predicted_outcome_treated_col: str,
         predicted_outcome_control_col: str,
+        **kwargs,
     ) -> float:
         """
         Compute the effect using the functional IPW.

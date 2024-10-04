@@ -34,8 +34,8 @@ def estimate_fluctuation_parameter(A, Y, ps, Yhat) -> float:
     H = A / ps - (1 - A) / (1 - ps)
 
     # Use logit of the current outcome as offset
-    offset = logit(Y)
+    offset = logit(Yhat)
 
     # Fit the model with offset
-    model = GLM(Yhat, add_constant(H), family=Binomial(), offset=offset).fit()
+    model = GLM(Y, add_constant(H), family=Binomial(), offset=offset).fit()
     return model.params[0]

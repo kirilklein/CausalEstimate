@@ -1,11 +1,13 @@
-from CausalEstimate.matching.matching import match_optimal
+from CausalEstimate.api.registry import register_estimator
+from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
+from CausalEstimate.matching.matching import match_optimal
 
 
-class MATCHING:
+@register_estimator
+class MATCHING(BaseEstimator):
     def __init__(self, effect_type="ATE", **kwargs):
-        self.effect_type = effect_type
-        self.kwargs = kwargs
+        super().__init__(effect_type=effect_type, **kwargs)
 
     def compute_effect(self, df, treatment_col, outcome_col, ps_col) -> float:
         """
