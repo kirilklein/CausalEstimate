@@ -1,4 +1,4 @@
-from CausalEstimate.api.registry import register_estimator
+from CausalEstimate.core.registry import register_estimator
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
 from CausalEstimate.matching.matching import match_optimal

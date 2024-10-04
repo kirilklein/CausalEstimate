@@ -1,7 +1,10 @@
+from typing import List, Union
+
 import numpy as np
 import pandas as pd
-from typing import Union, List
-from CausalEstimate.api.registry import ESTIMATOR_REGISTRY
+
+from CausalEstimate.core.imports import import_all_estimators
+from CausalEstimate.core.registry import ESTIMATOR_REGISTRY
 
 # !TODO: Write test for all functions
 
@@ -21,7 +24,7 @@ class Estimator:
         """
         if methods is None:
             methods = ["AIPW"]  # Default to AIPW if no method is provided.
-
+        import_all_estimators()
         # Allow single method or list of methods
         self.methods = methods if isinstance(methods, list) else [methods]
         self.effect_type = effect_type

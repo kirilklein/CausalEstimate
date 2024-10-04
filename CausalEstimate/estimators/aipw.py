@@ -1,6 +1,6 @@
 import pandas as pd
 
-from CausalEstimate.api.registry import register_estimator
+from CausalEstimate.core.registry import register_estimator
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.aipw import compute_aipw_ate
 from CausalEstimate.utils.checks import check_inputs
