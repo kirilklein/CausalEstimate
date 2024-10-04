@@ -53,8 +53,8 @@ def compute_ipw_ate_stabilized(A, Y, ps):
     A: treatment assignment, Y: outcome, ps: propensity score
     """
     W = compute_stabilized_ate_weights(A, ps)
-    Y1_weighed = W * A * Y
-    Y0_weighed = W * (1 - A) * Y
+    Y1_weighed = (W * A * Y).mean()
+    Y0_weighed = (W * (1 - A) * Y).mean()
     return Y1_weighed - Y0_weighed
 
 

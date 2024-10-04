@@ -32,15 +32,11 @@ class TestTMLEFunctions(unittest.TestCase):
         X = data[["X1", "X2"]].values
         A = data["A"].values
         Y = data["Y"].values
-        ps = expit(0.1 + 0.2 * X[:, 0] - 0.3 * X[:, 1]) + 0.01 * rng.normal(
-            size=n
-        )
+        ps = expit(0.1 + 0.2 * X[:, 0] - 0.3 * X[:, 1]) + 0.01 * rng.normal(size=n)
         Y1_hat = expit(
             0.5 + 0.8 * 1 + -0.6 * X[:, 0] + 0.3 * X[:, 1]
         ) + 0.01 * rng.normal(size=n)
-        Y0_hat = expit(0.5 + -0.6 * X[:, 0] + 0.3 * X[:, 1]) + 0.01 * rng.normal(
-            size=n
-        )
+        Y0_hat = expit(0.5 + -0.6 * X[:, 0] + 0.3 * X[:, 1]) + 0.01 * rng.normal(size=n)
         Yhat = expit(
             0.5 + 0.8 * A + -0.6 * X[:, 0] + 0.3 * X[:, 1]
         ) + 0.01 * rng.normal(size=n)
