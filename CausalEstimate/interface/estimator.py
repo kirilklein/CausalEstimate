@@ -5,6 +5,7 @@ import pandas as pd
 
 from CausalEstimate.core.imports import import_all_estimators
 from CausalEstimate.core.registry import ESTIMATOR_REGISTRY
+from CausalEstimate.filter.propensity import filter_common_support
 
 # !TODO: Write test for all functions
 
@@ -79,6 +80,8 @@ class Estimator:
         bootstrap: bool = False,
         n_bootstraps: int = 100,
         method_args: dict = None,
+        apply_common_support: bool = True,
+        common_support_threshold: float = 0.05,
         **kwargs,
     ) -> dict:
         """
@@ -92,8 +95,9 @@ class Estimator:
             ps_col (str): The name of the propensity score column.
             bootstrap (bool): Whether to run bootstrapping for the estimators.
             n_bootstraps (int): Number of bootstrap iterations.
-            sample_size (int): Size of each bootstrap sample.
             method_args (dict): Additional arguments for each estimator.
+            apply_common_support (bool): Whether to apply common support filtering.
+            common_support_threshold (float): Threshold for common support filtering.
             **kwargs: Additional arguments for the estimators.
 
         Returns:
@@ -113,6 +117,15 @@ class Estimator:
             bootstrap_samples = self._bootstrap_sample(df, n_bootstraps)
 
             for sample in bootstrap_samples:
+                # Apply common support filtering if specified
+                if apply_common_support:
+                    sample = filter_common_support(
+                        sample,
+                        ps_col=ps_col,
+                        treatment_col=treatment_col,
+                        threshold=common_support_threshold,
+                    )
+
                 # For each bootstrap sample, compute the effect using all estimators
                 for estimator in self.estimators:
                     method_name = type(estimator).__name__
@@ -141,9 +154,17 @@ class Estimator:
                 }
 
         else:
-            # If no bootstrapping, compute the effect directly for each estimator
+            # If no bootstrapping, apply common support filtering once if specified
+            if apply_common_support:
+                df = filter_common_support(
+                    df,
+                    ps_col=ps_col,
+                    treatment_col=treatment_col,
+                    threshold=common_support_threshold,
+                )
+
+            # Compute the effect directly for each estimator
             final_results = {}
-            # If no bootstrapping, compute the effect directly for each estimator
             for estimator in self.estimators:
                 method_name = type(estimator).__name__
                 estimator_specific_args = method_args.get(method_name, {})
