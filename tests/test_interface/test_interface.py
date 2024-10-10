@@ -292,6 +292,27 @@ class TestEstimator(unittest.TestCase):
         self.assertIn("IPW", results)
         self.assertIsInstance(results["IPW"]["effect"], float)
 
+    def test_common_support_filtering(self):
+        estimator = Estimator(methods=["AIPW"], effect_type="ATE")
+        # Define estimator-specific arguments
+        method_args = {
+            "AIPW": {
+                "predicted_outcome_treated_col": "predicted_outcome_treated",
+                "predicted_outcome_control_col": "predicted_outcome_control",
+            },
+        }
+        results = estimator.compute_effect(
+            self.sample_data,
+            treatment_col="treatment",
+            outcome_col="outcome",
+            ps_col="propensity_score",
+            method_args=method_args,
+            apply_common_support=True,
+            common_support_threshold=0.01,
+        )
+        self.assertIn("AIPW", results)
+        self.assertIsInstance(results["AIPW"]["effect"], float)
+
 
 if __name__ == "__main__":
     unittest.main()
