@@ -35,6 +35,7 @@ def check_unique_pid(df, pid_col):
     if df[pid_col].nunique() != len(df):
         raise ValueError("Input DataFrame contains duplicate PIDs.")
 
+
 def check_columns_for_nans(df: pd.DataFrame, cols: List[str]):
     """
     Check if the input DataFrame is valid.
@@ -43,6 +44,7 @@ def check_columns_for_nans(df: pd.DataFrame, cols: List[str]):
     for col in cols:
         if df[col].isnull().any():
             raise ValueError(f"Column '{col}' contains NaN values.")
+
 
 def check_inputs(
     A=None, Y=None, ps=None, Yhat=None, Y0_hat=None, Y1_hat=None, variable_names=None
