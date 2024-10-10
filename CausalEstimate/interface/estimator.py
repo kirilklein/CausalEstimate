@@ -6,6 +6,8 @@ import pandas as pd
 from CausalEstimate.core.imports import import_all_estimators
 from CausalEstimate.core.registry import ESTIMATOR_REGISTRY
 from CausalEstimate.filter.propensity import filter_common_support
+from CausalEstimate.utils.checks import check_required_columns, check_columns_for_nans
+from CausalEstimate.core.bootstrap import generate_bootstrap_samples
 
 # !TODO: Write test for all functions
 
@@ -30,46 +32,6 @@ class Estimator:
         self.methods = methods if isinstance(methods, list) else [methods]
         self.effect_type = effect_type
         self.estimators = self._initialize_estimators(effect_type, **kwargs)
-
-    def _initialize_estimators(self, effect_type: str, **kwargs) -> List[object]:
-        """
-        Initialize the specified estimators based on the methods provided.
-        """
-        estimators = []
-
-        for method in self.methods:
-            if method not in ESTIMATOR_REGISTRY:
-                raise ValueError(f"Method '{method}' is not supported.")
-            estimator_class = ESTIMATOR_REGISTRY.get(method)
-            estimator = estimator_class(effect_type=effect_type, **kwargs)
-            estimators.append(estimator)
-        return estimators
-
-    def _validate_inputs(self, df, treatment_col, outcome_col):
-        #!TODO: Move this to base class and individual estimator classes
-        """
-        Validate the input DataFrame and columns for all estimators.
-        """
-        required_columns = [treatment_col, outcome_col]
-        # Check if all required columns exist in the DataFrame
-        for col in required_columns:
-            if col not in df.columns:
-                raise ValueError(f"Column '{col}' is missing from the DataFrame.")
-
-        # Additional validation logic if needed (e.g., check for NaN, etc.)
-        if df[treatment_col].isnull().any():
-            raise ValueError(f"Treatment column '{treatment_col}' contains NaN values.")
-        if df[outcome_col].isnull().any():
-            raise ValueError(f"Outcome column '{outcome_col}' contains NaN values.")
-
-    def _bootstrap_sample(
-        self, df: pd.DataFrame, n_bootstraps: int
-    ) -> List[pd.DataFrame]:
-        """
-        Generate bootstrap samples.
-        """
-        n = len(df)
-        return [df.sample(n=n, replace=True) for _ in range(n_bootstraps)]
 
     def compute_effect(
         self,
@@ -114,7 +76,7 @@ class Estimator:
 
         if bootstrap:
             # Perform bootstrapping
-            bootstrap_samples = self._bootstrap_sample(df, n_bootstraps)
+            bootstrap_samples = generate_bootstrap_samples(df, n_bootstraps)
 
             for sample in bootstrap_samples:
                 # Apply common support filtering if specified
@@ -184,3 +146,26 @@ class Estimator:
                 }
 
         return final_results
+
+    def _initialize_estimators(self, effect_type: str, **kwargs) -> List[object]:
+        """
+        Initialize the specified estimators based on the methods provided.
+        """
+        estimators = []
+
+        for method in self.methods:
+            if method not in ESTIMATOR_REGISTRY:
+                raise ValueError(f"Method '{method}' is not supported.")
+            estimator_class = ESTIMATOR_REGISTRY.get(method)
+            estimator = estimator_class(effect_type=effect_type, **kwargs)
+            estimators.append(estimator)
+        return estimators
+
+    @staticmethod
+    def _validate_inputs(df: pd.DataFrame, treatment_col: str, outcome_col: str):
+        #!TODO: Move this to base class and individual estimator classes, figure out what else to check and how to better combine it with the checks in the estimators themselves
+        """
+        Validate the input DataFrame and columns for all estimators.
+        """
+        check_required_columns(df, [treatment_col, outcome_col])
+        check_columns_for_nans(df, [treatment_col, outcome_col])
