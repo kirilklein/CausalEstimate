@@ -56,6 +56,52 @@ result = match_optimal(df, n_controls=3, caliper=0.1)
 print(result)
 ```
 
+### Example: Using the Estimator
+
+Here's an example of how to use the Estimator class to compute effects:
+
+```python
+import pandas as pd
+import numpy as np
+from CausalEstimate.interface.estimator import Estimator
+
+# Simulate data
+np.random.seed(42)
+n = 1000
+ps = np.random.uniform(0, 1, n)
+treatment = np.random.binomial(1, ps)
+outcome = 2 + 0.5*treatment + np.random.normal(0, 1, n)
+
+df = pd.DataFrame({
+    'treatment': treatment,
+    'outcome': outcome,
+    'ps': ps
+})
+
+# Create an Estimator object
+estimator = Estimator(methods=['AIPW'], effect_type='ATE')
+
+# Compute effects
+results = estimator.compute_effect(
+    df,
+    treatment_col='treatment',
+    outcome_col='outcome',
+    ps_col='ps',
+    bootstrap=True,
+    n_bootstraps=100,
+    method_args={},
+    apply_common_support=False,
+    common_support_threshold=0.1
+)
+
+print(results)
+```
+
+This example demonstrates how to:
+1. Create an `Estimator` object with a specified method (AIPW in this case)
+2. Use the `compute_effect` method to estimate the Average Treatment Effect (ATE)
+3. Apply bootstrap for standard error estimation
+
 ---
 
 ## Development
