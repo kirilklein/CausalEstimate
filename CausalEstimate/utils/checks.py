@@ -1,4 +1,6 @@
 import numpy as np
+from typing import List
+import pandas as pd
 
 
 def check_required_columns(df, required_columns):
@@ -32,6 +34,16 @@ def check_unique_pid(df, pid_col):
     """
     if df[pid_col].nunique() != len(df):
         raise ValueError("Input DataFrame contains duplicate PIDs.")
+
+
+def check_columns_for_nans(df: pd.DataFrame, cols: List[str]):
+    """
+    Check if the input DataFrame is valid.
+    Columns should not contain NaN values
+    """
+    for col in cols:
+        if df[col].isnull().any():
+            raise ValueError(f"Column '{col}' contains NaN values.")
 
 
 def check_inputs(

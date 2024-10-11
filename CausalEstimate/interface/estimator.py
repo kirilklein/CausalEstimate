@@ -1,11 +1,11 @@
-from typing import List, Union
+from typing import Dict, List, Union
 
-import numpy as np
 import pandas as pd
 
+from CausalEstimate.core.effect_computation import compute_effects
 from CausalEstimate.core.imports import import_all_estimators
 from CausalEstimate.core.registry import ESTIMATOR_REGISTRY
-from CausalEstimate.filter.propensity import filter_common_support
+from CausalEstimate.utils.checks import check_columns_for_nans, check_required_columns
 
 # !TODO: Write test for all functions
 
@@ -31,6 +31,38 @@ class Estimator:
         self.effect_type = effect_type
         self.estimators = self._initialize_estimators(effect_type, **kwargs)
 
+    def compute_effect(
+        self,
+        df: pd.DataFrame,
+        treatment_col: str,
+        outcome_col: str,
+        ps_col: str,
+        bootstrap: bool,
+        n_bootstraps: int,
+        method_args: dict,
+        apply_common_support: bool,
+        common_support_threshold: float,
+        **kwargs,
+    ) -> Dict[str, Dict]:
+        """
+        Compute the causal effect using the specified estimators.
+        For documentation on the arguments, see the compute_effects function in CausalEstimate.core.effect_computation.
+        """
+        self._validate_inputs(df, treatment_col, outcome_col)
+        return compute_effects(
+            self.estimators,
+            df,
+            treatment_col,
+            outcome_col,
+            ps_col,
+            bootstrap,
+            n_bootstraps,
+            method_args,
+            apply_common_support,
+            common_support_threshold,
+            **kwargs,
+        )
+
     def _initialize_estimators(self, effect_type: str, **kwargs) -> List[object]:
         """
         Initialize the specified estimators based on the methods provided.
@@ -45,142 +77,11 @@ class Estimator:
             estimators.append(estimator)
         return estimators
 
-    def _validate_inputs(self, df, treatment_col, outcome_col):
-        #!TODO: Move this to base class and individual estimator classes
+    @staticmethod
+    def _validate_inputs(df: pd.DataFrame, treatment_col: str, outcome_col: str):
+        #!TODO: Move this to base class and individual estimator classes, figure out what else to check and how to better combine it with the checks in the estimators themselves
         """
         Validate the input DataFrame and columns for all estimators.
         """
-        required_columns = [treatment_col, outcome_col]
-        # Check if all required columns exist in the DataFrame
-        for col in required_columns:
-            if col not in df.columns:
-                raise ValueError(f"Column '{col}' is missing from the DataFrame.")
-
-        # Additional validation logic if needed (e.g., check for NaN, etc.)
-        if df[treatment_col].isnull().any():
-            raise ValueError(f"Treatment column '{treatment_col}' contains NaN values.")
-        if df[outcome_col].isnull().any():
-            raise ValueError(f"Outcome column '{outcome_col}' contains NaN values.")
-
-    def _bootstrap_sample(
-        self, df: pd.DataFrame, n_bootstraps: int
-    ) -> List[pd.DataFrame]:
-        """
-        Generate bootstrap samples.
-        """
-        n = len(df)
-        return [df.sample(n=n, replace=True) for _ in range(n_bootstraps)]
-
-    def compute_effect(
-        self,
-        df: pd.DataFrame,
-        treatment_col: str,
-        outcome_col: str,
-        ps_col: str,
-        bootstrap: bool = False,
-        n_bootstraps: int = 100,
-        method_args: dict = None,
-        apply_common_support: bool = True,
-        common_support_threshold: float = 0.05,
-        **kwargs,
-    ) -> dict:
-        """
-        Compute treatment effects using the initialized estimators.
-        Can also run bootstrap on all estimators if specified.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame.
-            treatment_col (str): The name of the treatment column.
-            outcome_col (str): The name of the outcome column.
-            ps_col (str): The name of the propensity score column.
-            bootstrap (bool): Whether to run bootstrapping for the estimators.
-            n_bootstraps (int): Number of bootstrap iterations.
-            method_args (dict): Additional arguments for each estimator.
-            apply_common_support (bool): Whether to apply common support filtering.
-            common_support_threshold (float): Threshold for common support filtering.
-            **kwargs: Additional arguments for the estimators.
-
-        Returns:
-            dict: A dictionary where keys are method names and values are computed effects (and optionally standard errors).
-        """
-        # Validate input data and columns
-        self._validate_inputs(df, treatment_col, outcome_col)
-
-        # Initialize results dictionary
-        results = {type(estimator).__name__: [] for estimator in self.estimators}
-
-        # Ensure method_args is a dictionary
-        method_args = method_args or {}
-
-        if bootstrap:
-            # Perform bootstrapping
-            bootstrap_samples = self._bootstrap_sample(df, n_bootstraps)
-
-            for sample in bootstrap_samples:
-                # Apply common support filtering if specified
-                if apply_common_support:
-                    sample = filter_common_support(
-                        sample,
-                        ps_col=ps_col,
-                        treatment_col=treatment_col,
-                        threshold=common_support_threshold,
-                    )
-
-                # For each bootstrap sample, compute the effect using all estimators
-                for estimator in self.estimators:
-                    method_name = type(estimator).__name__
-                    estimator_specific_args = method_args.get(method_name, {})
-                    effect = estimator.compute_effect(
-                        sample,
-                        treatment_col,
-                        outcome_col,
-                        ps_col,
-                        **estimator_specific_args,
-                        **kwargs,
-                    )
-                    results[method_name].append(effect)
-
-            # After collecting all bootstrap samples, compute the mean and standard error for each estimator
-            final_results = {}
-            for method_name, effects in results.items():
-                effects_array = np.array(effects)
-                mean_effect = np.mean(effects_array)
-                std_err = np.std(effects_array)
-                final_results[method_name] = {
-                    "effect": mean_effect,
-                    "std_err": std_err,
-                    "bootstrap": True,
-                    "n_bootstraps": n_bootstraps,
-                }
-
-        else:
-            # If no bootstrapping, apply common support filtering once if specified
-            if apply_common_support:
-                df = filter_common_support(
-                    df,
-                    ps_col=ps_col,
-                    treatment_col=treatment_col,
-                    threshold=common_support_threshold,
-                )
-
-            # Compute the effect directly for each estimator
-            final_results = {}
-            for estimator in self.estimators:
-                method_name = type(estimator).__name__
-                estimator_specific_args = method_args.get(method_name, {})
-                effect = estimator.compute_effect(
-                    df,
-                    treatment_col,
-                    outcome_col,
-                    ps_col,
-                    **estimator_specific_args,
-                    **kwargs,
-                )
-                final_results[method_name] = {
-                    "effect": effect,
-                    "std_err": None,
-                    "bootstrap": False,
-                    "n_bootstraps": 0,
-                }
-
-        return final_results
+        check_required_columns(df, [treatment_col, outcome_col])
+        check_columns_for_nans(df, [treatment_col, outcome_col])
