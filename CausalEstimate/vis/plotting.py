@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from CausalEstimate.utils.utils import get_treated_ps, get_untreated_ps 
+from CausalEstimate.utils.utils import get_treated_ps, get_untreated_ps
 
 
 def plot_propensity_score_dist(
