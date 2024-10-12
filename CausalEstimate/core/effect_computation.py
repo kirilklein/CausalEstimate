@@ -5,6 +5,13 @@ import pandas as pd
 
 from CausalEstimate.core.bootstrap import generate_bootstrap_samples
 from CausalEstimate.filter.propensity import filter_common_support
+from CausalEstimate.stats.stats import (
+    compute_treatment_outcome_table,
+    compute_propensity_score_stats,
+)
+import logging
+
+logging = logging.getLogger(__name__)
 
 
 def compute_effects(
@@ -20,7 +27,15 @@ def compute_effects(
     common_support_threshold: float,
     **kwargs,
 ) -> Dict:
+
+    initial_table = compute_treatment_outcome_table(df, treatment_col, outcome_col)
+    logging.info(f"Initial patient numbers:\n{initial_table}")
+
+    ps_stats = compute_propensity_score_stats(df, ps_col, treatment_col)
+    logging.info(f"Initial propensity score stats:\n{ps_stats}")
+
     if bootstrap:
+        logging.info("Bootstrapping")
         return compute_bootstrap_effects(
             estimators,
             df,
@@ -62,14 +77,25 @@ def compute_bootstrap_effects(
     bootstrap_samples = generate_bootstrap_samples(df, n_bootstraps)
     results = {type(estimator).__name__: [] for estimator in estimators}
 
-    for sample in bootstrap_samples:
+    for i, sample in enumerate(bootstrap_samples):
+        logging.info(f"Processing bootstrap sample {i+1} of {n_bootstraps}")
         if apply_common_support:
+            logging.info("Filtering common support")
             sample = filter_common_support(
                 sample,
                 ps_col=ps_col,
                 treatment_col=treatment_col,
                 threshold=common_support_threshold,
             )
+
+        sample_table = compute_treatment_outcome_table(
+            sample, treatment_col, outcome_col
+        )
+        logging.info(f"Patient numbers in sample:\n{sample_table}")
+
+        ps_stats = compute_propensity_score_stats(sample, ps_col, treatment_col)
+        logging.info(f"Propensity score stats in sample:\n{ps_stats}")
+
         compute_effects_for_sample(
             estimators,
             sample,
@@ -102,6 +128,11 @@ def compute_single_effect(
             treatment_col=treatment_col,
             threshold=common_support_threshold,
         )
+    initial_table = compute_treatment_outcome_table(df, treatment_col, outcome_col)
+    logging.info(f"Patient numbers:\n{initial_table}")
+
+    ps_stats = compute_propensity_score_stats(df, ps_col, treatment_col)
+    logging.info(f"Propensity score stats:\n{ps_stats}")
 
     results = {type(estimator).__name__: [] for estimator in estimators}
     compute_effects_for_sample(
