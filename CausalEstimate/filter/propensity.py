@@ -1,4 +1,5 @@
 import pandas as pd
+from CausalEstimate.utils.utils import get_treated_ps, get_untreated_ps, filter_column
 
 
 def filter_common_support(
@@ -20,19 +21,36 @@ def filter_common_support(
     Returns:
     DataFrame after removing individuals without common support.
     """
-    # Split the dataframe into treated and control groups
-    treated = df[df[treatment_col] == 1]
-    control = df[df[treatment_col] == 0]
-    # Get the range of propensity scores for treated and control groups
-    min_ps_treated, max_ps_treated = treated[ps_col].quantile(
+    common_min, common_max = get_common_support_range(
+        df, treatment_col, ps_col, threshold
+    )
+    filtered_df = filter_column(df, ps_col, common_min, common_max)
+    return filtered_df
+
+
+def get_common_support_range(
+    df: pd.DataFrame, treatment_col: str, ps_col: str, threshold: float = 0.05
+) -> tuple[float, float]:
+    """
+    Calculate the common support range for propensity scores.
+
+    Parameters:
+    -----------
+    df : Input DataFrame with treatment and propensity score columns.
+    treatment_col : Name of the treatment status column.
+    ps_col : Name of the propensity score column.
+    threshold : Quantile threshold for trimming score distribution tails. Default is 0.05.
+
+    Returns:
+    --------
+    Lower and upper bounds of the common support range.
+    """
+    min_ps_treated, max_ps_treated = get_treated_ps(df, treatment_col, ps_col).quantile(
         [threshold, 1 - threshold]
     )
-    min_ps_control, max_ps_control = control[ps_col].quantile(
-        [threshold, 1 - threshold]
-    )
-    # Define the common support range
+    min_ps_control, max_ps_control = get_untreated_ps(
+        df, treatment_col, ps_col
+    ).quantile([threshold, 1 - threshold])
     common_min = max(min_ps_treated, min_ps_control)
     common_max = min(max_ps_treated, max_ps_control)
-    # Filter individuals to keep only those within the common support range
-    filtered_df = df[(df[ps_col] >= common_min) & (df[ps_col] <= common_max)]
-    return filtered_df
+    return common_min, common_max
