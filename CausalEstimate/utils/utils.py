@@ -16,6 +16,7 @@ def get_treated(df: pd.DataFrame, treatment_col: str) -> pd.DataFrame:
 def get_untreated(df: pd.DataFrame, treatment_col: str) -> pd.DataFrame:
     return df[df[treatment_col] == 0]
 
+
 def filter_column(df: pd.DataFrame, col: str, min: float, max: float) -> pd.DataFrame:
     """
     Filters a DataFrame to keep only rows where a specified column is within a given range.

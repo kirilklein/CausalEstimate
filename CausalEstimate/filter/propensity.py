@@ -1,6 +1,7 @@
 import pandas as pd
 from CausalEstimate.utils.utils import get_treated_ps, get_untreated_ps, filter_column
 
+
 def filter_common_support(
     df: pd.DataFrame,
     ps_col: str = "propensity_score",
@@ -20,11 +21,16 @@ def filter_common_support(
     Returns:
     DataFrame after removing individuals without common support.
     """
-    common_min, common_max = get_common_support_range(df, treatment_col, ps_col, threshold)
+    common_min, common_max = get_common_support_range(
+        df, treatment_col, ps_col, threshold
+    )
     filtered_df = filter_column(df, ps_col, common_min, common_max)
     return filtered_df
 
-def get_common_support_range(df: pd.DataFrame, treatment_col: str, ps_col: str, threshold: float = 0.05) -> tuple[float, float]:
+
+def get_common_support_range(
+    df: pd.DataFrame, treatment_col: str, ps_col: str, threshold: float = 0.05
+) -> tuple[float, float]:
     """
     Calculate the common support range for propensity scores.
 
@@ -42,9 +48,9 @@ def get_common_support_range(df: pd.DataFrame, treatment_col: str, ps_col: str, 
     min_ps_treated, max_ps_treated = get_treated_ps(df, treatment_col, ps_col).quantile(
         [threshold, 1 - threshold]
     )
-    min_ps_control, max_ps_control = get_untreated_ps(df, treatment_col, ps_col).quantile(
-        [threshold, 1 - threshold]
-    )
+    min_ps_control, max_ps_control = get_untreated_ps(
+        df, treatment_col, ps_col
+    ).quantile([threshold, 1 - threshold])
     common_min = max(min_ps_treated, min_ps_control)
     common_max = min(max_ps_treated, max_ps_control)
     return common_min, common_max
