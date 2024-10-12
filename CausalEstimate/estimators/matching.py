@@ -18,6 +18,7 @@ class MATCHING(BaseEstimator):
 
         Y = df[outcome_col]
         check_inputs(df[treatment_col], Y, df[ps_col])
+        df = df.copy()  # Create a copy to avoid SettingWithCopyWarning
         df["index"] = df.index  # temporary index column
         matched = match_optimal(
             df,
