@@ -31,7 +31,7 @@ def compute_effects(
 ) -> Dict:
 
     log_initial_stats(df, treatment_col, outcome_col, ps_col)
-    
+
     if bootstrap:
         return compute_bootstrap_effects(
             estimators=estimators,
@@ -59,7 +59,6 @@ def compute_effects(
         )
 
 
-
 def compute_bootstrap_effects(
     estimators: List,
     df: pd.DataFrame,
@@ -77,7 +76,13 @@ def compute_bootstrap_effects(
 
     for i, sample in enumerate(bootstrap_samples):
         logging.info(f"Processing bootstrap sample {i+1} of {n_bootstraps}")
-        sample = apply_common_support_if_needed(sample, apply_common_support, ps_col, treatment_col, common_support_threshold)
+        sample = apply_common_support_if_needed(
+            sample,
+            apply_common_support,
+            ps_col,
+            treatment_col,
+            common_support_threshold,
+        )
         log_sample_stats(sample, treatment_col, outcome_col, ps_col)
         compute_effects_for_sample(
             estimators=estimators,
@@ -104,9 +109,11 @@ def compute_single_effect(
     common_support_threshold: float,
     **kwargs,
 ):
-    df = apply_common_support_if_needed(df, apply_common_support, ps_col, treatment_col, common_support_threshold)
+    df = apply_common_support_if_needed(
+        df, apply_common_support, ps_col, treatment_col, common_support_threshold
+    )
     log_sample_stats(df, treatment_col, outcome_col, ps_col)
-    
+
     results = {type(estimator).__name__: [] for estimator in estimators}
     compute_effects_for_sample(
         estimators=estimators,
@@ -138,7 +145,6 @@ def apply_common_support_if_needed(
             threshold=common_support_threshold,
         )
     return df
-
 
 
 def compute_effects_for_sample(
@@ -174,7 +180,7 @@ def process_bootstrap_results(
             "effect": np.mean(effects),
             "std_err": np.std(effects),
             "bootstrap": True,
-            "n_bootstraps": n_bootstraps
+            "n_bootstraps": n_bootstraps,
         }
         for method_name, effects in results.items()
     }
@@ -186,7 +192,7 @@ def process_single_results(results: Dict[str, float]) -> Dict[str, Dict]:
             "effect": effects[0],
             "std_err": None,
             "bootstrap": False,
-            "n_bootstraps": 0
+            "n_bootstraps": 0,
         }
         for method_name, effects in results.items()
     }
