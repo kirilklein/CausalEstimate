@@ -5,7 +5,7 @@ import pandas as pd
 from scipy import stats
 
 from CausalEstimate.stats.stats import (
-    compare_ps_distributions,
+    compute_propensity_score_stats,
     compute_treatment_outcome_table,
 )
 
@@ -65,7 +65,7 @@ class TestStats(unittest.TestCase):
         df = pd.DataFrame({"treatment": treatment, "ps": ps})
 
         # Compute the comparison
-        result = compare_ps_distributions(df, "ps", "treatment")
+        result = compute_propensity_score_stats(df, "ps", "treatment")
 
         # Check that the result contains the expected keys
         self.assertIn("ks_statistic", result)

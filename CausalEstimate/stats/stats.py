@@ -25,7 +25,9 @@ def compute_treatment_outcome_table(
     return table
 
 
-def compare_ps_distributions(df: pd.DataFrame, ps_col: str, treatment_col: str) -> dict:
+def compute_propensity_score_stats(
+    df: pd.DataFrame, ps_col: str, treatment_col: str
+) -> dict:
     """
     Compare the propensity score distributions between treated and untreated groups.
 
