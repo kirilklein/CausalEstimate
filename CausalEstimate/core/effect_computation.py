@@ -5,11 +5,8 @@ import pandas as pd
 
 from CausalEstimate.core.bootstrap import generate_bootstrap_samples
 from CausalEstimate.filter.propensity import filter_common_support
-
 from CausalEstimate.core.logging import log_sample_stats, log_initial_stats
-
 import logging
-
 from CausalEstimate.utils.logging import setup_logging
 
 setup_logging()
@@ -29,7 +26,25 @@ def compute_effects(
     common_support_threshold: float,
     **kwargs,
 ) -> Dict:
+    """
+    Compute causal effects using specified estimators.
 
+    Args:
+        estimators: List of estimator objects
+        df: Input DataFrame
+        treatment_col: Name of treatment column
+        outcome_col: Name of outcome column
+        ps_col: Name of propensity score column
+        bootstrap: Whether to use bootstrapping
+        n_bootstraps: Number of bootstrap iterations
+        method_args: Additional arguments for estimators
+        apply_common_support: Whether to apply common support
+        common_support_threshold: Threshold for common support
+        **kwargs: Additional keyword arguments
+
+    Returns:
+        Dictionary of computed effects
+    """
     log_initial_stats(df, treatment_col, outcome_col, ps_col)
 
     if bootstrap:
@@ -71,6 +86,9 @@ def compute_bootstrap_effects(
     common_support_threshold: float,
     **kwargs,
 ):
+    """
+    Compute effects using bootstrap sampling.
+    """
     bootstrap_samples = generate_bootstrap_samples(df, n_bootstraps)
     results = {type(estimator).__name__: [] for estimator in estimators}
 
@@ -109,6 +127,9 @@ def compute_single_effect(
     common_support_threshold: float,
     **kwargs,
 ):
+    """
+    Compute effects for a single sample.
+    """
     df = apply_common_support_if_needed(
         df, apply_common_support, ps_col, treatment_col, common_support_threshold
     )
@@ -136,6 +157,9 @@ def apply_common_support_if_needed(
     treatment_col: str,
     common_support_threshold: float,
 ) -> pd.DataFrame:
+    """
+    Apply common support filtering if specified.
+    """
     if apply_common_support:
         logging.info("Filtering common support")
         return filter_common_support(
@@ -157,6 +181,9 @@ def compute_effects_for_sample(
     ps_col: str,
     **kwargs,
 ) -> Dict[str, float]:
+    """
+    Compute effects for each estimator on a given sample.
+    """
     method_args = method_args or {}
     for estimator in estimators:
         method_name = type(estimator).__name__
@@ -175,6 +202,9 @@ def compute_effects_for_sample(
 def process_bootstrap_results(
     results: Dict[str, List[float]], n_bootstraps: int
 ) -> Dict[str, Dict]:
+    """
+    Process results from bootstrap sampling.
+    """
     return {
         method_name: {
             "effect": np.mean(effects),
@@ -187,6 +217,9 @@ def process_bootstrap_results(
 
 
 def process_single_results(results: Dict[str, float]) -> Dict[str, Dict]:
+    """
+    Process results from a single sample.
+    """
     return {
         method_name: {
             "effect": effects[0],
