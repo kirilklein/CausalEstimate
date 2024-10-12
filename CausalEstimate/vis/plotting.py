@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from CausalEstimate.utils.utils import get_treated_ps, get_untreated_ps
 
 
 def plot_propensity_score_dist(
@@ -47,7 +48,7 @@ def plot_propensity_score_dist(
         bin_edges = np.linspace(0, 1, 51)  # Creates 50 bins between 0 and 1
 
     ax.hist(
-        df[df[treatment_col] == 0][ps_col],
+        get_untreated_ps(df, treatment_col, ps_col),
         bins=bin_edges,
         alpha=0.5,
         label="Control",
@@ -55,7 +56,7 @@ def plot_propensity_score_dist(
         density=normalize,
     )
     ax.hist(
-        df[df[treatment_col] == 1][ps_col],
+        get_treated_ps(df, treatment_col, ps_col),
         bins=bin_edges,
         alpha=0.5,
         label="Treatment",
