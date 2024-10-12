@@ -72,7 +72,7 @@ class Estimator:
         for method in self.methods:
             if method not in ESTIMATOR_REGISTRY:
                 raise ValueError(f"Method '{method}' is not supported.")
-            estimator_class = ESTIMATOR_REGISTRY.get(method)
+            estimator_class = ESTIMATOR_REGISTRY.get(method.upper())
             estimator = estimator_class(effect_type=effect_type, **kwargs)
             estimators.append(estimator)
         return estimators
