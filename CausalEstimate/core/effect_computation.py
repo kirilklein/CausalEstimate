@@ -37,41 +37,41 @@ def compute_effects(
     if bootstrap:
         logging.info("Bootstrapping")
         return compute_bootstrap_effects(
-            estimators,
-            df,
-            treatment_col,
-            outcome_col,
-            ps_col,
-            n_bootstraps,
-            method_args,
-            apply_common_support,
-            common_support_threshold,
+            estimators=estimators,
+            df=df,
+            treatment_col=treatment_col,
+            outcome_col=outcome_col,
+            ps_col=ps_col,
+            n_bootstraps=n_bootstraps,
+            method_args=method_args,
+            apply_common_support=apply_common_support,
+            common_support_threshold=common_support_threshold,
             **kwargs,
         )
     else:
         return compute_single_effect(
-            estimators,
-            df,
-            treatment_col,
-            outcome_col,
-            ps_col,
-            method_args,
-            apply_common_support,
-            common_support_threshold,
+            estimators=estimators,
+            df=df,
+            treatment_col=treatment_col,
+            outcome_col=outcome_col,
+            ps_col=ps_col,
+            method_args=method_args,
+            apply_common_support=apply_common_support,
+            common_support_threshold=common_support_threshold,
             **kwargs,
         )
 
 
 def compute_bootstrap_effects(
-    estimators,
-    df,
-    treatment_col,
-    outcome_col,
-    ps_col,
-    n_bootstraps,
-    method_args,
-    apply_common_support,
-    common_support_threshold,
+    estimators: List,
+    df: pd.DataFrame,
+    treatment_col: str,
+    outcome_col: str,
+    ps_col: str,
+    n_bootstraps: int,
+    method_args: Dict,
+    apply_common_support: bool,
+    common_support_threshold: float,
     **kwargs,
 ):
     bootstrap_samples = generate_bootstrap_samples(df, n_bootstraps)
@@ -89,21 +89,21 @@ def compute_bootstrap_effects(
             )
 
         sample_table = compute_treatment_outcome_table(
-            sample, treatment_col, outcome_col
+            df=sample, treatment_col=treatment_col, outcome_col=outcome_col
         )
         logging.info(f"Patient numbers in sample:\n{sample_table}")
 
-        ps_stats = compute_propensity_score_stats(sample, ps_col, treatment_col)
+        ps_stats = compute_propensity_score_stats(df=sample, ps_col=ps_col, treatment_col=treatment_col)
         logging.info(f"Propensity score stats in sample:\n{ps_stats}")
 
         compute_effects_for_sample(
-            estimators,
-            sample,
-            results,
-            method_args,
-            treatment_col,
-            outcome_col,
-            ps_col,
+            estimators=estimators,
+            sample=sample,
+            results=results,
+            method_args=method_args,
+            treatment_col=treatment_col,
+            outcome_col=outcome_col,
+            ps_col=ps_col,
             **kwargs,
         )
 
@@ -111,14 +111,14 @@ def compute_bootstrap_effects(
 
 
 def compute_single_effect(
-    estimators,
-    df,
-    treatment_col,
-    outcome_col,
-    ps_col,
-    method_args,
-    apply_common_support,
-    common_support_threshold,
+    estimators: List,
+    df: pd.DataFrame,
+    treatment_col: str,
+    outcome_col: str,
+    ps_col: str,
+    method_args: Dict,
+    apply_common_support: bool,
+    common_support_threshold: float,
     **kwargs,
 ):
     if apply_common_support:
@@ -128,21 +128,21 @@ def compute_single_effect(
             treatment_col=treatment_col,
             threshold=common_support_threshold,
         )
-    initial_table = compute_treatment_outcome_table(df, treatment_col, outcome_col)
+    initial_table = compute_treatment_outcome_table(df=df, treatment_col=treatment_col, outcome_col=outcome_col)
     logging.info(f"Patient numbers:\n{initial_table}")
 
-    ps_stats = compute_propensity_score_stats(df, ps_col, treatment_col)
+    ps_stats = compute_propensity_score_stats(df=df, ps_col=ps_col, treatment_col=treatment_col)
     logging.info(f"Propensity score stats:\n{ps_stats}")
 
     results = {type(estimator).__name__: [] for estimator in estimators}
     compute_effects_for_sample(
-        estimators,
-        df,
-        results,
-        method_args,
-        treatment_col,
-        outcome_col,
-        ps_col,
+        estimators=estimators,
+        sample=df,
+        results=results,
+        method_args=method_args,
+        treatment_col=treatment_col,
+        outcome_col=outcome_col,
+        ps_col=ps_col,
         **kwargs,
     )
 
@@ -150,30 +150,32 @@ def compute_single_effect(
 
 
 def compute_effects_for_sample(
-    estimators,
-    sample,
-    results,
-    method_args,
-    treatment_col,
-    outcome_col,
-    ps_col,
+    estimators: List,
+    sample: pd.DataFrame,
+    results: Dict,
+    method_args: Dict,
+    treatment_col: str,
+    outcome_col: str,
+    ps_col: str,
     **kwargs,
-):
+)-> Dict[str, float]:
+    if method_args is None:
+        method_args = {}
     for estimator in estimators:
         method_name = type(estimator).__name__
         estimator_specific_args = method_args.get(method_name, {})
         effect = estimator.compute_effect(
-            sample,
-            treatment_col,
-            outcome_col,
-            ps_col,
+            df=sample,
+            treatment_col=treatment_col,
+            outcome_col=outcome_col,
+            ps_col=ps_col,
             **estimator_specific_args,
             **kwargs,
         )
         results[method_name].append(effect)
 
 
-def process_bootstrap_results(results, n_bootstraps):
+def process_bootstrap_results(results: Dict[str, List[float]], n_bootstraps: int) -> Dict[str, Dict]:
     final_results = {}
     for method_name, effects in results.items():
         effects_array = np.array(effects)
@@ -188,7 +190,7 @@ def process_bootstrap_results(results, n_bootstraps):
     return final_results
 
 
-def process_single_results(results):
+def process_single_results(results: Dict[str, float]) -> Dict[str, Dict]:
     final_results = {}
     for method_name, effects in results.items():
         final_results[method_name] = {

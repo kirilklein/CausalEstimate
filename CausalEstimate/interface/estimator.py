@@ -50,16 +50,16 @@ class Estimator:
         """
         self._validate_inputs(df, treatment_col, outcome_col)
         return compute_effects(
-            self.estimators,
-            df,
-            treatment_col,
-            outcome_col,
-            ps_col,
-            bootstrap,
-            n_bootstraps,
-            method_args,
-            apply_common_support,
-            common_support_threshold,
+            estimators=self.estimators,
+            df=df,
+            treatment_col=treatment_col,
+            outcome_col=outcome_col,
+            ps_col=ps_col,
+            bootstrap=bootstrap,
+            n_bootstraps=n_bootstraps,
+            method_args=method_args,
+            apply_common_support=apply_common_support,
+            common_support_threshold=common_support_threshold,
             **kwargs,
         )
 
