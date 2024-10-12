@@ -16,7 +16,7 @@ class MATCHING(BaseEstimator):
         Available effect types: ATE, RR, OR
         """
 
-        Y = df[outcome_col].values
+        Y = df[outcome_col]
         check_inputs(df[treatment_col], Y, df[ps_col])
         df["index"] = df.index  # temporary index column
         matched = match_optimal(
