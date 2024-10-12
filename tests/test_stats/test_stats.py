@@ -4,8 +4,10 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from CausalEstimate.stats.stats import (compare_ps_distributions,
-                                        compute_treatment_outcome_table)
+from CausalEstimate.stats.stats import (
+    compare_ps_distributions,
+    compute_treatment_outcome_table,
+)
 
 
 class TestStats(unittest.TestCase):
@@ -48,21 +50,19 @@ class TestStats(unittest.TestCase):
             table.loc["Treated", "No Outcome"] + table.loc["Treated", "Outcome"],
             table.loc["Treated", "Total"],
         )
+
     def test_compare_ps_distributions(self):
         # Create a sample DataFrame with known propensity scores
         np.random.seed(42)
         n = 1000
         treatment = np.random.binomial(1, 0.5, n)
-        
+
         # Generate propensity scores from different distributions for treated and untreated
         ps_treated = np.random.beta(2, 5, n)
         ps_untreated = np.random.beta(5, 2, n)
         ps = np.where(treatment == 1, ps_treated, ps_untreated)
-        
-        df = pd.DataFrame({
-            "treatment": treatment,
-            "ps": ps
-        })
+
+        df = pd.DataFrame({"treatment": treatment, "ps": ps})
 
         # Compute the comparison
         result = compare_ps_distributions(df, "ps", "treatment")
@@ -88,7 +88,7 @@ class TestStats(unittest.TestCase):
         treated = df[df["treatment"] == 1]["ps"]
         untreated = df[df["treatment"] == 0]["ps"]
         ks_statistic, p_value = stats.ks_2samp(treated, untreated)
-        
+
         self.assertAlmostEqual(result["ks_statistic"], ks_statistic, places=7)
         self.assertAlmostEqual(result["p_value"], p_value, places=7)
 
