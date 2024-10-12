@@ -95,7 +95,9 @@ def compute_bootstrap_effects(
         )
         logging.info(f"Patient numbers in sample:\n{sample_table}")
 
-        ps_stats = compute_propensity_score_stats(df=sample, ps_col=ps_col, treatment_col=treatment_col)
+        ps_stats = compute_propensity_score_stats(
+            df=sample, ps_col=ps_col, treatment_col=treatment_col
+        )
         logging.info(f"Propensity score stats in sample:\n{ps_stats}")
 
         compute_effects_for_sample(
@@ -130,10 +132,14 @@ def compute_single_effect(
             treatment_col=treatment_col,
             threshold=common_support_threshold,
         )
-    initial_table = compute_treatment_outcome_table(df=df, treatment_col=treatment_col, outcome_col=outcome_col)
+    initial_table = compute_treatment_outcome_table(
+        df=df, treatment_col=treatment_col, outcome_col=outcome_col
+    )
     logging.info(f"Patient numbers:\n{initial_table}")
 
-    ps_stats = compute_propensity_score_stats(df=df, ps_col=ps_col, treatment_col=treatment_col)
+    ps_stats = compute_propensity_score_stats(
+        df=df, ps_col=ps_col, treatment_col=treatment_col
+    )
     logging.info(f"Propensity score stats:\n{ps_stats}")
 
     results = {type(estimator).__name__: [] for estimator in estimators}
@@ -160,7 +166,7 @@ def compute_effects_for_sample(
     outcome_col: str,
     ps_col: str,
     **kwargs,
-)-> Dict[str, float]:
+) -> Dict[str, float]:
     if method_args is None:
         method_args = {}
     for estimator in estimators:
@@ -177,7 +183,9 @@ def compute_effects_for_sample(
         results[method_name].append(effect)
 
 
-def process_bootstrap_results(results: Dict[str, List[float]], n_bootstraps: int) -> Dict[str, Dict]:
+def process_bootstrap_results(
+    results: Dict[str, List[float]], n_bootstraps: int
+) -> Dict[str, Dict]:
     final_results = {}
     for method_name, effects in results.items():
         effects_array = np.array(effects)
