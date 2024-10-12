@@ -10,8 +10,10 @@ from CausalEstimate.stats.stats import (
     compute_propensity_score_stats,
 )
 import logging
+from CausalEstimate.utils.logging import setup_logging
 
-logging = logging.getLogger(__name__)
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 def compute_effects(
