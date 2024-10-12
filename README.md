@@ -98,6 +98,7 @@ print(results)
 ```
 
 This example demonstrates how to:
+
 1. Create an `Estimator` object with a specified method (AIPW in this case)
 2. Use the `compute_effect` method to estimate the Average Treatment Effect (ATE)
 3. Apply bootstrap for standard error estimation
