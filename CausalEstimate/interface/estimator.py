@@ -37,11 +37,11 @@ class Estimator:
         treatment_col: str,
         outcome_col: str,
         ps_col: str,
-        bootstrap: bool,
-        n_bootstraps: int,
-        method_args: dict,
-        apply_common_support: bool,
-        common_support_threshold: float,
+        bootstrap: bool = False,
+        n_bootstraps: int = 1,
+        apply_common_support: bool = True,
+        common_support_threshold: float = 0.05,
+        method_args: dict = None,
         **kwargs,
     ) -> Dict[str, Dict]:
         """
