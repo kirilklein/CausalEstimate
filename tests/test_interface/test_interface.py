@@ -289,6 +289,17 @@ class TestEstimator(unittest.TestCase):
         self.assertIn("IPW", results)
         self.assertIsInstance(results["IPW"]["effect"], float)
 
+    def test_compute_effect_without_method_args(self):
+        estimator = Estimator(methods=["IPW"], effect_type="ATE")
+        results = estimator.compute_effect(
+            self.sample_data,
+            treatment_col="treatment",
+            outcome_col="outcome",
+            ps_col="propensity_score",
+        )
+        self.assertIn("IPW", results)
+        self.assertIsInstance(results["IPW"]["effect"], float)
+
     def test_common_support_filtering(self):
         estimator = Estimator(methods=["AIPW"], effect_type="ATE")
         # Define estimator-specific arguments
@@ -309,6 +320,18 @@ class TestEstimator(unittest.TestCase):
         )
         self.assertIn("AIPW", results)
         self.assertIsInstance(results["AIPW"]["effect"], float)
+
+    def test_matching(self):
+        df = self.sample_data.copy()
+        df["treatment"] = np.random.binomial(1, 0.1, size=len(df))
+        estimator = Estimator(methods=["MATCHING"], effect_type="ATE")
+        results = estimator.compute_effect(
+            df,
+            treatment_col="treatment",
+            outcome_col="outcome",
+            ps_col="propensity_score",
+        )
+        self.assertIn("MATCHING", results)
 
 
 if __name__ == "__main__":

@@ -5,13 +5,12 @@ import pandas as pd
 
 from CausalEstimate.core.bootstrap import generate_bootstrap_samples
 from CausalEstimate.filter.propensity import filter_common_support
-from CausalEstimate.stats.stats import (
-    compute_treatment_outcome_table,
-    compute_propensity_score_stats,
-)
+from CausalEstimate.core.logging import log_sample_stats, log_initial_stats
 import logging
+from CausalEstimate.utils.logging import setup_logging
 
-logging = logging.getLogger(__name__)
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 def compute_effects(
@@ -27,83 +26,90 @@ def compute_effects(
     common_support_threshold: float,
     **kwargs,
 ) -> Dict:
+    """
+    Compute causal effects using specified estimators.
 
-    initial_table = compute_treatment_outcome_table(df, treatment_col, outcome_col)
-    logging.info(f"Initial patient numbers:\n{initial_table}")
+    Args:
+        estimators: List of estimator objects
+        df: Input DataFrame
+        treatment_col: Name of treatment column
+        outcome_col: Name of outcome column
+        ps_col: Name of propensity score column
+        bootstrap: Whether to use bootstrapping
+        n_bootstraps: Number of bootstrap iterations
+        method_args: Additional arguments for estimators
+        apply_common_support: Whether to apply common support
+        common_support_threshold: Threshold for common support
+        **kwargs: Additional keyword arguments
 
-    ps_stats = compute_propensity_score_stats(df, ps_col, treatment_col)
-    logging.info(f"Initial propensity score stats:\n{ps_stats}")
+    Returns:
+        Dictionary of computed effects
+    """
+    log_initial_stats(df, treatment_col, outcome_col, ps_col)
 
     if bootstrap:
-        logging.info("Bootstrapping")
         return compute_bootstrap_effects(
-            estimators,
-            df,
-            treatment_col,
-            outcome_col,
-            ps_col,
-            n_bootstraps,
-            method_args,
-            apply_common_support,
-            common_support_threshold,
+            estimators=estimators,
+            df=df,
+            treatment_col=treatment_col,
+            outcome_col=outcome_col,
+            ps_col=ps_col,
+            n_bootstraps=n_bootstraps,
+            method_args=method_args,
+            apply_common_support=apply_common_support,
+            common_support_threshold=common_support_threshold,
             **kwargs,
         )
     else:
         return compute_single_effect(
-            estimators,
-            df,
-            treatment_col,
-            outcome_col,
-            ps_col,
-            method_args,
-            apply_common_support,
-            common_support_threshold,
+            estimators=estimators,
+            df=df,
+            treatment_col=treatment_col,
+            outcome_col=outcome_col,
+            ps_col=ps_col,
+            method_args=method_args,
+            apply_common_support=apply_common_support,
+            common_support_threshold=common_support_threshold,
             **kwargs,
         )
 
 
 def compute_bootstrap_effects(
-    estimators,
-    df,
-    treatment_col,
-    outcome_col,
-    ps_col,
-    n_bootstraps,
-    method_args,
-    apply_common_support,
-    common_support_threshold,
+    estimators: List,
+    df: pd.DataFrame,
+    treatment_col: str,
+    outcome_col: str,
+    ps_col: str,
+    n_bootstraps: int,
+    method_args: Dict,
+    apply_common_support: bool,
+    common_support_threshold: float,
     **kwargs,
 ):
+    """
+    Compute effects using bootstrap sampling.
+    """
     bootstrap_samples = generate_bootstrap_samples(df, n_bootstraps)
     results = {type(estimator).__name__: [] for estimator in estimators}
 
     for i, sample in enumerate(bootstrap_samples):
         logging.info(f"Processing bootstrap sample {i+1} of {n_bootstraps}")
-        if apply_common_support:
-            logging.info("Filtering common support")
-            sample = filter_common_support(
-                sample,
-                ps_col=ps_col,
-                treatment_col=treatment_col,
-                threshold=common_support_threshold,
-            )
-
-        sample_table = compute_treatment_outcome_table(
-            sample, treatment_col, outcome_col
-        )
-        logging.info(f"Patient numbers in sample:\n{sample_table}")
-
-        ps_stats = compute_propensity_score_stats(sample, ps_col, treatment_col)
-        logging.info(f"Propensity score stats in sample:\n{ps_stats}")
-
-        compute_effects_for_sample(
-            estimators,
+        sample = apply_common_support_if_needed(
             sample,
-            results,
-            method_args,
-            treatment_col,
-            outcome_col,
+            apply_common_support,
             ps_col,
+            treatment_col,
+            common_support_threshold,
+        )
+        log_sample_stats(sample, treatment_col, outcome_col, ps_col)
+        compute_effects_for_sample(
+            estimators=estimators,
+            sample=sample,
+            results=results,
+            method_args=method_args,
+            treatment_col=treatment_col,
+            outcome_col=outcome_col,
+            ps_col=ps_col,
             **kwargs,
         )
 
@@ -111,90 +117,115 @@ def compute_bootstrap_effects(
 
 
 def compute_single_effect(
-    estimators,
-    df,
-    treatment_col,
-    outcome_col,
-    ps_col,
-    method_args,
-    apply_common_support,
-    common_support_threshold,
+    estimators: List,
+    df: pd.DataFrame,
+    treatment_col: str,
+    outcome_col: str,
+    ps_col: str,
+    method_args: Dict,
+    apply_common_support: bool,
+    common_support_threshold: float,
     **kwargs,
 ):
-    if apply_common_support:
-        df = filter_common_support(
-            df,
-            ps_col=ps_col,
-            treatment_col=treatment_col,
-            threshold=common_support_threshold,
-        )
-    initial_table = compute_treatment_outcome_table(df, treatment_col, outcome_col)
-    logging.info(f"Patient numbers:\n{initial_table}")
-
-    ps_stats = compute_propensity_score_stats(df, ps_col, treatment_col)
-    logging.info(f"Propensity score stats:\n{ps_stats}")
+    """
+    Compute effects for a single sample.
+    """
+    df = apply_common_support_if_needed(
+        df, apply_common_support, ps_col, treatment_col, common_support_threshold
+    )
+    log_sample_stats(df, treatment_col, outcome_col, ps_col)
 
     results = {type(estimator).__name__: [] for estimator in estimators}
     compute_effects_for_sample(
-        estimators,
-        df,
-        results,
-        method_args,
-        treatment_col,
-        outcome_col,
-        ps_col,
+        estimators=estimators,
+        sample=df,
+        results=results,
+        method_args=method_args,
+        treatment_col=treatment_col,
+        outcome_col=outcome_col,
+        ps_col=ps_col,
         **kwargs,
     )
 
     return process_single_results(results)
 
 
+def apply_common_support_if_needed(
+    df: pd.DataFrame,
+    apply_common_support: bool,
+    ps_col: str,
+    treatment_col: str,
+    common_support_threshold: float,
+) -> pd.DataFrame:
+    """
+    Apply common support filtering if specified.
+    """
+    if apply_common_support:
+        logging.info("Filtering common support")
+        return filter_common_support(
+            df,
+            ps_col=ps_col,
+            treatment_col=treatment_col,
+            threshold=common_support_threshold,
+        )
+    return df
+
+
 def compute_effects_for_sample(
-    estimators,
-    sample,
-    results,
-    method_args,
-    treatment_col,
-    outcome_col,
-    ps_col,
+    estimators: List,
+    sample: pd.DataFrame,
+    results: Dict,
+    method_args: Dict,
+    treatment_col: str,
+    outcome_col: str,
+    ps_col: str,
     **kwargs,
-):
+) -> Dict[str, float]:
+    """
+    Compute effects for each estimator on a given sample.
+    """
+    method_args = method_args or {}
     for estimator in estimators:
         method_name = type(estimator).__name__
         estimator_specific_args = method_args.get(method_name, {})
         effect = estimator.compute_effect(
-            sample,
-            treatment_col,
-            outcome_col,
-            ps_col,
+            df=sample,
+            treatment_col=treatment_col,
+            outcome_col=outcome_col,
+            ps_col=ps_col,
             **estimator_specific_args,
             **kwargs,
         )
         results[method_name].append(effect)
 
 
-def process_bootstrap_results(results, n_bootstraps):
-    final_results = {}
-    for method_name, effects in results.items():
-        effects_array = np.array(effects)
-        mean_effect = np.mean(effects_array)
-        std_err = np.std(effects_array)
-        final_results[method_name] = {
-            "effect": mean_effect,
-            "std_err": std_err,
+def process_bootstrap_results(
+    results: Dict[str, List[float]], n_bootstraps: int
+) -> Dict[str, Dict]:
+    """
+    Process results from bootstrap sampling.
+    """
+    return {
+        method_name: {
+            "effect": np.mean(effects),
+            "std_err": np.std(effects),
             "bootstrap": True,
             "n_bootstraps": n_bootstraps,
         }
-    return final_results
+        for method_name, effects in results.items()
+    }
 
 
-def process_single_results(results):
-    final_results = {}
-    for method_name, effects in results.items():
-        final_results[method_name] = {
+def process_single_results(results: Dict[str, float]) -> Dict[str, Dict]:
+    """
+    Process results from a single sample.
+    """
+    return {
+        method_name: {
             "effect": effects[0],
             "std_err": None,
             "bootstrap": False,
             "n_bootstraps": 0,
         }
-    return final_results
+        for method_name, effects in results.items()
+    }

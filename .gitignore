@@ -4,3 +4,4 @@ dist/
 __pycache__/
 notebooks/test*
 CausalEstimate/_version.py
+sandbox/*
