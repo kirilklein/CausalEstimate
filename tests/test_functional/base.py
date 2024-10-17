@@ -49,6 +49,13 @@ class TestEffectBase(unittest.TestCase):
             + cls.beta[3] * X[:, 1]
         ) + 0.01 * rng.normal(size=cls.n)
 
+        # clip
+        eps = 1e-6
+        Yhat = np.clip(Yhat, eps, 1 - eps)
+        Y1_hat = np.clip(Y1_hat, eps, 1 - eps)
+        Y0_hat = np.clip(Y0_hat, eps, 1 - eps)
+        ps = np.clip(ps, eps, 1 - eps)
+
         cls.A = A
         cls.Y = Y
         cls.ps = ps

@@ -42,6 +42,39 @@ class TestTMLEFunctions(TestEffectBase):
         self.assertIsInstance(ate_tmle, float)
         self.assertAlmostEqual(ate_tmle, self.true_ate, delta=0.15)
 
+class TestTMLE_PS_misspecified(TestEffectBase):
+    alpha = [0.1, 0.2, -0.3, 3]
+    def test_compute_tmle_ate(self):
+        ate_tmle = compute_tmle_ate(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertIsInstance(ate_tmle, float)
+        # The true ATE is 2; check if the estimate is close
+        self.assertAlmostEqual(ate_tmle, self.true_ate, delta=0.1)
+
+class TestTMLE_OutcomeModel_misspecified(TestEffectBase):
+    beta = [0.5, 0.8, -0.6, 0.3, 1]
+    def test_compute_tmle_ate(self):
+        ate_tmle = compute_tmle_ate(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertIsInstance(ate_tmle, float)
+        # The true ATE is 2; check if the estimate is close
+        self.assertAlmostEqual(ate_tmle, self.true_ate, delta=0.1)
+
+class TestTMLE_PS_misspecified_and_OutcomeModel_misspecified(TestEffectBase):
+    alpha = [0.1, 0.2, -0.3, 5]
+    beta = [0.5, 0.8, -0.6, 0.3, 5]
+    # extreme misspecification
+    def test_compute_tmle_ate(self):
+        ate_tmle = compute_tmle_ate(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertIsInstance(ate_tmle, float)
+        # The true ATE is 2; check if the estimate is close
+        # will be different from the true ATE
+        self.assertNotAlmostEqual(ate_tmle, self.true_ate, delta=0.1)
+
 
 if __name__ == "__main__":
     unittest.main()
