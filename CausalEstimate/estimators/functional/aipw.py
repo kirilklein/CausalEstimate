@@ -25,6 +25,7 @@ def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat):
     ate = ate_ipw - adjustment_factor * ((1 - ps) * Y1_hat + ps * Y0_hat)
     return ate.mean()
 
+
 def compute_stabilized_att_weights(A, ps):
     """
     Compute the stabilized weights for the ATT estimator.
