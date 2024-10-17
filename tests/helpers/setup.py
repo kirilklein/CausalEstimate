@@ -5,8 +5,10 @@ import numpy as np
 from scipy.special import expit
 
 from CausalEstimate.simulation.binary_simulation import (
-    compute_ATE_theoretical_from_data, compute_ATT_theoretical_from_data,
-    simulate_binary_data)
+    compute_ATE_theoretical_from_data,
+    compute_ATT_theoretical_from_data,
+    simulate_binary_data,
+)
 
 
 class TestEffectBase(unittest.TestCase):
@@ -75,5 +77,3 @@ class TestEffectBase(unittest.TestCase):
         cls.data["Y1_hat"] = Y1_hat
         cls.data["Y0_hat"] = Y0_hat
         cls.data["Yhat"] = Yhat
-        
-

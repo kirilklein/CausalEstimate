@@ -9,8 +9,10 @@ from CausalEstimate.estimators.functional.ipw import (
 )
 from tests.helpers.setup import TestEffectBase
 
+
 class TestIPWEstimators(unittest.TestCase):
     """Basic tests for IPW estimators"""
+
     @classmethod
     def setUpClass(cls):
         # Simulate simple data for testing
@@ -76,26 +78,29 @@ class TestIPWEstimators(unittest.TestCase):
         ate = compute_ipw_ate(A, Y, ps)
         self.assertIsInstance(ate, float)
 
+
 class TestComputeIPW_base(TestEffectBase):
     def test_compute_ipw_ate(self):
         ate_ipw = compute_ipw_ate(self.A, self.Y, self.ps)
         self.assertAlmostEqual(ate_ipw, self.true_ate, delta=0.1)
 
+
 class TestComputeIPWATE_outcome_model_misspecified(TestComputeIPW_base):
     beta = [0.5, 0.8, -0.6, 0.3, 3]
+
 
 class TestComputeIPWATE_ps_model_misspecified(TestComputeIPW_base):
     alpha = [0.1, 0.2, -0.3, 3]
 
+
 class TestComputeIPWATE_both_models_misspecified(TestComputeIPW_base):
     beta = [0.5, 0.8, -0.6, 0.3, 3]
     alpha = [0.1, 0.2, -0.3, 3]
+
     def test_compute_ipw_ate(self):
         ate_ipw = compute_ipw_ate(self.A, self.Y, self.ps)
         self.assertNotAlmostEqual(ate_ipw, self.true_ate, delta=0.05)
 
-
-    
 
 # Run the unittests
 if __name__ == "__main__":

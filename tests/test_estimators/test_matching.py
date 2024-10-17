@@ -12,6 +12,7 @@ class TestMatching(unittest.TestCase):
     """
     Basic example test for matching
     """
+
     def setUp(self):
         # Create a sample DataFrame for testing
         self.df = pd.DataFrame(
@@ -100,23 +101,30 @@ class TestMatching(unittest.TestCase):
 
 class BaseTestComputeMatchingATE(TestEffectBase):
     alpha = [-1, 0.1, 0.1, 0]
+
     def test_compute_matching_ate(self):
         ate_matching = compute_matching_ate(self.data["Y"], match_optimal(self.data))
         self.assertAlmostEqual(ate_matching, self.true_ate, delta=0.1)
 
+
 class TestComputeMatchingATE_ps_interaction(BaseTestComputeMatchingATE):
     alpha = [-1, 0.1, 0.1, 2]
+
 
 class TestComputeMatchingATE_outcome_interaction(BaseTestComputeMatchingATE):
     beta = [-1, 0.1, 0.1, 2, 2]
 
+
 class TestComputeMatchingATE_ps_and_outcome_interaction(BaseTestComputeMatchingATE):
     """This one we expect to not be estimable"""
+
     alpha = [-1, 0.1, 0.1, 2]
     beta = [-1, 0.1, 0.1, 2, 2]
+
     def test_compute_matching_ate(self):
         ate_matching = compute_matching_ate(self.data["Y"], match_optimal(self.data))
         self.assertNotAlmostEqual(ate_matching, self.true_ate, delta=0.05)
-    
+
+
 if __name__ == "__main__":
     unittest.main()

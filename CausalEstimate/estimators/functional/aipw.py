@@ -46,6 +46,7 @@ def compute_stabilized_att_weights(A, ps):
     h = ps / (1 - ps)
     return A + (1 - A) * h
 
+
 def compute_aipw_att(A, Y, ps, Y0_hat, Y1_hat):
     """
     Augmented Inverse Probability Weighting (AIPW) for ATT.
@@ -54,25 +55,26 @@ def compute_aipw_att(A, Y, ps, Y0_hat, Y1_hat):
     """
     # Compute the stabilized weights for ATT
     W = compute_stabilized_att_weights(A, ps)
-    
+
     # Numerator for the IPW ATT estimator
     ipw_numer = (W * A * Y).sum() - (W * (1 - A) * Y).sum()
     # Denominator for the IPW ATT estimator
     ipw_denom = (W * A).sum()
     # IPW ATT estimate
     ipw_att = ipw_numer / ipw_denom
-    
+
     # Augmentation term
     augmentation = ((W * (1 - A) * (Y0_hat - Y1_hat)).sum()) / (W * A).sum()
-    
+
     # Predicted means for treated units
     mu1_hat = Y1_hat[A == 1].mean()
     mu0_hat = Y0_hat[A == 1].mean()
-    
+
     # Compute the AIPW ATT
     att = ipw_att + augmentation + (mu1_hat - mu0_hat)
-    
+
     return att
+
 
 def compute_adjustment_factor(A, ps):
     return (A - ps) / (ps * (1 - ps))
