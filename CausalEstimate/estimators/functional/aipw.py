@@ -11,7 +11,7 @@ ATE:
 
 """
 
-from CausalEstimate.estimators.functional.ipw import compute_ipw_ate, compute_ipw_att
+from CausalEstimate.estimators.functional.ipw import compute_ipw_ate
 
 
 def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat):
@@ -25,20 +25,6 @@ def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat):
     ate = ate_ipw - adjustment_factor * ((1 - ps) * Y1_hat + ps * Y0_hat)
     return ate.mean()
 
-
-# def compute_aipw_att(A, Y, ps, Y0_hat, Y1_hat):
-#     """
-#     Augmented Inverse Probability of Treatment Weighting (AIPW) for ATT.
-#     A: treatment assignment, Y: outcome, ps: propensity score
-#     Y0_hat: P[Y|A=0], Y1_hat: P[Y|A=1]
-#     note: This is currently a guess, since no reference is found.
-#     Based on how the formula for IPW changes, we can infer that the formula for AIPW should change.
-#     !! Need to check this !!
-#     """
-#     att_ipw = compute_ipw_att(A, Y, ps)
-#     adjustment_factor = compute_adjustment_factor(A, ps)
-#     att = att_ipw - adjustment_factor * (Y1_hat + ps / (1 - ps) * Y0_hat)
-#     return att.mean()
 def compute_stabilized_att_weights(A, ps):
     """
     Compute the stabilized weights for the ATT estimator.
