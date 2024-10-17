@@ -11,8 +11,12 @@ ATE:
 
 """
 
-from CausalEstimate.estimators.functional.ipw import compute_ipw_ate
+from typing import Tuple
+
 import numpy as np
+
+from CausalEstimate.estimators.functional.ipw import compute_ipw_ate
+
 
 def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat):
     """
@@ -26,7 +30,25 @@ def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat):
     return ate.mean()
 
 
-def compute_stabilized_att_weights(A, ps)->np.ndarray:
+def compute_aipw_att(A, Y, ps, Y0_hat, Y1_hat) -> float:
+    """
+    Augmented Inverse Probability Weighting (AIPW) for ATT.
+    A: treatment assignment (binary), Y: outcome, ps: propensity score
+    Y0_hat: predicted outcome under control, Y1_hat: predicted outcome under treatment
+    """
+    W = compute_stabilized_att_weights(A, ps)
+    ipw_att = compute_ipw_att_estimator(W, A, Y)
+    augmentation = compute_augmentation_term(W, A, Y0_hat, Y1_hat)
+    mu1_hat, mu0_hat = compute_predicted_means_treated(Y0_hat, Y1_hat, A)
+    return ipw_att + augmentation + (mu1_hat - mu0_hat)
+
+
+def compute_adjustment_factor(A, ps) -> np.ndarray:
+    """Compute the adjustment factor for the AIPW estimator."""
+    return (A - ps) / (ps * (1 - ps))
+
+
+def compute_stabilized_att_weights(A, ps) -> np.ndarray:
     """
     Compute the stabilized weights for the ATT estimator.
     """
@@ -34,35 +56,27 @@ def compute_stabilized_att_weights(A, ps)->np.ndarray:
     return A + (1 - A) * h
 
 
-def compute_aipw_att(A, Y, ps, Y0_hat, Y1_hat)->float:
-    """
-    Augmented Inverse Probability Weighting (AIPW) for ATT.
-    A: treatment assignment (binary), Y: outcome, ps: propensity score
-    Y0_hat: predicted outcome under control, Y1_hat: predicted outcome under treatment
-    """
-    # Compute the stabilized weights for ATT
-    W = compute_stabilized_att_weights(A, ps)
-
-    # Numerator for the IPW ATT estimator
-    ipw_numer = (W * A * Y).sum() - (W * (1 - A) * Y).sum()
-    # Denominator for the IPW ATT estimator
-    ipw_denom = (W * A).sum()
-    # IPW ATT estimate
-    ipw_att = ipw_numer / ipw_denom
-
-    # Augmentation term
-    augmentation = ((W * (1 - A) * (Y0_hat - Y1_hat)).sum()) / (W * A).sum()
-
-    # Predicted means for treated units
-    mu1_hat = Y1_hat[A == 1].mean()
-    mu0_hat = Y0_hat[A == 1].mean()
-
-    # Compute the AIPW ATT
-    att = ipw_att + augmentation + (mu1_hat - mu0_hat)
-
-    return att
+def compute_ipw_att_estimator(W: np.ndarray, A: np.ndarray, Y: np.ndarray) -> float:
+    """Compute the IPW ATT estimate."""
+    numerator = (W * A * Y).sum() - (W * (1 - A) * Y).sum()
+    denominator = (W * A).sum()
+    return numerator / denominator
 
 
-def compute_adjustment_factor(A, ps)->np.ndarray:
-    """Compute the adjustment factor for the AIPW estimator."""
-    return (A - ps) / (ps * (1 - ps))
+def compute_augmentation_term(
+    W: np.ndarray, A: np.ndarray, Y0_hat: np.ndarray, Y1_hat: np.ndarray
+) -> float:
+    """Compute the augmentation term."""
+    numerator = (W * (1 - A) * (Y0_hat - Y1_hat)).sum()
+    denominator = (W * A).sum()
+    return numerator / denominator
+
+
+def compute_predicted_means_treated(
+    Y0_hat: np.ndarray, Y1_hat: np.ndarray, A: np.ndarray
+) -> Tuple[float, float]:
+    """Compute predicted means for treated units."""
+    treated_indices = A == 1
+    mu1_hat = Y1_hat[treated_indices].mean()
+    mu0_hat = Y0_hat[treated_indices].mean()
+    return mu1_hat, mu0_hat
