@@ -101,7 +101,7 @@ def compute_bootstrap_effects(
             treatment_col,
             common_support_threshold,
         )
-        log_sample_stats(sample, treatment_col, outcome_col, ps_col)
+        # log_sample_stats(sample, treatment_col, outcome_col, ps_col)
         compute_effects_for_sample(
             estimators=estimators,
             sample=sample,

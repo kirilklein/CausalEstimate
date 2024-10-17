@@ -5,6 +5,7 @@ from CausalEstimate.estimators.functional.matching import compute_matching_ate
 
 # Create the unittest class
 class TestComputeMatchingATE(unittest.TestCase):
+    """Basic tests for matching estimators"""
 
     def test_compute_matching_ate(self):
         # Example outcome array (Y)

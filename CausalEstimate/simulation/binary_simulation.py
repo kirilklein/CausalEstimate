@@ -35,22 +35,29 @@ def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataF
     return data
 
 
+def compute_expected_outcome(data: pd.DataFrame, beta: list, treatment: int):
+    """Compute the expected outcome for a given treatment."""
+    return logistic(
+        beta[0]
+        + beta[1] * treatment
+        + beta[2] * data.X1
+        + beta[3] * data.X2
+        + beta[4] * data.X1 * data.X2
+    ).mean()
+
+
 def compute_ATE_theoretical_from_data(data: pd.DataFrame, beta: list):
     """Compute the true average treatment effect (ATE) from the model coefficients, using the data."""
-    E_Y1 = logistic(
-        beta[0]
-        + beta[1] * 1
-        + beta[2] * data.X1
-        + beta[3] * data.X2
-        + beta[4] * data.X1 * data.X2
-    ).mean()
-    E_Y0 = logistic(
-        beta[0]
-        + beta[1] * 0
-        + beta[2] * data.X1
-        + beta[3] * data.X2
-        + beta[4] * data.X1 * data.X2
-    ).mean()
+    E_Y1 = compute_expected_outcome(data, beta, 1)
+    E_Y0 = compute_expected_outcome(data, beta, 0)
+    return E_Y1 - E_Y0
+
+
+def compute_ATT_theoretical_from_data(data: pd.DataFrame, beta: list):
+    """Compute the true average treatment effect on the treated (ATT) from the model coefficients, using the data."""
+    treated_data = data[data.A == 1]
+    E_Y1 = compute_expected_outcome(treated_data, beta, 1)
+    E_Y0 = compute_expected_outcome(treated_data, beta, 0)
     return E_Y1 - E_Y0
 
 
