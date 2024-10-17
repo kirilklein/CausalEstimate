@@ -12,7 +12,7 @@ ATE:
 """
 
 from CausalEstimate.estimators.functional.ipw import compute_ipw_ate
-
+import numpy as np
 
 def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat):
     """
@@ -26,7 +26,7 @@ def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat):
     return ate.mean()
 
 
-def compute_stabilized_att_weights(A, ps):
+def compute_stabilized_att_weights(A, ps)->np.ndarray:
     """
     Compute the stabilized weights for the ATT estimator.
     """
@@ -34,7 +34,7 @@ def compute_stabilized_att_weights(A, ps):
     return A + (1 - A) * h
 
 
-def compute_aipw_att(A, Y, ps, Y0_hat, Y1_hat):
+def compute_aipw_att(A, Y, ps, Y0_hat, Y1_hat)->float:
     """
     Augmented Inverse Probability Weighting (AIPW) for ATT.
     A: treatment assignment (binary), Y: outcome, ps: propensity score
@@ -63,5 +63,6 @@ def compute_aipw_att(A, Y, ps, Y0_hat, Y1_hat):
     return att
 
 
-def compute_adjustment_factor(A, ps):
+def compute_adjustment_factor(A, ps)->np.ndarray:
+    """Compute the adjustment factor for the AIPW estimator."""
     return (A - ps) / (ps * (1 - ps))
