@@ -2,7 +2,7 @@ import pandas as pd
 
 from CausalEstimate.core.registry import register_estimator
 from CausalEstimate.estimators.base import BaseEstimator
-from CausalEstimate.estimators.functional.aipw import compute_aipw_ate
+from CausalEstimate.estimators.functional.aipw import compute_aipw_ate, compute_aipw_att
 from CausalEstimate.utils.checks import check_inputs
 
 
@@ -35,5 +35,7 @@ class AIPW(BaseEstimator):
 
         if self.effect_type == "ATE":
             return compute_aipw_ate(A, Y, ps, Y1_hat, Y0_hat)
+        elif self.effect_type == "ATT":
+            return compute_aipw_att(A, Y, ps, Y1_hat, Y0_hat)
         else:
             raise ValueError(f"Effect type '{self.effect_type}' is not supported.")
