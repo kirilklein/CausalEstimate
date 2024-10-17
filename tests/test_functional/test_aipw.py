@@ -1,10 +1,11 @@
 import unittest
 import numpy as np
 from scipy.special import expit
-from CausalEstimate.estimators.functional.aipw import compute_aipw_ate
+from CausalEstimate.estimators.functional.aipw import compute_aipw_ate, compute_aipw_att
 from CausalEstimate.simulation.binary_simulation import (
     simulate_binary_data,
     compute_ATE_theoretical_from_data,
+    compute_ATT_theoretical_from_data,
 )
 
 
@@ -15,22 +16,24 @@ class TestComputeAIPWATE(unittest.TestCase):
         rng = np.random.default_rng(42)
         n = 2000
         # Covariates
+        alpha = [0.1, 0.2, -0.3, 0]
+        beta = [0.5, 0.8, -0.6, 0.3, 0]
         data = simulate_binary_data(
-            n, alpha=[0.1, 0.2, -0.3, 0], beta=[0.5, 0.8, -0.6, 0.3, 0], seed=42
+            n, alpha=alpha, beta=beta, seed=42
         )
         true_ate = compute_ATE_theoretical_from_data(
-            data, beta=[0.5, 0.8, -0.6, 0.3, 0]
+            data, beta=beta
         )
 
         # Predicted outcomes
         X = data[["X1", "X2"]].values
         A = data["A"].values
         Y = data["Y"].values
-        ps = expit(0.1 + 0.2 * X[:, 0] - 0.3 * X[:, 1]) + 0.01 * rng.normal(size=n)
+        ps = expit(alpha[0] + alpha[1] * X[:, 0] + alpha[2] * X[:, 1]) + 0.01 * rng.normal(size=n)
         Y1_hat = expit(
-            0.5 + 0.8 * 1 + -0.6 * X[:, 0] + 0.3 * X[:, 1]
+            beta[0] + beta[1] * 1 + beta[2] * X[:, 0] + beta[3] * X[:, 1]
         ) + 0.01 * rng.normal(size=n)
-        Y0_hat = expit(0.5 + -0.6 * X[:, 0] + 0.3 * X[:, 1]) + 0.01 * rng.normal(size=n)
+        Y0_hat = expit(beta[0] + beta[2] * X[:, 0] + beta[3] * X[:, 1]) + 0.01 * rng.normal(size=n)
 
         cls.A = A
         cls.Y = Y
@@ -70,6 +73,45 @@ class TestComputeAIPWATE(unittest.TestCase):
         # Check if the estimate is still close to the true ATE
         self.assertAlmostEqual(ate_aipw, self.true_ate, delta=0.15)
 
+class TestComputeAIPWATT(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Simulate realistic data for testing
+        rng = np.random.default_rng(42)
+        n = 2000
+        # Covariates
+        alpha = [0.1, 0.2, -0.3, 0]
+        beta = [0.5, 0.8, -0.6, 0.3, 0]
+        data = simulate_binary_data(
+            n, alpha=alpha, beta=beta, seed=42
+        )
+        true_att = compute_ATT_theoretical_from_data(
+            data, beta=beta
+        )
+
+        # Predicted outcomes
+        X = data[["X1", "X2"]].values
+        A = data["A"].values
+        Y = data["Y"].values
+        ps = expit(alpha[0] + alpha[1] * X[:, 0] + alpha[2] * X[:, 1]) + 0.01 * rng.normal(size=n)
+        Y1_hat = expit(
+            beta[0] + beta[1] * 1 + beta[2] * X[:, 0] + beta[3] * X[:, 1]
+        ) + 0.01 * rng.normal(size=n)
+        Y0_hat = expit(beta[0] + beta[2] * X[:, 0] + beta[3] * X[:, 1]) + 0.01 * rng.normal(size=n)
+
+        cls.A = A
+        cls.Y = Y
+        cls.ps = ps
+        cls.Y1_hat = Y1_hat
+        cls.Y0_hat = Y0_hat
+        cls.true_att = true_att
+
+    def test_aipw_att_computation(self):
+        # Test the computation of AIPW ATT
+        att_aipw = compute_aipw_att(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
+        self.assertIsInstance(att_aipw, float)
+        # Check if the AIPW estimate is close to the true ATT
+        self.assertAlmostEqual(att_aipw, self.true_att, delta=0.1)
 
 # Run the unittests
 if __name__ == "__main__":
