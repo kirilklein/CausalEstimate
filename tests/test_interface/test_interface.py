@@ -283,6 +283,7 @@ class TestEstimator(unittest.TestCase):
             ps_col="propensity_score",
             bootstrap=True,
             n_bootstraps=10,
+            method_args={"MATCHING": {"caliper": 0.05}},
         )
         self.assertIn("MATCHING", results)
 
