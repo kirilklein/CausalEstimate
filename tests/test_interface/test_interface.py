@@ -44,29 +44,27 @@ class TestEstimator(unittest.TestCase):
                 "predicted_outcome_control": outcome_control_probability,
             }
         )
-
-    def test_compute_effect_no_bootstrap(self):
-        estimator = Estimator(methods=["AIPW", "TMLE"], effect_type="ATE")
-        # Define estimator-specific arguments
-        method_args = {
+        cls.method_args = {
             "AIPW": {
                 "predicted_outcome_treated_col": "predicted_outcome_treated",
                 "predicted_outcome_control_col": "predicted_outcome_control",
-                "predicted_outcome_col": "predicted_outcome",
             },
             "TMLE": {
                 "predicted_outcome_treated_col": "predicted_outcome_treated",
                 "predicted_outcome_control_col": "predicted_outcome_control",
                 "predicted_outcome_col": "predicted_outcome",
-                # Add TMLE-specific arguments if necessary
             },
         }
+
+    def test_compute_effect_no_bootstrap(self):
+        estimator = Estimator(methods=["AIPW", "TMLE"], effect_type="ATE")
+        # Define estimator-specific arguments
         results = estimator.compute_effect(
             self.sample_data,
             treatment_col="treatment",
             outcome_col="outcome",
             ps_col="propensity_score",
-            method_args=method_args,
+            method_args=self.method_args,
         )
 
         # Check that results are returned for all specified methods
@@ -88,18 +86,6 @@ class TestEstimator(unittest.TestCase):
     def test_compute_effect_with_bootstrap(self):
         estimator = Estimator(methods=["AIPW", "TMLE"], effect_type="ATE")
         # Define estimator-specific arguments
-        method_args = {
-            "AIPW": {
-                "predicted_outcome_col": "predicted_outcome",
-                "predicted_outcome_treated_col": "predicted_outcome_treated",
-                "predicted_outcome_control_col": "predicted_outcome_control",
-            },
-            "TMLE": {
-                "predicted_outcome_col": "predicted_outcome",
-                "predicted_outcome_treated_col": "predicted_outcome_treated",
-                "predicted_outcome_control_col": "predicted_outcome_control",
-            },
-        }
         results = estimator.compute_effect(
             self.sample_data,
             treatment_col="treatment",
@@ -107,7 +93,7 @@ class TestEstimator(unittest.TestCase):
             ps_col="propensity_score",
             bootstrap=True,
             n_bootstraps=10,
-            method_args=method_args,
+            method_args=self.method_args,
         )
 
         # Check that results are returned for all specified methods
@@ -139,24 +125,13 @@ class TestEstimator(unittest.TestCase):
             methods=["AIPW", "TMLE"], effect_type="ATE", method_params=method_params
         )
         # Define estimator-specific arguments
-        method_args = {
-            "AIPW": {
-                "predicted_outcome_treated_col": "predicted_outcome_treated",
-                "predicted_outcome_control_col": "predicted_outcome_control",
-            },
-            "TMLE": {
-                "predicted_outcome_col": "predicted_outcome",
-                "predicted_outcome_treated_col": "predicted_outcome_treated",
-                "predicted_outcome_control_col": "predicted_outcome_control",
-                # Add TMLE-specific arguments if necessary
-            },
-        }
+
         results = estimator.compute_effect(
             self.sample_data,
             treatment_col="treatment",
             outcome_col="outcome",
             ps_col="propensity_score",
-            method_args=method_args,
+            method_args=self.method_args,
         )
 
         # Ensure the code runs without errors
@@ -168,12 +143,6 @@ class TestEstimator(unittest.TestCase):
         # Remove the 'treatment' column to simulate missing data
         sample_data_missing = self.sample_data.drop(columns=["treatment"])
         # Define estimator-specific arguments
-        method_args = {
-            "AIPW": {
-                "predicted_outcome_treated_col": "predicted_outcome_treated",
-                "predicted_outcome_control_col": "predicted_outcome_control",
-            },
-        }
         with self.assertRaises(ValueError) as context:
             estimator.compute_effect(
                 sample_data_missing,
@@ -181,7 +150,7 @@ class TestEstimator(unittest.TestCase):
                 outcome_col="outcome",
                 ps_col="propensity_score",
                 bootstrap=False,
-                method_args=method_args,
+                method_args=self.method_args,
             )
         self.assertTrue(context.exception)
 
@@ -195,24 +164,13 @@ class TestEstimator(unittest.TestCase):
     def test_estimator_access(self):
         estimator = Estimator(methods=["AIPW", "TMLE"], effect_type="ATE")
         # Define estimator-specific arguments
-        method_args = {
-            "AIPW": {
-                "predicted_outcome_treated_col": "predicted_outcome_treated",
-                "predicted_outcome_control_col": "predicted_outcome_control",
-                "predicted_outcome_col": "predicted_outcome",
-            },
-            "TMLE": {
-                "predicted_outcome_treated_col": "predicted_outcome_treated",
-                "predicted_outcome_control_col": "predicted_outcome_control",
-                "predicted_outcome_col": "predicted_outcome",
-            },
-        }
+
         estimator.compute_effect(
             self.sample_data,
             treatment_col="treatment",
             outcome_col="outcome",
             ps_col="propensity_score",
-            method_args=method_args,
+            method_args=self.method_args,
         )
 
         # Access the AIPW estimator instance
@@ -226,12 +184,7 @@ class TestEstimator(unittest.TestCase):
     def test_parallel_bootstrapping(self):
         estimator = Estimator(methods=["AIPW"], effect_type="ATE")
         # Define estimator-specific arguments
-        method_args = {
-            "AIPW": {
-                "predicted_outcome_treated_col": "predicted_outcome_treated",
-                "predicted_outcome_control_col": "predicted_outcome_control",
-            },
-        }
+
         results = estimator.compute_effect(
             self.sample_data,
             treatment_col="treatment",
@@ -239,7 +192,7 @@ class TestEstimator(unittest.TestCase):
             ps_col="propensity_score",
             bootstrap=True,
             n_bootstraps=10,
-            method_args=method_args,
+            method_args=self.method_args,
             # Include n_jobs parameter if your implementation supports parallel processing
         )
 
@@ -255,20 +208,14 @@ class TestEstimator(unittest.TestCase):
         sample_data_with_nan = self.sample_data.copy()
         sample_data_with_nan.loc[0, "outcome"] = np.nan
         # Define estimator-specific arguments
-        method_args = {
-            "AIPW": {
-                "ps_col": "propensity_score",
-                "predicted_outcome_treated_col": "predicted_outcome_treated",
-                "predicted_outcome_control_col": "predicted_outcome_control",
-            },
-        }
+
         with self.assertRaises(ValueError) as context:
             estimator.compute_effect(
                 sample_data_with_nan,
                 treatment_col="treatment",
                 outcome_col="outcome",
                 ps_col="propensity_score",
-                method_args=method_args,
+                method_args=self.method_args,
             )
         self.assertIsInstance(context.exception, ValueError)
 
@@ -276,15 +223,12 @@ class TestEstimator(unittest.TestCase):
         # Assuming IPW requires 'propensity_score' column
         estimator = Estimator(methods=["IPW"], effect_type="ATE")
         # Define estimator-specific arguments
-        method_args = {
-            "IPW": {},
-        }
+
         results = estimator.compute_effect(
             self.sample_data,
             treatment_col="treatment",
             outcome_col="outcome",
             ps_col="propensity_score",
-            method_args=method_args,
         )
         self.assertIn("IPW", results)
         self.assertIsInstance(results["IPW"]["effect"], float)
@@ -303,18 +247,13 @@ class TestEstimator(unittest.TestCase):
     def test_common_support_filtering(self):
         estimator = Estimator(methods=["AIPW"], effect_type="ATE")
         # Define estimator-specific arguments
-        method_args = {
-            "AIPW": {
-                "predicted_outcome_treated_col": "predicted_outcome_treated",
-                "predicted_outcome_control_col": "predicted_outcome_control",
-            },
-        }
+
         results = estimator.compute_effect(
             self.sample_data,
             treatment_col="treatment",
             outcome_col="outcome",
             ps_col="propensity_score",
-            method_args=method_args,
+            method_args=self.method_args,
             apply_common_support=True,
             common_support_threshold=0.01,
         )
@@ -345,6 +284,28 @@ class TestEstimator(unittest.TestCase):
             bootstrap=True,
             n_bootstraps=10,
         )
+        self.assertIn("MATCHING", results)
+
+    def test_combined_bootstrap(self):
+        df = self.sample_data.copy()
+        df["treatment"] = np.random.binomial(1, 0.1, size=len(df))
+        estimator = Estimator(
+            methods=["AIPW", "MATCHING", "IPW", "TMLE"], effect_type="ATE"
+        )
+
+        results = estimator.compute_effect(
+            df,
+            treatment_col="treatment",
+            outcome_col="outcome",
+            ps_col="propensity_score",
+            bootstrap=True,
+            n_bootstraps=10,
+            method_args=self.method_args,
+        )
+        self.assertIn("AIPW", results)
+        self.assertIn("TMLE", results)
+        self.assertIn("MATCHING", results)
+        self.assertIn("IPW", results)
 
 
 if __name__ == "__main__":
