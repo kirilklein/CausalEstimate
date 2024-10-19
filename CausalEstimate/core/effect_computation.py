@@ -100,7 +100,7 @@ def compute_bootstrap_effects(
             ps_col,
             treatment_col,
             common_support_threshold,
-        )
+        ).reset_index(drop=True)
         # log_sample_stats(sample, treatment_col, outcome_col, ps_col)
         compute_effects_for_sample(
             estimators=estimators,

@@ -333,6 +333,19 @@ class TestEstimator(unittest.TestCase):
         )
         self.assertIn("MATCHING", results)
 
+    def test_matching_bootstrap(self):
+        df = self.sample_data.copy()
+        df["treatment"] = np.random.binomial(1, 0.1, size=len(df))
+        estimator = Estimator(methods=["MATCHING"], effect_type="ATE")
+        results = estimator.compute_effect(
+            df,
+            treatment_col="treatment",
+            outcome_col="outcome",
+            ps_col="propensity_score",
+            bootstrap=True,
+            n_bootstraps=10,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
