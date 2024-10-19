@@ -13,7 +13,7 @@ class MATCHING(BaseEstimator):
 
     def compute_effect(self, df, treatment_col, outcome_col, ps_col, **kwargs) -> float:
         """
-        Compute the effect using the functional IPW.
+        Compute the effect using matching.
         Available effect types: ATE
 
         Effect computation for matched groups is different from the functional IPW.
