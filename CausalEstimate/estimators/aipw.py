@@ -34,8 +34,8 @@ class AIPW(BaseEstimator):
         check_inputs(A, Y, ps, Y1_hat=Y1_hat, Y0_hat=Y0_hat)
 
         if self.effect_type == "ATE":
-            return compute_aipw_ate(A, Y, ps, Y1_hat, Y0_hat)
+            return compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat)
         elif self.effect_type == "ATT":
-            return compute_aipw_att(A, Y, ps, Y1_hat, Y0_hat)
+            return compute_aipw_att(A, Y, ps, Y0_hat)
         else:
             raise ValueError(f"Effect type '{self.effect_type}' is not supported.")
