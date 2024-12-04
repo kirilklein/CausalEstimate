@@ -44,6 +44,7 @@ def compute_aipw_att(A, Y, ps, Y0_hat) -> float:
     S = compute_att_weights(A, ps)
     return (S * (Y - Y0_hat)).sum()
 
+
 def compute_adjustment_factor(A, ps) -> np.ndarray:
     """Compute the adjustment factor for the AIPW estimator."""
     return (A - ps) / (ps * (1 - ps))
@@ -55,7 +56,7 @@ def compute_att_weights(A, ps) -> np.ndarray:
     """
     w = ps / (1 - ps)
     n_treated = (A == 1).sum()
-    scaling_treated = 1/n_treated
+    scaling_treated = 1 / n_treated
     control_factor = (1 - A) * w
     scaling_control = 1 / control_factor.sum()
     return A * scaling_treated - control_factor * scaling_control
