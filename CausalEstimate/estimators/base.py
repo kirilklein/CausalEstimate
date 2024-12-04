@@ -18,3 +18,18 @@ class BaseEstimator:
         **kwargs,
     ):
         raise NotImplementedError("This method should be implemented by subclasses.")
+
+class BaseEstimatorSurvival:
+    def __init__(self, effect_type: str, **kwargs):
+        self.effect_type = effect_type
+        self.kwargs = kwargs  # Store additional keyword arguments if needed
+
+    def compute_effect(
+        self,
+        df: pd.DataFrame,
+        ps_col: str,
+        survival_prob_col: str,
+        time_col: str,
+        **kwargs,
+    ):
+        raise NotImplementedError("This method should be implemented by subclasses.")
