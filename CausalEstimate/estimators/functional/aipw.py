@@ -3,12 +3,17 @@ Augmented Inverse Probability of Treatment Weighting (AIPW)
 References:
 
 ATE:
-        Glynn, Adam N., and Kevin M. Quinn.
-        "An introduction to the augmented inverse propensity weighted estimator." 
-        Political analysis 18.1 (2010): 36-56.
-        note: This also provides a variance estimator for the AIPW estimator.
+    Glynn, Adam N., and Kevin M. Quinn.
+    "An introduction to the augmented inverse propensity weighted estimator." 
+    Political analysis 18.1 (2010): 36-56.
+    note: This also provides a variance estimator for the AIPW estimator.
 
-
+ATT:
+    Sant’Anna, Pedro HC, and Jun Zhao. 
+    "Doubly robust difference-in-differences estimators." 
+    Journal of econometrics 219.1 (2020): 101-122.
+    Eq. 2.6
+    code: https://github.com/pedrohcgs/DRDID/blob/master/R/drdid_imp_panel.R
 """
 
 from typing import Tuple
@@ -30,30 +35,30 @@ def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat):
     return ate.mean()
 
 
-def compute_aipw_att(A, Y, ps, Y0_hat, Y1_hat) -> float:
+def compute_aipw_att(A, Y, ps, Y0_hat) -> float:
     """
     Augmented Inverse Probability Weighting (AIPW) for ATT.
     A: treatment assignment (binary), Y: outcome, ps: propensity score
-    Y0_hat: predicted outcome under control, Y1_hat: predicted outcome under treatment
+    Y0_hat: predicted outcome under control
     """
-    W = compute_stabilized_att_weights(A, ps)
-    ipw_att = compute_ipw_att_estimator(W, A, Y)
-    augmentation = compute_augmentation_term(W, A, Y0_hat, Y1_hat)
-    mu1_hat, mu0_hat = compute_predicted_means_treated(Y0_hat, Y1_hat, A)
-    return ipw_att + augmentation + (mu1_hat - mu0_hat)
-
+    S = compute_att_weights(A, ps)
+    return (S * (Y - Y0_hat)).sum()
 
 def compute_adjustment_factor(A, ps) -> np.ndarray:
     """Compute the adjustment factor for the AIPW estimator."""
     return (A - ps) / (ps * (1 - ps))
 
 
-def compute_stabilized_att_weights(A, ps) -> np.ndarray:
+def compute_att_weights(A, ps) -> np.ndarray:
     """
-    Compute the stabilized weights for the ATT estimator.
+    Compute the weights for the ATT estimator.
     """
-    h = ps / (1 - ps)
-    return A + (1 - A) * h
+    w = ps / (1 - ps)
+    n_treated = (A == 1).sum()
+    scaling_treated = 1/n_treated
+    control_factor = (1 - A) * w
+    scaling_control = 1 / control_factor.sum()
+    return A * scaling_treated - control_factor * scaling_control
 
 
 def compute_ipw_att_estimator(W: np.ndarray, A: np.ndarray, Y: np.ndarray) -> float:
