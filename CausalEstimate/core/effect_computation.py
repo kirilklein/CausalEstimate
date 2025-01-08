@@ -1,12 +1,13 @@
+import logging
 from typing import Dict, List
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 from CausalEstimate.core.bootstrap import generate_bootstrap_samples
+from CausalEstimate.core.logging import log_initial_stats, log_sample_stats
 from CausalEstimate.filter.propensity import filter_common_support
-from CausalEstimate.core.logging import log_sample_stats, log_initial_stats
-import logging
 from CausalEstimate.utils.logging import setup_logging
 
 setup_logging()
@@ -91,17 +92,19 @@ def compute_bootstrap_effects(
     """
     bootstrap_samples = generate_bootstrap_samples(df, n_bootstraps)
     results = {type(estimator).__name__: [] for estimator in estimators}
+    logger.info(f"Applying common support {apply_common_support}")
+    for sample in tqdm(bootstrap_samples, desc="Computing effects"):
+        sample = (
+            filter_common_support(
+                sample,
+                ps_col=ps_col,
+                treatment_col=treatment_col,
+                threshold=common_support_threshold,
+            ).reset_index(drop=True)
+            if apply_common_support
+            else sample
+        )
 
-    for i, sample in enumerate(bootstrap_samples):
-        logging.info(f"Processing bootstrap sample {i+1} of {n_bootstraps}")
-        sample = apply_common_support_if_needed(
-            sample,
-            apply_common_support,
-            ps_col,
-            treatment_col,
-            common_support_threshold,
-        ).reset_index(drop=True)
-        # log_sample_stats(sample, treatment_col, outcome_col, ps_col)
         compute_effects_for_sample(
             estimators=estimators,
             sample=sample,
@@ -130,9 +133,17 @@ def compute_single_effect(
     """
     Compute effects for a single sample.
     """
-    df = apply_common_support_if_needed(
-        df, apply_common_support, ps_col, treatment_col, common_support_threshold
+    df = (
+        filter_common_support(
+            df,
+            ps_col=ps_col,
+            treatment_col=treatment_col,
+            threshold=common_support_threshold,
+        ).reset_index(drop=True)
+        if apply_common_support
+        else df
     )
+
     log_sample_stats(df, treatment_col, outcome_col, ps_col)
 
     results = {type(estimator).__name__: [] for estimator in estimators}
@@ -148,27 +159,6 @@ def compute_single_effect(
     )
 
     return process_single_results(results)
-
-
-def apply_common_support_if_needed(
-    df: pd.DataFrame,
-    apply_common_support: bool,
-    ps_col: str,
-    treatment_col: str,
-    common_support_threshold: float,
-) -> pd.DataFrame:
-    """
-    Apply common support filtering if specified.
-    """
-    if apply_common_support:
-        logging.info("Filtering common support")
-        return filter_common_support(
-            df,
-            ps_col=ps_col,
-            treatment_col=treatment_col,
-            threshold=common_support_threshold,
-        )
-    return df
 
 
 def compute_effects_for_sample(
