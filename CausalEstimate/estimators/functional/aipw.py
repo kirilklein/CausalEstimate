@@ -29,10 +29,10 @@ def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat):
     A: treatment assignment, Y: outcome, ps: propensity score
     Y0_hat: P[Y|A=0], Y1_hat: P[Y|A=1]
     """
-    ate_ipw = compute_ipw_ate(A, Y, ps)
-    adjustment_factor = compute_adjustment_factor(A, ps)
-    ate = ate_ipw - adjustment_factor * ((1 - ps) * Y1_hat + ps * Y0_hat)
-    return ate.mean()
+    ate_ipw = compute_ipw_ate(A, Y, ps).mean()
+    ate_augmentation = ((A - ps) * ((Y1_hat / ps) - (Y0_hat / (1 - ps)))).mean()
+    ate = ate_ipw - ate_augmentation
+    return ate
 
 
 def compute_aipw_att(A, Y, ps, Y0_hat) -> float:
@@ -43,11 +43,6 @@ def compute_aipw_att(A, Y, ps, Y0_hat) -> float:
     """
     S = compute_att_weights(A, ps)
     return (S * (Y - Y0_hat)).sum()
-
-
-def compute_adjustment_factor(A, ps) -> np.ndarray:
-    """Compute the adjustment factor for the AIPW estimator."""
-    return (A - ps) / (ps * (1 - ps))
 
 
 def compute_att_weights(A, ps) -> np.ndarray:

@@ -12,7 +12,7 @@ from CausalEstimate.simulation.binary_simulation import (
 
 
 class TestEffectBase(unittest.TestCase):
-    n: int = 2000
+    n: int = 10000
     alpha: List[float] = [0.1, 0.2, -0.3, 0]
     beta: List[float] = [0.5, 0.8, -0.6, 0.3, 0]
     seed: int = 42

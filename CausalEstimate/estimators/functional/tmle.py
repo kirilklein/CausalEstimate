@@ -1,5 +1,4 @@
 from scipy.special import expit, logit
-from statsmodels.api import add_constant
 from statsmodels.genmod.families import Binomial
 from statsmodels.genmod.generalized_linear_model import GLM
 
@@ -37,5 +36,5 @@ def estimate_fluctuation_parameter(A, Y, ps, Yhat) -> float:
     offset = logit(Yhat)
 
     # Fit the model with offset
-    model = GLM(Y, add_constant(H), family=Binomial(), offset=offset).fit()
+    model = GLM(Y, H, family=Binomial(), offset=offset).fit()
     return model.params[0]
