@@ -10,7 +10,7 @@ class TestTMLE(TestEffectBase):
         ate_tmle = tmle.compute_effect(
             self.data, "treatment", "outcome", "ps", "Yhat", "Y1_hat", "Y0_hat"
         )
-        self.assertAlmostEqual(ate_tmle, self.true_ate, delta=0.1)
+        self.assertAlmostEqual(ate_tmle, self.true_ate, delta=0.02)
 
 
 if __name__ == "__main__":
