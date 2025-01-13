@@ -24,21 +24,21 @@ class TestComputeAIPWATE(TestEffectBase):
 class TestAIPW_ATE_base(TestEffectBase):
     def test_compute_aipw_ate(self):
         ate_aipw = compute_aipw_ate(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
-        self.assertAlmostEqual(ate_aipw, self.true_ate, delta=0.1)
+        self.assertAlmostEqual(ate_aipw, self.true_ate, delta=0.03)
 
 
 class TestAIPW_ATE_ps_misspecified(TestAIPW_ATE_base):
-    alpha = [0.1, 0.2, -0.3, 1]
+    alpha = [0.1, 0.2, -0.3, 10]
 
 
 class TestAIPW_ATE_outcome_model_misspecified(TestAIPW_ATE_base):
-    beta = [0.5, 0.8, -0.6, 0.3, 5]
+    beta = [0.5, 10, 0.6, 0.3, 10]
 
 
 class TestAIPW_ATT_base(TestEffectBase):
     def test_compute_aipw_att(self):
         att_aipw = compute_aipw_att(self.A, self.Y, self.ps, self.Y0_hat)
-        self.assertAlmostEqual(att_aipw, self.true_att, delta=0.1)
+        self.assertAlmostEqual(att_aipw, self.true_att, delta=0.03)
 
 
 class TestAIPW_ATT_outcome_model_misspecified(TestAIPW_ATT_base):
@@ -55,7 +55,7 @@ class TestAIPW_ATT_PS_misspecified_and_OutcomeModel_misspecified(TestAIPW_ATT_ba
 
     def test_compute_aipw_att(self):
         att_aipw = compute_aipw_att(self.A, self.Y, self.ps, self.Y0_hat)
-        self.assertNotAlmostEqual(att_aipw, self.true_att, delta=0.1)
+        self.assertNotAlmostEqual(att_aipw, self.true_att, delta=0.01)
 
 
 # Run the unittests
