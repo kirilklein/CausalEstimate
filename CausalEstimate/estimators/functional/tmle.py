@@ -1,5 +1,4 @@
 from scipy.special import expit, logit
-from statsmodels.api import add_constant
 from statsmodels.genmod.families import Binomial
 from statsmodels.genmod.generalized_linear_model import GLM
 
