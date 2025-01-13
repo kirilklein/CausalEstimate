@@ -36,13 +36,16 @@ class TestTMLE_ATE_base(TestEffectBase):
 class TestTMLE_PS_misspecified(TestTMLE_ATE_base):
     alpha = [0.1, 0.2, -0.3, 3]
 
+
 class TestTMLE_OutcomeModel_misspecified(TestTMLE_ATE_base):
     beta = [0.5, 0.8, -0.6, 0.3, 1]
+
     def test_compute_tmle_ate(self):
         ate_tmle = compute_tmle_ate(
             self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
         )
         self.assertAlmostEqual(ate_tmle, self.true_ate, delta=0.06)
+
 
 class TestTMLE_PS_misspecified_and_OutcomeModel_misspecified(TestTMLE_ATE_base):
     alpha = [0.1, 0.2, -0.3, 5]
