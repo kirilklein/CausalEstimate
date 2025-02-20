@@ -74,6 +74,6 @@ class TestEffectBase(unittest.TestCase):
         cls.data["treatment"] = A
         cls.data["outcome"] = Y
         cls.data["ps"] = ps
-        cls.data["Y1_hat"] = Y1_hat
-        cls.data["Y0_hat"] = Y0_hat
-        cls.data["Yhat"] = Yhat
+        cls.data["probas_t1"] = Y1_hat
+        cls.data["probas_t0"] = Y0_hat
+        cls.data["probas"] = Yhat
