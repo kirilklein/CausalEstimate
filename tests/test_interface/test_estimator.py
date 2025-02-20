@@ -3,7 +3,7 @@
 import unittest
 import pandas as pd
 import numpy as np
-from CausalEstimate.interface.estimator import Estimator
+from CausalEstimate import Estimator
 from CausalEstimate.estimators.aipw import AIPW
 from CausalEstimate.estimators.tmle import TMLE
 
