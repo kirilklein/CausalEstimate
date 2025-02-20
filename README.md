@@ -112,31 +112,7 @@ This example demonstrates how to:
 
 ## Development
 
-### Running Tests
-
-To run the unit tests, use the following command:
-
-```sh
-python -m unittest 
-```
-
-### Linting
-
-To lint the code using flake8, run:
-
-```sh
-pip install flake8
-flake8 CausalEstimate tests
-```
-
-### Formatting
-
-To format the code using black, run:
-
-```sh
-pip install black
-black CausalEstimate tests
-```
+Please refer to the [CONTRIBUTING.md](CONTRIBUTING.md) file for development guidelines.
 
 ---
 
