@@ -31,7 +31,6 @@ class IPW(BaseEstimator):
         Compute the effect using the functional IPW.
         Available effect types: ATE, ATT, RR, RRT
         """
-
         A = df[self.treatment_col]
         Y = df[self.outcome_col]
         ps = df[self.ps_col]

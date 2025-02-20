@@ -29,5 +29,6 @@ class BaseEstimator(ABC):
         """
         Compute the causal effect from the given dataframe.
         The columns to use are already known from the constructor.
+        This method is to be implemented by child classes.
         """
         pass

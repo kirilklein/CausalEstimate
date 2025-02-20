@@ -5,10 +5,11 @@ from typing import List, Dict
 import pandas as pd
 from CausalEstimate.core.bootstrap import generate_bootstrap_samples
 from CausalEstimate.filter.propensity import filter_common_support
+from CausalEstimate.estimators.base import BaseEstimator
 
 
 class MultiEstimator:
-    def __init__(self, estimators: List):
+    def __init__(self, estimators: List[BaseEstimator]):
         """
         `estimators` is a list of estimator instances (AIPW, TMLE, IPW, etc.).
         Each is already configured with its own column names and effect_type.
@@ -73,7 +74,9 @@ class MultiEstimator:
                 }
         return results
 
-    def _compute_bootstrap(self, estimator, df: pd.DataFrame, n_bootstraps: int):
+    def _compute_bootstrap(
+        self, estimator: BaseEstimator, df: pd.DataFrame, n_bootstraps: int
+    ):
         effects = []
         samples = generate_bootstrap_samples(df, n_bootstraps)
         for sample in samples:
