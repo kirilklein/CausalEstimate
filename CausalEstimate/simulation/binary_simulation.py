@@ -1,8 +1,6 @@
 import numpy as np
 import pandas as pd
-from scipy.integrate import dblquad
 from scipy.special import expit as logistic
-from scipy.stats import norm
 
 
 def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataFrame:
