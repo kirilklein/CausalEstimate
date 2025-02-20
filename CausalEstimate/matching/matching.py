@@ -12,15 +12,23 @@ from CausalEstimate.matching.assignment import (
     validate_control_availability,
 )
 from CausalEstimate.matching.helpers import check_ps_validity
+from CausalEstimate.utils.constants import (
+    TREATMENT_COL,
+    PS_COL,
+    PID_COL,
+    TREATED_PID_COL,
+    CONTROL_PID_COL,
+    DISTANCE_COL,
+)
 
 
 def match_optimal(
     df: pd.DataFrame,
     n_controls: int = 1,
     caliper: float = 0.05,
-    treatment_col: str = "treatment",
-    ps_col: str = "ps",
-    pid_col: str = "PID",
+    treatment_col: str = TREATMENT_COL,
+    ps_col: str = PS_COL,
+    pid_col: str = PID_COL,
 ) -> pd.DataFrame:
     """
     Matches treated individuals to control individuals based on propensity scores
@@ -74,9 +82,9 @@ def match_optimal(
 
 def match_eager(
     df: pd.DataFrame,
-    treatment_col: str = "treatment",
-    ps_col: str = "ps",
-    pid_col: str = "PID",
+    treatment_col: str = TREATMENT_COL,
+    ps_col: str = PS_COL,
+    pid_col: str = PID_COL,
     caliper: float = None,
 ) -> pd.DataFrame:
     """
@@ -136,7 +144,9 @@ def match_eager(
 
         # if found_match is False, it means all valid controls in range were used
 
-    return pd.DataFrame(matches, columns=["treated_pid", "control_pid", "distance"])
+    return pd.DataFrame(
+        matches, columns=[TREATED_PID_COL, CONTROL_PID_COL, DISTANCE_COL]
+    )
 
 
 def create_matched_df(
@@ -154,8 +164,8 @@ def create_matched_df(
     control_ids = control_df.iloc[col_ind.flatten()][pid_col].values
     return pd.DataFrame(
         {
-            "treated_pid": treated_ids_repeated,
-            "control_pid": control_ids,
-            "distance": matched_distances.flatten(),
+            TREATED_PID_COL: treated_ids_repeated,
+            CONTROL_PID_COL: control_ids,
+            DISTANCE_COL: matched_distances.flatten(),
         }
     )

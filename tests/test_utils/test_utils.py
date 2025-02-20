@@ -1,13 +1,15 @@
 import unittest
-import pandas as pd
+
 import numpy as np
-from CausalEstimate.utils.utils import (
-    get_treated_ps,
-    get_untreated_ps,
-    get_treated,
-    get_untreated,
-)
+import pandas as pd
+
 from CausalEstimate.utils.constants import OUTCOME_COL, PS_COL, TREATMENT_COL
+from CausalEstimate.utils.utils import (
+    get_treated,
+    get_treated_ps,
+    get_untreated,
+    get_untreated_ps,
+)
 
 
 class TestUtils(unittest.TestCase):

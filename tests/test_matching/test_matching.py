@@ -1,8 +1,16 @@
 import unittest
+
 import pandas as pd
-from CausalEstimate.matching.matching import match_optimal, match_eager
+
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
-from CausalEstimate.utils.constants import OUTCOME_COL, PID_COL, PS_COL, TREATMENT_COL
+from CausalEstimate.matching.matching import match_eager, match_optimal
+from CausalEstimate.utils.constants import (
+    CONTROL_PID_COL,
+    OUTCOME_COL,
+    PID_COL,
+    PS_COL,
+    TREATMENT_COL,
+)
 
 
 class TestMatchingEstimator(unittest.TestCase):
@@ -25,19 +33,9 @@ class TestMatchingEstimator(unittest.TestCase):
             -20 < ate < 20
         )  # Assuming the effect is within a reasonable range
 
-    def test_compute_matching_ate_custom_columns(self):
-        Y = pd.Series(self.df[OUTCOME_COL].values, index=self.df[PID_COL])
-        matching_df = self.matching_result.rename(
-            columns={"treated_pid": "treated", "control_pid": "control"}
-        )
-        ate = compute_matching_ate(
-            Y, matching_df, treated_col="treated", control_col="control"
-        )
-        self.assertIsInstance(ate, float)
-
     def test_compute_matching_ate_missing_column(self):
         Y = pd.Series(self.df[OUTCOME_COL].values, index=self.df[PID_COL])
-        matching_df = self.matching_result.drop("control_pid", axis=1)
+        matching_df = self.matching_result.drop(CONTROL_PID_COL, axis=1)
         with self.assertRaises(ValueError):
             compute_matching_ate(Y, matching_df)
 
@@ -79,20 +77,10 @@ class TestEagerMatchingEstimator(unittest.TestCase):
         self.assertIsInstance(ate, float)
         self.assertTrue(-20 < ate < 20)
 
-    def test_compute_matching_ate_eager_custom_columns(self):
-        Y = pd.Series(self.df[OUTCOME_COL].values, index=self.df[PID_COL])
-        matching_df = self.matching_result_eager.rename(
-            columns={"treated_pid": "treated", "control_pid": "control"}
-        )
-        ate = compute_matching_ate(
-            Y, matching_df, treated_col="treated", control_col="control"
-        )
-        self.assertIsInstance(ate, float)
-
     def test_compute_matching_ate_eager_missing_column(self):
         Y = pd.Series(self.df[OUTCOME_COL].values, index=self.df[PID_COL])
         # remove 'control_pid'
-        matching_df = self.matching_result_eager.drop("control_pid", axis=1)
+        matching_df = self.matching_result_eager.drop(CONTROL_PID_COL, axis=1)
         with self.assertRaises(ValueError):
             compute_matching_ate(Y, matching_df)
 

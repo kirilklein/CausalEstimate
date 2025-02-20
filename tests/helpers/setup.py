@@ -12,11 +12,11 @@ from CausalEstimate.simulation.binary_simulation import (
 from CausalEstimate.utils.constants import (
     OUTCOME_COL,
     PID_COL,
+    PROBAS_COL,
     PROBAS_T0_COL,
     PROBAS_T1_COL,
     PS_COL,
     TREATMENT_COL,
-    PROBAS_COL,
 )
 
 

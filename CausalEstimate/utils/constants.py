@@ -9,3 +9,7 @@ PROBAS_COL = "probas"  # probability of outcome under given treatment
 
 OUTCOME_COL = "Y"
 OUTCOME_CF_COL = "Y_cf"
+
+TREATED_PID_COL = "treated_pid_col"
+CONTROL_PID_COL = "control_pid_col"
+DISTANCE_COL = "distance_col"

@@ -5,15 +5,16 @@ import pandas as pd
 
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
 from CausalEstimate.matching.matching import match_optimal
-from tests.helpers.setup import TestEffectBase
 from CausalEstimate.utils.constants import (
+    CONTROL_PID_COL,
+    DISTANCE_COL,
     OUTCOME_COL,
     PID_COL,
-    PROBAS_T0_COL,
-    PROBAS_T1_COL,
     PS_COL,
+    TREATED_PID_COL,
     TREATMENT_COL,
 )
+from tests.helpers.setup import TestEffectBase
 
 
 class TestMatching(unittest.TestCase):
@@ -63,7 +64,7 @@ class TestMatching(unittest.TestCase):
         result = match_optimal(self.df)
         self.assertIsInstance(result, pd.DataFrame)
         self.assertListEqual(
-            list(result.columns), ["treated_pid", "control_pid", "distance"]
+            list(result.columns), [TREATED_PID_COL, CONTROL_PID_COL, DISTANCE_COL]
         )
         self.assertEqual(len(result), sum(self.df[TREATMENT_COL] == 1))
 
@@ -75,7 +76,7 @@ class TestMatching(unittest.TestCase):
     def test_match_optimal_caliper(self):
         caliper = 0.1
         result = match_optimal(self.df, caliper=caliper)
-        self.assertTrue(all(result["distance"] <= caliper))
+        self.assertTrue(all(result[DISTANCE_COL] <= caliper))
 
     def test_match_optimal_insufficient_controls(self):
         df = pd.DataFrame(

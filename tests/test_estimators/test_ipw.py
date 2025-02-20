@@ -1,8 +1,8 @@
 import unittest
 
 from CausalEstimate.estimators.ipw import IPW
-from tests.helpers.setup import TestEffectBase
 from CausalEstimate.utils.constants import OUTCOME_COL, PS_COL, TREATMENT_COL
+from tests.helpers.setup import TestEffectBase
 
 
 class TestIPW(TestEffectBase):

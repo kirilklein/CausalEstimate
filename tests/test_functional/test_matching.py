@@ -1,6 +1,10 @@
 import unittest
 import pandas as pd
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
+from CausalEstimate.utils.constants import (
+    CONTROL_PID_COL,
+    TREATED_PID_COL,
+)
 
 
 # Create the unittest class
@@ -27,8 +31,8 @@ class TestComputeMatchingATE(unittest.TestCase):
         # Example matching DataFrame (1:2 matching)
         matching_df = pd.DataFrame(
             {
-                "treated_pid": [1, 1, 3, 3, 5, 5],  # Treated unit indices
-                "control_pid": [0, 2, 4, 6, 7, 8],  # Matched control unit indices
+                TREATED_PID_COL: [1, 1, 3, 3, 5, 5],  # Treated unit indices
+                CONTROL_PID_COL: [0, 2, 4, 6, 7, 8],  # Matched control unit indices
             }
         )
 
@@ -48,7 +52,7 @@ class TestComputeMatchingATE(unittest.TestCase):
         Y = pd.Series({0: 5.0, 1: 6.5})
 
         # Example DataFrame missing the 'control_pid' column
-        matching_df = pd.DataFrame({"treated_pid": [1]})
+        matching_df = pd.DataFrame({TREATED_PID_COL: [1]})
 
         # Ensure that a ValueError is raised for missing columns
         with self.assertRaises(ValueError):

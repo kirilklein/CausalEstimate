@@ -1,9 +1,13 @@
 import unittest
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+
+from CausalEstimate.utils.constants import PS_COL, TREATMENT_COL
 
 try:
     import matplotlib.pyplot as plt
+
     from CausalEstimate.vis.plotting import plot_propensity_score_dist
 
     MATPLOTLIB_AVAILABLE = True
@@ -18,11 +22,14 @@ class TestPlotting(unittest.TestCase):
         np.random.seed(42)
         n = 1000
         self.df = pd.DataFrame(
-            {"ps": np.random.beta(2, 5, n), "treatment": np.random.binomial(1, 0.3, n)}
+            {
+                PS_COL: np.random.beta(2, 5, n),
+                TREATMENT_COL: np.random.binomial(1, 0.3, n),
+            }
         )
 
     def test_plot_propensity_score_dist(self):
-        fig, ax = plot_propensity_score_dist(self.df, "ps", "treatment")
+        fig, ax = plot_propensity_score_dist(self.df, PS_COL, TREATMENT_COL)
 
         # Check that the figure and axis objects are created
         self.assertIsInstance(fig, plt.Figure)
@@ -40,7 +47,9 @@ class TestPlotting(unittest.TestCase):
         self.assertIsNotNone(ax.get_legend())
 
     def test_plot_propensity_score_dist_normalized(self):
-        fig, ax = plot_propensity_score_dist(self.df, "ps", "treatment", normalize=True)
+        fig, ax = plot_propensity_score_dist(
+            self.df, PS_COL, TREATMENT_COL, normalize=True
+        )
 
         # Check that the y-label is changed to "Density" when normalized
         self.assertEqual(ax.get_ylabel(), "Density")
@@ -52,8 +61,8 @@ class TestPlotting(unittest.TestCase):
 
         fig, ax = plot_propensity_score_dist(
             self.df,
-            "ps",
-            "treatment",
+            PS_COL,
+            TREATMENT_COL,
             title=custom_title,
             xlabel=custom_xlabel,
             bin_edges=custom_bins,
@@ -68,7 +77,7 @@ class TestPlotting(unittest.TestCase):
     def test_plot_propensity_score_dist_existing_fig_ax(self):
         fig, ax = plt.subplots()
         returned_fig, returned_ax = plot_propensity_score_dist(
-            self.df, "ps", "treatment", fig=fig, ax=ax
+            self.df, PS_COL, TREATMENT_COL, fig=fig, ax=ax
         )
 
         self.assertIs(returned_fig, fig)
@@ -77,7 +86,7 @@ class TestPlotting(unittest.TestCase):
     def test_plot_propensity_score_dist_invalid_input(self):
         with self.assertRaises(ValueError):
             plot_propensity_score_dist(
-                self.df, "ps", "treatment", fig=None, ax=plt.gca()
+                self.df, PS_COL, TREATMENT_COL, fig=None, ax=plt.gca()
             )
 
 
