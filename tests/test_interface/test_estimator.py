@@ -1,14 +1,24 @@
-# test_estimator.py
+# test_multi_estimator.py
 
 import unittest
 import pandas as pd
 import numpy as np
-from CausalEstimate import Estimator
+
+from CausalEstimate import MultiEstimator
 from CausalEstimate.estimators.aipw import AIPW
 from CausalEstimate.estimators.tmle import TMLE
+from CausalEstimate.estimators.ipw import IPW
+from CausalEstimate.utils.constants import (
+    OUTCOME_COL,
+    PS_COL,
+    TREATMENT_COL,
+    PROBAS_COL,
+    PROBAS_T0_COL,
+    PROBAS_T1_COL,
+)
 
 
-class TestEstimator(unittest.TestCase):
+class TestMultiEstimator(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Generate sample data once for all tests
@@ -19,14 +29,16 @@ class TestEstimator(unittest.TestCase):
         outcome_probability = np.random.uniform(epsilon, 1 - epsilon, size)
         treatment = np.random.binomial(1, propensity_score, size)
         outcome = np.random.binomial(1, outcome_probability, size)
-        outcome_treated_probability = np.zeros_like(outcome)
+
+        outcome_treated_probability = np.zeros_like(outcome_probability)
         outcome_treated_probability[treatment == 1] = outcome_probability[
             treatment == 1
         ]
         outcome_treated_probability[treatment == 0] = np.random.uniform(
             epsilon, 1 - epsilon, size
         )[treatment == 0]
-        outcome_control_probability = np.zeros_like(outcome)
+
+        outcome_control_probability = np.zeros_like(outcome_probability)
         outcome_control_probability[treatment == 0] = outcome_probability[
             treatment == 0
         ]
@@ -36,46 +48,75 @@ class TestEstimator(unittest.TestCase):
 
         cls.sample_data = pd.DataFrame(
             {
-                "treatment": treatment,
-                "outcome": outcome,
-                "propensity_score": propensity_score,
-                "predicted_outcome": outcome_probability,
-                "predicted_outcome_treated": outcome_treated_probability,
-                "predicted_outcome_control": outcome_control_probability,
+                TREATMENT_COL: treatment,
+                OUTCOME_COL: outcome,
+                PS_COL: propensity_score,
+                PROBAS_COL: outcome_probability,
+                PROBAS_T1_COL: outcome_treated_probability,
+                PROBAS_T0_COL: outcome_control_probability,
             }
         )
-        cls.method_args = {
-            "AIPW": {
-                "predicted_outcome_treated_col": "predicted_outcome_treated",
-                "predicted_outcome_control_col": "predicted_outcome_control",
-            },
-            "TMLE": {
-                "predicted_outcome_treated_col": "predicted_outcome_treated",
-                "predicted_outcome_control_col": "predicted_outcome_control",
-                "predicted_outcome_col": "predicted_outcome",
-            },
-        }
 
-    def test_compute_effect_no_bootstrap(self):
-        estimator = Estimator(methods=["AIPW", "TMLE"], effect_type="ATE")
-        # Define estimator-specific arguments
-        results = estimator.compute_effect(
-            self.sample_data,
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
-            method_args=self.method_args,
+    def _make_aipw(self):
+        """
+        Helper to instantiate an AIPW estimator for testing.
+        """
+        return AIPW(
+            treatment_col=TREATMENT_COL,
+            outcome_col=OUTCOME_COL,
+            ps_col=PS_COL,
+            probas_t1_col=PROBAS_T1_COL,
+            probas_t0_col=PROBAS_T0_COL,
+            effect_type="ATE",
         )
 
-        # Check that results are returned for all specified methods
+    def _make_tmle(self):
+        """
+        Helper to instantiate a TMLE estimator for testing.
+        """
+        return TMLE(
+            treatment_col=TREATMENT_COL,
+            outcome_col=OUTCOME_COL,
+            ps_col=PS_COL,
+            probas_col=PROBAS_COL,
+            probas_t1_col=PROBAS_T1_COL,
+            probas_t0_col=PROBAS_T0_COL,
+            effect_type="ATE",
+        )
+
+    def _make_ipw(self):
+        """
+        Helper to instantiate an IPW estimator for testing.
+        """
+        return IPW(
+            treatment_col=TREATMENT_COL,
+            outcome_col=OUTCOME_COL,
+            ps_col=PS_COL,
+            effect_type="ATE",
+        )
+
+    def test_compute_effect_no_bootstrap(self):
+        aipw = self._make_aipw()
+        tmle = self._make_tmle()
+        multi_estimator = MultiEstimator([aipw, tmle])
+
+        # No bootstrap, no common support
+        results = multi_estimator.compute_effects(
+            df=self.sample_data,
+            bootstrap=False,
+            n_bootstraps=1,
+            apply_common_support=False,
+        )
+
+        # Check that results are returned for both estimators
         self.assertIn("AIPW", results)
         self.assertIn("TMLE", results)
 
-        # Check that the effect estimates are floats
+        # Effect estimates should be floats
         self.assertIsInstance(results["AIPW"]["effect"], float)
         self.assertIsInstance(results["TMLE"]["effect"], float)
 
-        # Check that standard errors are None when bootstrap=False
+        # No std_err when bootstrap=False
         self.assertIsNone(results["AIPW"]["std_err"])
         self.assertIsNone(results["TMLE"]["std_err"])
 
@@ -84,228 +125,100 @@ class TestEstimator(unittest.TestCase):
         self.assertFalse(results["TMLE"]["bootstrap"])
 
     def test_compute_effect_with_bootstrap(self):
-        estimator = Estimator(methods=["AIPW", "TMLE"], effect_type="ATE")
-        # Define estimator-specific arguments
-        results = estimator.compute_effect(
-            self.sample_data,
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
+        aipw = self._make_aipw()
+        tmle = self._make_tmle()
+        multi_estimator = MultiEstimator([aipw, tmle])
+
+        results = multi_estimator.compute_effects(
+            df=self.sample_data,
             bootstrap=True,
             n_bootstraps=10,
-            method_args=self.method_args,
+            apply_common_support=False,
         )
 
-        # Check that results are returned for all specified methods
         self.assertIn("AIPW", results)
         self.assertIn("TMLE", results)
-
-        # Check that the effect estimates are floats
         self.assertIsInstance(results["AIPW"]["effect"], float)
         self.assertIsInstance(results["TMLE"]["effect"], float)
-
-        # Check that standard errors are floats
         self.assertIsInstance(results["AIPW"]["std_err"], float)
         self.assertIsInstance(results["TMLE"]["std_err"], float)
 
-        # Check that bootstrap flag is True
         self.assertTrue(results["AIPW"]["bootstrap"])
         self.assertTrue(results["TMLE"]["bootstrap"])
-
-        # Check that the number of bootstraps is correct
         self.assertEqual(results["AIPW"]["n_bootstraps"], 10)
         self.assertEqual(results["TMLE"]["n_bootstraps"], 10)
 
-    def test_estimator_specific_params(self):
-        method_params = {
-            "AIPW": {"some_param": 1},
-            "TMLE": {"another_param": 2},
-        }
-        estimator = Estimator(
-            methods=["AIPW", "TMLE"], effect_type="ATE", method_params=method_params
-        )
-        # Define estimator-specific arguments
-
-        results = estimator.compute_effect(
-            self.sample_data,
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
-            method_args=self.method_args,
-        )
-
-        # Ensure the code runs without errors
-        self.assertIn("AIPW", results)
-        self.assertIn("TMLE", results)
-
     def test_missing_columns(self):
-        estimator = Estimator(methods=["AIPW"], effect_type="ATE")
-        # Remove the 'treatment' column to simulate missing data
-        sample_data_missing = self.sample_data.drop(columns=["treatment"])
-        # Define estimator-specific arguments
-        with self.assertRaises(ValueError) as context:
-            estimator.compute_effect(
-                sample_data_missing,
-                treatment_col="treatment",
-                outcome_col="outcome",
-                ps_col="propensity_score",
-                bootstrap=False,
-                method_args=self.method_args,
-            )
-        self.assertTrue(context.exception)
+        # Here we just test that if columns are missing, the estimator complains.
+        # For example, remove 'treatment' column:
+        data_missing = self.sample_data.drop(columns=["treatment"])
+        aipw = self._make_aipw()
+        multi_estimator = MultiEstimator([aipw])
 
-    def test_invalid_method(self):
-        with self.assertRaises(ValueError) as context:
-            Estimator(methods=["InvalidMethod"], effect_type="ATE")
-        self.assertIn(
-            "Method 'InvalidMethod' is not supported.", str(context.exception)
-        )
-
-    def test_estimator_access(self):
-        estimator = Estimator(methods=["AIPW", "TMLE"], effect_type="ATE")
-        # Define estimator-specific arguments
-
-        estimator.compute_effect(
-            self.sample_data,
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
-            method_args=self.method_args,
-        )
-
-        # Access the AIPW estimator instance
-        aipw_estimator = next(e for e in estimator.estimators if isinstance(e, AIPW))
-        self.assertIsInstance(aipw_estimator, AIPW)
-
-        # Access the TMLE estimator instance
-        tmle_estimator = next(e for e in estimator.estimators if isinstance(e, TMLE))
-        self.assertIsInstance(tmle_estimator, TMLE)
-
-    def test_parallel_bootstrapping(self):
-        estimator = Estimator(methods=["AIPW"], effect_type="ATE")
-        # Define estimator-specific arguments
-
-        results = estimator.compute_effect(
-            self.sample_data,
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
-            bootstrap=True,
-            n_bootstraps=10,
-            method_args=self.method_args,
-            # Include n_jobs parameter if your implementation supports parallel processing
-        )
-
-        # Check that bootstrapping results are returned
-        self.assertIn("AIPW", results)
-        self.assertTrue(results["AIPW"]["bootstrap"])
-        self.assertEqual(results["AIPW"]["n_bootstraps"], 10)
-        self.assertIsInstance(results["AIPW"]["std_err"], float)
+        with self.assertRaises(ValueError):
+            multi_estimator.compute_effects(data_missing)
 
     def test_input_validation(self):
-        estimator = Estimator(methods=["AIPW"], effect_type="ATE")
-        # Introduce NaN values in the outcome column
-        sample_data_with_nan = self.sample_data.copy()
-        sample_data_with_nan.loc[0, "outcome"] = np.nan
-        # Define estimator-specific arguments
+        # Introduce NaNs in the outcome column
+        data_with_nan = self.sample_data.copy()
+        data_with_nan.loc[0, "outcome"] = np.nan
 
-        with self.assertRaises(ValueError) as context:
-            estimator.compute_effect(
-                sample_data_with_nan,
-                treatment_col="treatment",
-                outcome_col="outcome",
-                ps_col="propensity_score",
-                method_args=self.method_args,
-            )
-        self.assertIsInstance(context.exception, ValueError)
+        aipw = self._make_aipw()
+        multi_estimator = MultiEstimator([aipw])
 
-    def test_compute_effect_with_additional_columns(self):
-        # Assuming IPW requires 'propensity_score' column
-        estimator = Estimator(methods=["IPW"], effect_type="ATE")
-        # Define estimator-specific arguments
+        with self.assertRaises(ValueError):
+            multi_estimator.compute_effects(data_with_nan)
 
-        results = estimator.compute_effect(
-            self.sample_data,
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
-        )
-        self.assertIn("IPW", results)
-        self.assertIsInstance(results["IPW"]["effect"], float)
+    def test_compute_effect_ipw(self):
+        # IPW only needs treatment/outcome/ps
+        ipw = self._make_ipw()
+        multi_estimator = MultiEstimator([ipw])
 
-    def test_compute_effect_without_method_args(self):
-        estimator = Estimator(methods=["IPW"], effect_type="ATE")
-        results = estimator.compute_effect(
-            self.sample_data,
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
-        )
+        results = multi_estimator.compute_effects(self.sample_data)
         self.assertIn("IPW", results)
         self.assertIsInstance(results["IPW"]["effect"], float)
 
     def test_common_support_filtering(self):
-        estimator = Estimator(methods=["AIPW"], effect_type="ATE")
-        # Define estimator-specific arguments
+        aipw = self._make_aipw()
+        multi_estimator = MultiEstimator([aipw])
 
-        results = estimator.compute_effect(
+        results = multi_estimator.compute_effects(
             self.sample_data,
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
-            method_args=self.method_args,
             apply_common_support=True,
             common_support_threshold=0.01,
+            bootstrap=False,
+            n_bootstraps=1,
         )
         self.assertIn("AIPW", results)
         self.assertIsInstance(results["AIPW"]["effect"], float)
 
-    def test_matching(self):
-        df = self.sample_data.copy()
-        df["treatment"] = np.random.binomial(1, 0.1, size=len(df))
-        estimator = Estimator(methods=["MATCHING"], effect_type="ATE")
-        results = estimator.compute_effect(
-            df,
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
-        )
-        self.assertIn("MATCHING", results)
+    def test_parallel_bootstrap(self):
+        # If you have parallel code internally, you can pass e.g. n_jobs=2 as part of your bootstrap routine.
+        # We'll just test that normal bootstrapping works.
+        aipw = self._make_aipw()
+        multi_estimator = MultiEstimator([aipw])
 
-    def test_matching_bootstrap(self):
-        df = self.sample_data.copy()
-        df["treatment"] = np.random.binomial(1, 0.1, size=len(df))
-        estimator = Estimator(methods=["MATCHING"], effect_type="ATE")
-        results = estimator.compute_effect(
-            df,
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
+        results = multi_estimator.compute_effects(
+            df=self.sample_data,
             bootstrap=True,
-            n_bootstraps=10,
-            method_args={"MATCHING": {"caliper": 0.05}},
+            n_bootstraps=5,
         )
-        self.assertIn("MATCHING", results)
+        self.assertTrue(results["AIPW"]["bootstrap"])
+        self.assertEqual(results["AIPW"]["n_bootstraps"], 5)
+        self.assertIsInstance(results["AIPW"]["std_err"], float)
 
-    def test_combined_bootstrap(self):
-        df = self.sample_data.copy()
-        df["treatment"] = np.random.binomial(1, 0.1, size=len(df))
-        estimator = Estimator(
-            methods=["AIPW", "MATCHING", "IPW", "TMLE"], effect_type="ATE"
-        )
+    def test_multiple_estimators_including_ipw(self):
+        aipw = self._make_aipw()
+        tmle = self._make_tmle()
+        ipw = self._make_ipw()
+        multi_estimator = MultiEstimator([aipw, tmle, ipw])
 
-        results = estimator.compute_effect(
-            df,
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
-            bootstrap=True,
-            n_bootstraps=10,
-            method_args=self.method_args,
+        results = multi_estimator.compute_effects(
+            df=self.sample_data, bootstrap=False, n_bootstraps=1
         )
+        # We expect a dict with all three
         self.assertIn("AIPW", results)
         self.assertIn("TMLE", results)
-        self.assertIn("MATCHING", results)
         self.assertIn("IPW", results)
 
 

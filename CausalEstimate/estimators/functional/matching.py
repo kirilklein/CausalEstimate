@@ -1,12 +1,14 @@
 import pandas as pd
+
 from CausalEstimate.utils.checks import check_required_columns
+from CausalEstimate.utils.constants import CONTROL_PID_COL, TREATED_PID_COL
 
 
 def compute_matching_ate(
     Y: pd.Series,
     matching_df: pd.DataFrame,
-    treated_col: str = "treated_pid",
-    control_col: str = "control_pid",
+    treated_col: str = TREATED_PID_COL,
+    control_col: str = CONTROL_PID_COL,
 ) -> float:
     """
     Compute the effect using matching with vectorized Pandas operations.

@@ -1,17 +1,33 @@
-from CausalEstimate.core.registry import register_estimator
+import numpy as np
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
-from CausalEstimate.matching.matching import match_optimal
-from CausalEstimate.utils.checks import check_inputs
+from CausalEstimate.matching.matching import match_optimal, match_eager
+from CausalEstimate.utils.checks import check_inputs, check_required_columns
 import warnings
+from CausalEstimate.utils.constants import TREATMENT_COL, OUTCOME_COL, PS_COL
 
 
-@register_estimator
-class MATCHING(BaseEstimator):
-    def __init__(self, effect_type="ATE", **kwargs):
+class Matching(BaseEstimator):
+    def __init__(
+        self,
+        effect_type="ATE",
+        treatment_col=TREATMENT_COL,
+        outcome_col=OUTCOME_COL,
+        ps_col=PS_COL,
+        match_optimal=True,
+        **kwargs,
+    ):
         super().__init__(effect_type=effect_type, **kwargs)
+        self.treatment_col = treatment_col
+        self.outcome_col = outcome_col
+        self.ps_col = ps_col
+        self.match_optimal = match_optimal
+        self.kwargs = kwargs
 
-    def compute_effect(self, df, treatment_col, outcome_col, ps_col, **kwargs) -> float:
+    def compute_effect(
+        self,
+        df,
+    ) -> float:
         """
         Compute the effect using matching.
         Available effect types: ATE
@@ -27,18 +43,36 @@ class MATCHING(BaseEstimator):
                 examining the relationship between adolescent marijuana use and adult outcomes."
                 Developmental psychology 44.2 (2008): 395.
         """
-
-        Y = df[outcome_col]
-        check_inputs(df[treatment_col], Y, df[ps_col])
+        check_required_columns(df, [self.treatment_col, self.outcome_col, self.ps_col])
+        Y = df[self.outcome_col]
+        check_inputs(df[self.treatment_col], Y, df[self.ps_col])
         df = df.copy()  # Create a copy to avoid SettingWithCopyWarning
-        df["index"] = df.index  # temporary index column
-        matched = match_optimal(
-            df,
-            treatment_col=treatment_col,
-            ps_col=ps_col,
-            pid_col="index",
-            **kwargs,
-        )
+
+        # Add tiny random noise to propensity scores to break ties
+        eps = 1e-10  # Small enough to not meaningfully affect matching
+        df[self.ps_col] = df[self.ps_col] + np.random.uniform(-eps, eps, size=len(df))
+        # Ensure PS stays in [0,1] range
+        df[self.ps_col] = df[self.ps_col].clip(0, 1)
+
+        df["index"] = range(
+            len(df)
+        )  # This ensures unique PIDs even with bootstrap samples
+
+        if self.match_optimal:
+            matched = match_optimal(
+                df,
+                treatment_col=self.treatment_col,
+                ps_col=self.ps_col,
+                pid_col="index",
+                **self.kwargs,
+            )
+        else:
+            matched = match_eager(
+                df,
+                treatment_col=self.treatment_col,
+                ps_col=self.ps_col,
+                pid_col="index",
+            )
         if self.effect_type == "ATE":
             warnings.warn(
                 "This is strictly speaking not ATE if we used a caliper or other matching methods. But can be interpreted as such."

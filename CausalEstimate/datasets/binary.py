@@ -4,6 +4,14 @@ import numpy as np
 import pandas as pd
 
 from CausalEstimate.simulation.binary_simulation import simulate_binary_data
+from CausalEstimate.utils.constants import (
+    TREATMENT_COL,
+    OUTCOME_COL,
+    PS_COL,
+    PROBAS_COL,
+    PROBAS_T0_COL,
+    PROBAS_T1_COL,
+)
 
 
 def load_binary(
@@ -144,12 +152,12 @@ def load_binary_with_probas(
         {
             "X1": X1,
             "X2": X2,
-            "A": A,
-            "Y": Y,
-            "ps": ps,
-            "Y_prob": Y_prob,
-            "Y_cf_0": Y_cf_0,
-            "Y_cf_1": Y_cf_1,
+            TREATMENT_COL: A,
+            OUTCOME_COL: Y,
+            PS_COL: ps,
+            PROBAS_COL: Y_prob,
+            PROBAS_T0_COL: Y_cf_0,
+            PROBAS_T1_COL: Y_cf_1,
         }
     )
 

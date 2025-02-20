@@ -1,11 +1,14 @@
 import unittest
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+
+from CausalEstimate.utils.constants import OUTCOME_COL, PS_COL, TREATMENT_COL
 from CausalEstimate.utils.utils import (
-    get_treated_ps,
-    get_untreated_ps,
     get_treated,
+    get_treated_ps,
     get_untreated,
+    get_untreated_ps,
 )
 
 
@@ -16,81 +19,83 @@ class TestUtils(unittest.TestCase):
         n = 100
         self.df = pd.DataFrame(
             {
-                "treatment": np.random.binomial(1, 0.5, n),
-                "ps": np.random.uniform(0, 1, n),
-                "outcome": np.random.normal(0, 1, n),
+                TREATMENT_COL: np.random.binomial(1, 0.5, n),
+                PS_COL: np.random.uniform(0, 1, n),
+                OUTCOME_COL: np.random.normal(0, 1, n),
             }
         )
 
     def test_get_treated(self):
-        treated = get_treated(self.df, "treatment")
-        self.assertTrue(all(treated["treatment"] == 1))
-        self.assertEqual(len(treated), self.df["treatment"].sum())
+        treated = get_treated(self.df, TREATMENT_COL)
+        self.assertTrue(all(treated[TREATMENT_COL] == 1))
+        self.assertEqual(len(treated), self.df[TREATMENT_COL].sum())
 
     def test_get_untreated(self):
-        untreated = get_untreated(self.df, "treatment")
-        self.assertTrue(all(untreated["treatment"] == 0))
-        self.assertEqual(len(untreated), len(self.df) - self.df["treatment"].sum())
+        untreated = get_untreated(self.df, TREATMENT_COL)
+        self.assertTrue(all(untreated[TREATMENT_COL] == 0))
+        self.assertEqual(len(untreated), len(self.df) - self.df[TREATMENT_COL].sum())
 
     def test_get_treated_ps(self):
-        treated_ps = get_treated_ps(self.df, "treatment", "ps")
-        self.assertEqual(len(treated_ps), self.df["treatment"].sum())
+        treated_ps = get_treated_ps(self.df, TREATMENT_COL, PS_COL)
+        self.assertEqual(len(treated_ps), self.df[TREATMENT_COL].sum())
         self.assertTrue(
-            all(treated_ps.index == self.df[self.df["treatment"] == 1].index)
+            all(treated_ps.index == self.df[self.df[TREATMENT_COL] == 1].index)
         )
 
     def test_get_untreated_ps(self):
-        untreated_ps = get_untreated_ps(self.df, "treatment", "ps")
-        self.assertEqual(len(untreated_ps), len(self.df) - self.df["treatment"].sum())
+        untreated_ps = get_untreated_ps(self.df, TREATMENT_COL, PS_COL)
+        self.assertEqual(len(untreated_ps), len(self.df) - self.df[TREATMENT_COL].sum())
         self.assertTrue(
-            all(untreated_ps.index == self.df[self.df["treatment"] == 0].index)
+            all(untreated_ps.index == self.df[self.df[TREATMENT_COL] == 0].index)
         )
 
     def test_empty_dataframe(self):
-        empty_df = pd.DataFrame(columns=["treatment", "ps", "outcome"])
-        self.assertTrue(get_treated(empty_df, "treatment").empty)
-        self.assertTrue(get_untreated(empty_df, "treatment").empty)
-        self.assertTrue(get_treated_ps(empty_df, "treatment", "ps").empty)
-        self.assertTrue(get_untreated_ps(empty_df, "treatment", "ps").empty)
+        empty_df = pd.DataFrame(columns=[TREATMENT_COL, PS_COL, OUTCOME_COL])
+        self.assertTrue(get_treated(empty_df, TREATMENT_COL).empty)
+        self.assertTrue(get_untreated(empty_df, TREATMENT_COL).empty)
+        self.assertTrue(get_treated_ps(empty_df, TREATMENT_COL, PS_COL).empty)
+        self.assertTrue(get_untreated_ps(empty_df, TREATMENT_COL, PS_COL).empty)
 
     def test_all_treated(self):
         all_treated_df = pd.DataFrame(
             {
-                "treatment": [1] * 10,
-                "ps": np.random.uniform(0, 1, 10),
-                "outcome": np.random.normal(0, 1, 10),
+                TREATMENT_COL: [1] * 10,
+                PS_COL: np.random.uniform(0, 1, 10),
+                OUTCOME_COL: np.random.normal(0, 1, 10),
             }
         )
-        self.assertEqual(len(get_treated(all_treated_df, "treatment")), 10)
-        self.assertTrue(get_untreated(all_treated_df, "treatment").empty)
-        self.assertEqual(len(get_treated_ps(all_treated_df, "treatment", "ps")), 10)
-        self.assertTrue(get_untreated_ps(all_treated_df, "treatment", "ps").empty)
+        self.assertEqual(len(get_treated(all_treated_df, TREATMENT_COL)), 10)
+        self.assertTrue(get_untreated(all_treated_df, TREATMENT_COL).empty)
+        self.assertEqual(len(get_treated_ps(all_treated_df, TREATMENT_COL, PS_COL)), 10)
+        self.assertTrue(get_untreated_ps(all_treated_df, TREATMENT_COL, PS_COL).empty)
 
     def test_all_untreated(self):
         all_untreated_df = pd.DataFrame(
             {
-                "treatment": [0] * 10,
-                "ps": np.random.uniform(0, 1, 10),
-                "outcome": np.random.normal(0, 1, 10),
+                TREATMENT_COL: [0] * 10,
+                PS_COL: np.random.uniform(0, 1, 10),
+                OUTCOME_COL: np.random.normal(0, 1, 10),
             }
         )
-        self.assertTrue(get_treated(all_untreated_df, "treatment").empty)
-        self.assertEqual(len(get_untreated(all_untreated_df, "treatment")), 10)
-        self.assertTrue(get_treated_ps(all_untreated_df, "treatment", "ps").empty)
-        self.assertEqual(len(get_untreated_ps(all_untreated_df, "treatment", "ps")), 10)
+        self.assertTrue(get_treated(all_untreated_df, TREATMENT_COL).empty)
+        self.assertEqual(len(get_untreated(all_untreated_df, TREATMENT_COL)), 10)
+        self.assertTrue(get_treated_ps(all_untreated_df, TREATMENT_COL, PS_COL).empty)
+        self.assertEqual(
+            len(get_untreated_ps(all_untreated_df, TREATMENT_COL, PS_COL)), 10
+        )
 
     def test_missing_columns(self):
-        df_missing_treatment = self.df.drop("treatment", axis=1)
-        df_missing_ps = self.df.drop("ps", axis=1)
+        df_missing_treatment = self.df.drop(TREATMENT_COL, axis=1)
+        df_missing_ps = self.df.drop(PS_COL, axis=1)
 
         with self.assertRaises(KeyError):
-            get_treated(df_missing_treatment, "treatment")
+            get_treated(df_missing_treatment, TREATMENT_COL)
         with self.assertRaises(KeyError):
-            get_untreated(df_missing_treatment, "treatment")
+            get_untreated(df_missing_treatment, TREATMENT_COL)
         with self.assertRaises(KeyError):
-            get_treated_ps(df_missing_treatment, "treatment", "ps")
+            get_treated_ps(df_missing_treatment, TREATMENT_COL, PS_COL)
         with self.assertRaises(KeyError):
-            get_treated_ps(df_missing_ps, "treatment", "ps")
+            get_treated_ps(df_missing_ps, TREATMENT_COL, PS_COL)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,15 @@ from CausalEstimate.simulation.binary_simulation import (
     compute_ATT_theoretical_from_data,
     simulate_binary_data,
 )
+from CausalEstimate.utils.constants import (
+    OUTCOME_COL,
+    PID_COL,
+    PROBAS_COL,
+    PROBAS_T0_COL,
+    PROBAS_T1_COL,
+    PS_COL,
+    TREATMENT_COL,
+)
 
 
 class TestEffectBase(unittest.TestCase):
@@ -28,8 +37,8 @@ class TestEffectBase(unittest.TestCase):
 
         # Predicted outcomes
         X = data[["X1", "X2"]].values
-        A = data["A"].values
-        Y = data["Y"].values
+        A = data[TREATMENT_COL].values
+        Y = data[OUTCOME_COL].values
         ps = expit(
             cls.alpha[0] + cls.alpha[1] * X[:, 0] + cls.alpha[2] * X[:, 1]
         ) + 0.01 * rng.normal(size=cls.n)
@@ -70,10 +79,10 @@ class TestEffectBase(unittest.TestCase):
 
         # for classes that take dataframe as input
         cls.data = data
-        cls.data["PID"] = np.arange(len(data))
-        cls.data["treatment"] = A
-        cls.data["outcome"] = Y
-        cls.data["ps"] = ps
-        cls.data["Y1_hat"] = Y1_hat
-        cls.data["Y0_hat"] = Y0_hat
-        cls.data["Yhat"] = Yhat
+        cls.data[PID_COL] = np.arange(len(data))
+        cls.data[TREATMENT_COL] = A
+        cls.data[OUTCOME_COL] = Y
+        cls.data[PS_COL] = ps
+        cls.data[PROBAS_T1_COL] = Y1_hat
+        cls.data[PROBAS_T0_COL] = Y0_hat
+        cls.data[PROBAS_COL] = Yhat
