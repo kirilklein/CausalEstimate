@@ -1,12 +1,8 @@
 import numpy as np
 import pandas as pd
 from scipy.special import expit as logistic
-from CausalEstimate.utils.constants import (
-    TREATMENT_COL,
-    OUTCOME_COL,
-    PID_COL,
-    OUTCOME_CF_COL,
-)
+
+from CausalEstimate.utils.constants import OUTCOME_CF_COL, OUTCOME_COL, TREATMENT_COL
 
 
 def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataFrame:
