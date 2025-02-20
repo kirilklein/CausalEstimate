@@ -86,9 +86,16 @@ def match_eager(
     ps_col: str = PS_COL,
     pid_col: str = PID_COL,
     caliper: float = None,
+    n_controls: int = 1,
+    strict: bool = True,
 ) -> pd.DataFrame:
     """
-    Performs a greedy nearest-neighbor matching based on propensity scores.
+    Performs a greedy nearest-neighbor matching based on propensity scores,
+    allowing multiple controls per treated subject. By default, n_controls=1.
+
+    Matching proceeds in multiple "passes":
+    - Pass 1: each treated tries to find its first best control
+    - Pass 2: each treated tries to find its second best control, etc.
 
     Args:
         df (pd.DataFrame): Input dataframe.
@@ -96,56 +103,96 @@ def match_eager(
         ps_col (str): Name of propensity score column.
         pid_col (str): Name of patient ID column.
         caliper (float, optional): Maximum allowed absolute difference in PS for matching.
-            If no control is within the caliper, that treated individual remains unmatched.
+                                   If no control is within the caliper, that treated subject
+                                   remains unmatched (or raises ValueError if strict=True).
+        n_controls (int): How many distinct control matches to find per treated subject.
+        strict (bool): If True, raise a ValueError if any treated subject fails to find
+                       a control at any pass. If False, skip unmatched passes.
 
     Returns:
-        pd.DataFrame with columns:
-            treated_pid, control_pid, distance
+        pd.DataFrame with columns [treated_pid, control_pid, distance].
+        This may contain up to (n_controls * number_of_treated) rows,
+        if all can be matched on every pass.
+
+    Raises:
+        ValueError: If strict=True and a treated subject cannot be matched on any pass.
     """
-    # Split into treated vs. control
-    treated = df.loc[df[treatment_col] == 1, [pid_col, ps_col]].values
-    control = df.loc[df[treatment_col] == 0, [pid_col, ps_col]].values
+    # Separate treated vs. control
+    treated_array = df.loc[df[treatment_col] == 1, [pid_col, ps_col]].values
+    control_array = df.loc[df[treatment_col] == 0, [pid_col, ps_col]].values
 
-    matches = []
-    used_control = set()  # keep track of which controls we've already paired
+    # Keep track of how many matches each treated has found
+    # Map from treated_pid -> current match count
+    # (only needed if we want to track partial matches in strict mode)
+    match_count = {t_pid: 0 for t_pid, _ in treated_array}
 
-    for t_pid, t_ps in treated:
-        # compute absolute difference for all controls
-        ps_diffs = np.abs(control[:, 1] - t_ps)
+    all_matches = []
+    used_control = set()  # keep track of which controls are already matched
 
-        # apply caliper if specified
-        if caliper is not None:
-            valid_mask = ps_diffs <= caliper
-            if not valid_mask.any():
-                # no control within caliper -> skip this treated subject
+    # Repeat the greedy pass n_controls times
+    for pass_index in range(n_controls):
+        pass_matches = []  # store matches found in this pass
+
+        for t_pid, t_ps in treated_array:
+            # If this treated subject is already fully matched in previous passes, skip
+            if match_count[t_pid] >= pass_index + 1:
+                # already got pass_index matches
                 continue
-            ps_diffs = ps_diffs[valid_mask]
-            valid_control = control[valid_mask]
-        else:
-            valid_control = control
 
-        if len(valid_control) == 0:
-            # no possible match
-            continue
+            # compute distance to all controls
+            ps_diffs = np.abs(control_array[:, 1] - t_ps)
 
-        # sort by smallest distance first
-        sorted_indices = np.argsort(ps_diffs)
-        found_match = False
+            # apply caliper if specified
+            if caliper is not None:
+                within_caliper = ps_diffs <= caliper
+                if not within_caliper.any():
+                    if strict:
+                        raise ValueError(
+                            f"Treated subject {t_pid} cannot find a control within caliper={caliper} "
+                            f"on pass {pass_index+1} of {n_controls}."
+                        )
+                    else:
+                        continue
+                ps_diffs = ps_diffs[within_caliper]
+                valid_control = control_array[within_caliper]
+            else:
+                valid_control = control_array
 
-        for idx in sorted_indices:
-            c_pid = valid_control[idx, 0]
-            c_ps = valid_control[idx, 1]
-            if c_pid not in used_control:
-                dist = abs(t_ps - c_ps)
-                matches.append([t_pid, c_pid, dist])
-                used_control.add(c_pid)
-                found_match = True
-                break
+            if len(valid_control) == 0:
+                if strict:
+                    raise ValueError(
+                        f"Treated subject {t_pid} cannot find any available control on pass {pass_index+1}. "
+                        f"All possible controls are used or out of range."
+                    )
+                else:
+                    continue
 
-        # if found_match is False, it means all valid controls in range were used
+            # sort by smallest distance
+            sorted_indices = np.argsort(ps_diffs)
+            found_match = False
+
+            for idx in sorted_indices:
+                c_pid = valid_control[idx, 0]
+                c_ps = valid_control[idx, 1]
+                if c_pid not in used_control:
+                    dist = abs(t_ps - c_ps)
+                    pass_matches.append([t_pid, c_pid, dist])
+                    used_control.add(c_pid)  # can't use it again
+                    match_count[t_pid] += 1
+                    found_match = True
+                    break
+
+            if not found_match and strict:
+                raise ValueError(
+                    f"Treated subject {t_pid} cannot find an available control on pass {pass_index+1}, "
+                    "either because all valid controls are used up or out of range."
+                )
+
+        # merge pass_matches into our global list
+        all_matches.extend(pass_matches)
 
     return pd.DataFrame(
-        matches, columns=[TREATED_PID_COL, CONTROL_PID_COL, DISTANCE_COL]
+        all_matches, columns=[TREATED_PID_COL, CONTROL_PID_COL, DISTANCE_COL]
     )
 
 

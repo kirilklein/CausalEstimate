@@ -1,5 +1,5 @@
 import unittest
-
+import numpy as np
 import pandas as pd
 
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
@@ -10,6 +10,7 @@ from CausalEstimate.utils.constants import (
     PID_COL,
     PS_COL,
     TREATMENT_COL,
+    TREATED_PID_COL,
 )
 
 
@@ -103,6 +104,71 @@ class TestEagerMatchingEstimator(unittest.TestCase):
         # you could do an assertEqual if you know the expected pairing,
         # or just check it's in a plausible range:
         self.assertTrue(-20 < ate < 20)
+
+
+class TestEagerMultipleControls(unittest.TestCase):
+    def setUp(self):
+        # We'll set up a small example with 2 treated, 5 controls
+        # For simplicity, outcome is not used in match_eager but used in compute_matching_ate
+        np.random.seed(42)
+        self.df = pd.DataFrame(
+            {
+                "PID": [1, 2, 3, 4, 5, 6, 7],
+                "treatment": [1, 1, 0, 0, 0, 0, 0],
+                "ps": [
+                    0.3,
+                    0.35,
+                    0.31,
+                    0.32,
+                    0.34,
+                    0.38,
+                    0.9,
+                ],  # note subject 7 is far away
+                "outcome": [10, 12, 11, 13, 14, 16, 30],  # for computing ATE
+            }
+        )
+        # So:
+        #  - subject 1 (ps=0.3) can match controls at ps=0.31, 0.32, 0.34, 0.38
+        #  - subject 2 (ps=0.35) can match controls at ps=0.31, 0.32, 0.34, 0.38
+        #  - subject 7 (ps=0.9) is effectively out of range for them
+
+    def test_two_controls_strict_true(self):
+        # We want each treated subject to get n_controls=2
+        # with a big caliper so all relevant controls are in range
+        result = match_eager(
+            self.df,
+            caliper=0.1,  # enough to include 0.3 +/- 0.1 => 0.2..0.4
+            n_controls=2,
+            strict=True,
+        )
+        # We should get 2 matches for each treated subject = 4 rows total
+        self.assertEqual(len(result), 4)
+
+        # No subject matches with the ps=0.9 control
+        # Check each treated PID is repeated exactly twice:
+        treated_counts = result[TREATED_PID_COL].value_counts().to_dict()
+        self.assertEqual(treated_counts, {1: 2, 2: 2})
+
+        # Let's compute an ATE just to confirm that usage works
+        # We have an outcome column in df, let's build a series
+        Y = pd.Series(self.df["outcome"].values, index=self.df["PID"].values)
+        ate = compute_matching_ate(Y, result)
+        self.assertIsInstance(ate, float)
+
+    def test_two_controls_strict_error(self):
+        # In this scenario, we'll reduce the caliper to 0.02 so that subject 2 can't find 2 controls
+        # because ps=0.35 can only match with e.g. ps=0.34 in that tight range, ignoring 0.32, 0.31
+        # => after subject 2 finds one control, the second pass fails if strict=True.
+        with self.assertRaises(ValueError):
+            match_eager(self.df, caliper=0.02, n_controls=2, strict=True)
+
+    def test_two_controls_non_strict(self):
+        # Same scenario, but we won't raise an error if they can't find the second control
+        result = match_eager(self.df, caliper=0.02, n_controls=2, strict=False)
+        # We do get matches for the first pass, second pass might fail for subject 2
+        # Let's see how many matches we ended up with
+        self.assertTrue(len(result) >= 1, "Should have at least partial matches")
+        # We won't specify an exact number since partial matches are allowed
 
 
 if __name__ == "__main__":
