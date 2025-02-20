@@ -1,5 +1,6 @@
 import pandas as pd
 from CausalEstimate.utils.checks import check_required_columns
+import numpy as np
 
 
 def compute_matching_ate(

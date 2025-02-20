@@ -72,6 +72,73 @@ def match_optimal(
     return result
 
 
+def match_eager(
+    df: pd.DataFrame,
+    treatment_col: str = "treatment",
+    ps_col: str = "ps",
+    pid_col: str = "PID",
+    caliper: float = None,
+) -> pd.DataFrame:
+    """
+    Performs a greedy nearest-neighbor matching based on propensity scores.
+
+    Args:
+        df (pd.DataFrame): Input dataframe.
+        treatment_col (str): Name of treatment column (1=treated, 0=control).
+        ps_col (str): Name of propensity score column.
+        pid_col (str): Name of patient ID column.
+        caliper (float, optional): Maximum allowed absolute difference in PS for matching.
+            If no control is within the caliper, that treated individual remains unmatched.
+
+    Returns:
+        pd.DataFrame with columns:
+            treated_pid, control_pid, distance
+    """
+    # Split into treated vs. control
+    treated = df.loc[df[treatment_col] == 1, [pid_col, ps_col]].values
+    control = df.loc[df[treatment_col] == 0, [pid_col, ps_col]].values
+
+    matches = []
+    used_control = set()  # keep track of which controls we've already paired
+
+    for t_pid, t_ps in treated:
+        # compute absolute difference for all controls
+        ps_diffs = np.abs(control[:, 1] - t_ps)
+
+        # apply caliper if specified
+        if caliper is not None:
+            valid_mask = ps_diffs <= caliper
+            if not valid_mask.any():
+                # no control within caliper -> skip this treated subject
+                continue
+            ps_diffs = ps_diffs[valid_mask]
+            valid_control = control[valid_mask]
+        else:
+            valid_control = control
+
+        if len(valid_control) == 0:
+            # no possible match
+            continue
+
+        # sort by smallest distance first
+        sorted_indices = np.argsort(ps_diffs)
+        found_match = False
+
+        for idx in sorted_indices:
+            c_pid = valid_control[idx, 0]
+            c_ps = valid_control[idx, 1]
+            if c_pid not in used_control:
+                dist = abs(t_ps - c_ps)
+                matches.append([t_pid, c_pid, dist])
+                used_control.add(c_pid)
+                found_match = True
+                break
+
+        # if found_match is False, it means all valid controls in range were used
+
+    return pd.DataFrame(matches, columns=["treated_pid", "control_pid", "distance"])
+
+
 def create_matched_df(
     matched_distances: np.array,
     treated_df: pd.DataFrame,

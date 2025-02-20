@@ -1,6 +1,7 @@
+import numpy as np
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
-from CausalEstimate.matching.matching import match_optimal
+from CausalEstimate.matching.matching import match_optimal, match_eager
 from CausalEstimate.utils.checks import check_inputs, check_required_columns
 import warnings
 
@@ -12,12 +13,14 @@ class Matching(BaseEstimator):
         treatment_col="treatment",
         outcome_col="outcome",
         ps_col="ps",
+        match_optimal=True,
         **kwargs,
     ):
         super().__init__(effect_type=effect_type, **kwargs)
         self.treatment_col = treatment_col
         self.outcome_col = outcome_col
         self.ps_col = ps_col
+        self.match_optimal = match_optimal
         self.kwargs = kwargs
 
     def compute_effect(
@@ -43,14 +46,32 @@ class Matching(BaseEstimator):
         Y = df[self.outcome_col]
         check_inputs(df[self.treatment_col], Y, df[self.ps_col])
         df = df.copy()  # Create a copy to avoid SettingWithCopyWarning
-        df["index"] = df.index  # temporary index column
-        matched = match_optimal(
-            df,
-            treatment_col=self.treatment_col,
-            ps_col=self.ps_col,
-            pid_col="index",
-            **self.kwargs,
-        )
+
+        # Add tiny random noise to propensity scores to break ties
+        eps = 1e-10  # Small enough to not meaningfully affect matching
+        df[self.ps_col] = df[self.ps_col] + np.random.uniform(-eps, eps, size=len(df))
+        # Ensure PS stays in [0,1] range
+        df[self.ps_col] = df[self.ps_col].clip(0, 1)
+
+        df["index"] = range(
+            len(df)
+        )  # This ensures unique PIDs even with bootstrap samples
+
+        if self.match_optimal:
+            matched = match_optimal(
+                df,
+                treatment_col=self.treatment_col,
+                ps_col=self.ps_col,
+                pid_col="index",
+                **self.kwargs,
+            )
+        else:
+            matched = match_eager(
+                df,
+                treatment_col=self.treatment_col,
+                ps_col=self.ps_col,
+                pid_col="index",
+            )
         if self.effect_type == "ATE":
             warnings.warn(
                 "This is strictly speaking not ATE if we used a caliper or other matching methods. But can be interpreted as such."
