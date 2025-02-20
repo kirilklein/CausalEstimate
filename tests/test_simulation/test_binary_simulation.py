@@ -1,8 +1,7 @@
 import unittest
-from CausalEstimate.simulation.binary_simulation import (
-    simulate_binary_data,
-)
-from CausalEstimate.utils.constants import TREATMENT_COL, OUTCOME_COL
+
+from CausalEstimate.simulation.binary_simulation import simulate_binary_data
+from CausalEstimate.utils.constants import OUTCOME_COL, TREATMENT_COL
 
 
 class TestSimulation(unittest.TestCase):
