@@ -4,13 +4,13 @@ References:
 
 ATE:
     Glynn, Adam N., and Kevin M. Quinn.
-    "An introduction to the augmented inverse propensity weighted estimator." 
+    "An introduction to the augmented inverse propensity weighted estimator."
     Political analysis 18.1 (2010): 36-56.
     note: This also provides a variance estimator for the AIPW estimator.
 
 ATT:
-    Sant’Anna, Pedro HC, and Jun Zhao. 
-    "Doubly robust difference-in-differences estimators." 
+    Sant’Anna, Pedro HC, and Jun Zhao.
+    "Doubly robust difference-in-differences estimators."
     Journal of econometrics 219.1 (2020): 101-122.
     Eq. 2.6
     code: https://github.com/pedrohcgs/DRDID/blob/master/R/drdid_imp_panel.R

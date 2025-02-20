@@ -1,19 +1,19 @@
 """
 Inverse Probability Weighting (IPW) estimators
 
-References: 
+References:
 ATE:
     Estimation of Average Treatment Effects Honors Thesis Peter Zhang
     https://lsa.umich.edu/content/dam/econ-assets/Econdocs/HonorsTheses/Estimation%20of%20Average%20Treatment%20Effects.pdf
 
-    Austin, P.C., 2016. Variance estimation when using inverse probability of 
-    treatment weighting (IPTW) with survival analysis. 
+    Austin, P.C., 2016. Variance estimation when using inverse probability of
+    treatment weighting (IPTW) with survival analysis.
     Statistics in medicine, 35(30), pp.5642-5655.
 
-ATT: 
-    Reifeis et. al. (2022). 
-    On variance of the treatment effect in the treated when estimated by 
-    inverse probability weighting. 
+ATT:
+    Reifeis et. al. (2022).
+    On variance of the treatment effect in the treated when estimated by
+    inverse probability weighting.
     American Journal of Epidemiology, 191(6), 1092-1097.
     https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9271225/
 """
