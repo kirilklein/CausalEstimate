@@ -14,7 +14,7 @@ class TestBinaryDataset(unittest.TestCase):
         self.n_samples = 100
         self.random_state = 42
 
-    def test_basic_loading(self):   
+    def test_basic_loading(self):
         """Test basic dataset loading functionality"""
         data = load_binary(n_samples=self.n_samples, random_state=self.random_state)
 
