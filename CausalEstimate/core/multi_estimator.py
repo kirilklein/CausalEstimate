@@ -6,15 +6,17 @@ import pandas as pd
 from CausalEstimate.core.bootstrap import generate_bootstrap_samples
 from CausalEstimate.filter.propensity import filter_common_support
 from CausalEstimate.estimators.base import BaseEstimator
+from CausalEstimate.core.logging import log_table_stats
 
 
 class MultiEstimator:
-    def __init__(self, estimators: List[BaseEstimator]):
+    def __init__(self, estimators: List[BaseEstimator], verbose: bool = False):
         """
         `estimators` is a list of estimator instances (AIPW, TMLE, IPW, etc.).
         Each is already configured with its own column names and effect_type.
         """
         self.estimators = estimators
+        self.verbose = verbose
 
     def compute_effects(
         self,
@@ -33,6 +35,7 @@ class MultiEstimator:
             first_estimator = self.estimators[0]
             ps_col = first_estimator.ps_col
             treatment_col = first_estimator.treatment_col
+            outcome_col = first_estimator.outcome_col
 
             for estimator in self.estimators[1:]:
                 if (
@@ -51,6 +54,9 @@ class MultiEstimator:
                 treatment_col=treatment_col,
                 threshold=common_support_threshold,
             ).reset_index(drop=True)
+
+        if self.verbose:
+            log_table_stats(df, treatment_col, outcome_col, ps_col)
 
         results = {}
         for estimator in self.estimators:
