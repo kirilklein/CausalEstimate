@@ -1,7 +1,7 @@
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
 from CausalEstimate.matching.matching import match_optimal
-from CausalEstimate.utils.checks import check_inputs
+from CausalEstimate.utils.checks import check_inputs, check_required_columns
 import warnings
 
 
@@ -39,7 +39,7 @@ class Matching(BaseEstimator):
                 examining the relationship between adolescent marijuana use and adult outcomes."
                 Developmental psychology 44.2 (2008): 395.
         """
-
+        check_required_columns(df, [self.treatment_col, self.outcome_col, self.ps_col])
         Y = df[self.outcome_col]
         check_inputs(df[self.treatment_col], Y, df[self.ps_col])
         df = df.copy()  # Create a copy to avoid SettingWithCopyWarning

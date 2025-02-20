@@ -3,7 +3,7 @@
 import pandas as pd
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.aipw import compute_aipw_ate, compute_aipw_att
-from CausalEstimate.utils.checks import check_inputs
+from CausalEstimate.utils.checks import check_inputs, check_required_columns
 
 
 class AIPW(BaseEstimator):
@@ -28,6 +28,16 @@ class AIPW(BaseEstimator):
         self.probas_t0_col = probas_t0_col
 
     def compute_effect(self, df: pd.DataFrame) -> float:
+        check_required_columns(
+            df,
+            [
+                self.treatment_col,
+                self.outcome_col,
+                self.ps_col,
+                self.probas_t1_col,
+                self.probas_t0_col,
+            ],
+        )
         A = df[self.treatment_col]
         Y = df[self.outcome_col]
         ps = df[self.ps_col]

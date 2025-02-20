@@ -8,7 +8,7 @@ from CausalEstimate.estimators.functional.ipw import (
     compute_ipw_risk_ratio,
     compute_ipw_risk_ratio_treated,
 )
-from CausalEstimate.utils.checks import check_inputs
+from CausalEstimate.utils.checks import check_inputs, check_required_columns
 
 
 class IPW(BaseEstimator):
@@ -31,6 +31,7 @@ class IPW(BaseEstimator):
         Compute the effect using the functional IPW.
         Available effect types: ATE, ATT, RR, RRT
         """
+        check_required_columns(df, [self.treatment_col, self.outcome_col, self.ps_col])
         A = df[self.treatment_col]
         Y = df[self.outcome_col]
         ps = df[self.ps_col]

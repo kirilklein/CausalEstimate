@@ -1,7 +1,7 @@
 # CausalEstimate/estimators/tmle.py
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.tmle import compute_tmle_ate
-from CausalEstimate.utils.checks import check_inputs
+from CausalEstimate.utils.checks import check_inputs, check_required_columns
 import pandas as pd
 
 
@@ -29,6 +29,17 @@ class TMLE(BaseEstimator):
         self.probas_t0_col = probas_t0_col
 
     def compute_effect(self, df: pd.DataFrame) -> float:
+        check_required_columns(
+            df,
+            [
+                self.treatment_col,
+                self.outcome_col,
+                self.ps_col,
+                self.probas_col,
+                self.probas_t1_col,
+                self.probas_t0_col,
+            ],
+        )
         A = df[self.treatment_col]
         Y = df[self.outcome_col]
         ps = df[self.ps_col]
