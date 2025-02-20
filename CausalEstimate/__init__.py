@@ -1,3 +1,3 @@
-from CausalEstimate.interface.estimator import Estimator
+from CausalEstimate.interface.multi_estimator import MultiEstimator
 
-__all__ = ["Estimator"]
+__all__ = ["MultiEstimator"]

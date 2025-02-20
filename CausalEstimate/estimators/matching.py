@@ -1,4 +1,3 @@
-from CausalEstimate.core.registry import register_estimator
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
 from CausalEstimate.matching.matching import match_optimal
@@ -6,12 +5,25 @@ from CausalEstimate.utils.checks import check_inputs
 import warnings
 
 
-@register_estimator
-class MATCHING(BaseEstimator):
-    def __init__(self, effect_type="ATE", **kwargs):
+class Matching(BaseEstimator):
+    def __init__(
+        self,
+        effect_type="ATE",
+        treatment_col="treatment",
+        outcome_col="outcome",
+        ps_col="ps",
+        **kwargs,
+    ):
         super().__init__(effect_type=effect_type, **kwargs)
+        self.treatment_col = treatment_col
+        self.outcome_col = outcome_col
+        self.ps_col = ps_col
+        self.kwargs = kwargs
 
-    def compute_effect(self, df, treatment_col, outcome_col, ps_col, **kwargs) -> float:
+    def compute_effect(
+        self,
+        df,
+    ) -> float:
         """
         Compute the effect using matching.
         Available effect types: ATE
@@ -28,16 +40,16 @@ class MATCHING(BaseEstimator):
                 Developmental psychology 44.2 (2008): 395.
         """
 
-        Y = df[outcome_col]
-        check_inputs(df[treatment_col], Y, df[ps_col])
+        Y = df[self.outcome_col]
+        check_inputs(df[self.treatment_col], Y, df[self.ps_col])
         df = df.copy()  # Create a copy to avoid SettingWithCopyWarning
         df["index"] = df.index  # temporary index column
         matched = match_optimal(
             df,
-            treatment_col=treatment_col,
-            ps_col=ps_col,
+            treatment_col=self.treatment_col,
+            ps_col=self.ps_col,
             pid_col="index",
-            **kwargs,
+            **self.kwargs,
         )
         if self.effect_type == "ATE":
             warnings.warn(

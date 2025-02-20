@@ -1,39 +1,43 @@
-import pandas as pd
-
-from CausalEstimate.core.registry import register_estimator
+# CausalEstimate/estimators/tmle.py
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.tmle import compute_tmle_ate
 from CausalEstimate.utils.checks import check_inputs
+import pandas as pd
 
 
-@register_estimator
 class TMLE(BaseEstimator):
-    def __init__(self, effect_type="ATE", **kwargs):
-        super().__init__(effect_type=effect_type, **kwargs)
-
-    def compute_effect(
+    def __init__(
         self,
-        df: pd.DataFrame,
-        treatment_col: str,
-        outcome_col: str,
-        ps_col: str,
-        predicted_outcome_col: str,
-        predicted_outcome_treated_col: str,
-        predicted_outcome_control_col: str,
+        effect_type: str = "ATE",
+        treatment_col: str = "treatment",
+        outcome_col: str = "outcome",
+        ps_col: str = "ps",
+        probas_col: str = "probas",
+        probas_t1_col: str = "probas_t1",
+        probas_t0_col: str = "probas_t0",
         **kwargs,
-    ) -> float:
-        """
-        Compute the effect using the functional IPW.
-        Available effect types: ATE
-        """
+    ):
+        super().__init__(
+            effect_type=effect_type,
+            treatment_col=treatment_col,
+            outcome_col=outcome_col,
+            ps_col=ps_col,
+            **kwargs,
+        )
+        self.probas_col = probas_col
+        self.probas_t1_col = probas_t1_col
+        self.probas_t0_col = probas_t0_col
 
-        A = df[treatment_col]
-        Y = df[outcome_col]
-        ps = df[ps_col]
-        Y0_hat = df[predicted_outcome_control_col]
-        Y1_hat = df[predicted_outcome_treated_col]
-        Yhat = df[predicted_outcome_col]
-        check_inputs(A, Y, ps, Y1_hat=Y1_hat, Y0_hat=Y0_hat, Yhat=Yhat)
+    def compute_effect(self, df: pd.DataFrame) -> float:
+        A = df[self.treatment_col]
+        Y = df[self.outcome_col]
+        ps = df[self.ps_col]
+        Yhat = df[self.probas_col]
+        Y1_hat = df[self.probas_t1_col]
+        Y0_hat = df[self.probas_t0_col]
+
+        check_inputs(A, Y, ps, Yhat=Yhat, Y1_hat=Y1_hat, Y0_hat=Y0_hat)
+
         if self.effect_type == "ATE":
             return compute_tmle_ate(A, Y, ps, Y0_hat, Y1_hat, Yhat)
         else:

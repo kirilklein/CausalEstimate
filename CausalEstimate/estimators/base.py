@@ -1,20 +1,33 @@
+# CausalEstimate/estimators/base.py
+from abc import ABC, abstractmethod
 import pandas as pd
 
 
-class BaseEstimator:
-    def __init__(self, effect_type: str, **kwargs):
-        self.effect_type = effect_type
-        self.kwargs = kwargs  # Store additional keyword arguments if needed
-
-    def compute_effect(
+class BaseEstimator(ABC):
+    def __init__(
         self,
-        df: pd.DataFrame,
-        treatment_col: str,
-        outcome_col: str,
-        ps_col: str,
-        predicted_outcome_col: str,
-        predicted_outcome_treated_col: str,
-        predicted_outcome_control_col: str,
+        effect_type: str = "ATE",
+        treatment_col: str = "treatment",
+        outcome_col: str = "outcome",
+        ps_col: str = "ps",
         **kwargs,
     ):
-        raise NotImplementedError("This method should be implemented by subclasses.")
+        """
+        Base class for all estimators.
+        - effect_type: e.g. "ATE", "ATT", ...
+        - treatment_col, outcome_col, ps_col: universal column names
+        - kwargs: any additional method-specific settings or toggles
+        """
+        self.effect_type = effect_type
+        self.treatment_col = treatment_col
+        self.outcome_col = outcome_col
+        self.ps_col = ps_col
+        self.kwargs = kwargs  # if child classes want extra toggles
+
+    @abstractmethod
+    def compute_effect(self, df: pd.DataFrame) -> float:
+        """
+        Compute the causal effect from the given dataframe.
+        The columns to use are already known from the constructor.
+        """
+        pass
