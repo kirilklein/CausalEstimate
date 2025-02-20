@@ -4,15 +4,16 @@ from CausalEstimate.estimators.functional.matching import compute_matching_ate
 from CausalEstimate.matching.matching import match_optimal, match_eager
 from CausalEstimate.utils.checks import check_inputs, check_required_columns
 import warnings
+from CausalEstimate.utils.constants import TREATMENT_COL, OUTCOME_COL, PS_COL
 
 
 class Matching(BaseEstimator):
     def __init__(
         self,
         effect_type="ATE",
-        treatment_col="treatment",
-        outcome_col="outcome",
-        ps_col="ps",
+        treatment_col=TREATMENT_COL,
+        outcome_col=OUTCOME_COL,
+        ps_col=PS_COL,
         match_optimal=True,
         **kwargs,
     ):

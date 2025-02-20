@@ -1,10 +1,9 @@
 import unittest
+
 import pandas as pd
+
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
-from CausalEstimate.utils.constants import (
-    CONTROL_PID_COL,
-    TREATED_PID_COL,
-)
+from CausalEstimate.utils.constants import CONTROL_PID_COL, TREATED_PID_COL
 
 
 # Create the unittest class
