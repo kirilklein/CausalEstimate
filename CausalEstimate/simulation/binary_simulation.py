@@ -1,8 +1,6 @@
 import numpy as np
 import pandas as pd
-from scipy.integrate import dblquad
 from scipy.special import expit as logistic
-from scipy.stats import norm
 
 
 def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataFrame:
@@ -95,69 +93,3 @@ def compute_ATT_theoretical_from_data(data: pd.DataFrame, beta: list):
     E_Y1 = compute_expected_outcome(treated_data, beta, 1)
     E_Y0 = compute_expected_outcome(treated_data, beta, 0)
     return E_Y1 - E_Y0
-
-
-def compute_ATE_theoretical_from_model(beta: list):
-    """Compute the true average treatment effect (ATE) from the model coefficients, using the model."""
-    # extend beta to length 8 with 0s
-    if len(beta) < 8:
-        beta = np.pad(beta, (0, 8 - len(beta)), mode="constant")
-    beta_0, beta_1, beta_2, beta_3, beta_4, beta_5, beta_6, beta_7 = beta.tolist()
-
-    # Function to integrate
-    def integrand_1(x1, x2, beta0, beta1, beta2, beta3, beta4, beta5, beta6, beta7):
-        return (
-            logistic(
-                beta0
-                + beta1
-                + beta2 * x1
-                + beta3 * x2
-                + beta4 * x1 * x2
-                + beta5 * x1**2
-                + beta6 * x2**2
-                + beta7 * 1
-            )
-            * norm.pdf(x1)
-            * norm.pdf(x2)
-        )
-
-    def integrand_0(x1, x2, beta0, beta2, beta3, beta4, beta5, beta6, beta7):
-        return (
-            logistic(
-                beta0
-                + beta2 * x1
-                + beta3 * x2
-                + beta4 * x1 * x2
-                + beta5 * x1**2
-                + beta6 * x2**2
-                + beta7 * 0
-            )
-            * norm.pdf(x1)
-            * norm.pdf(x2)
-        )
-
-    # Double integration over normal distributions for X1 and X2 within finite bounds
-    integration_bounds = (-10, 10)
-    result_1, _ = dblquad(
-        lambda x1, x2: integrand_1(
-            x1, x2, beta_0, beta_1, beta_2, beta_3, beta_4, beta_5, beta_6, beta_7
-        ),
-        integration_bounds[0],
-        integration_bounds[1],
-        lambda x: integration_bounds[0],
-        lambda x: integration_bounds[1],
-    )
-    result_0, _ = dblquad(
-        lambda x1, x2: integrand_0(
-            x1, x2, beta_0, beta_2, beta_3, beta_4, beta_5, beta_6, beta_7
-        ),
-        integration_bounds[0],
-        integration_bounds[1],
-        lambda x: integration_bounds[0],
-        lambda x: integration_bounds[1],
-    )
-
-    # Theoretical ATE
-    ATE_correct = result_1 - result_0
-
-    return ATE_correct

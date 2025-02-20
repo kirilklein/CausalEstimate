@@ -100,6 +100,7 @@ class TestMatching(unittest.TestCase):
 
 
 class BaseTestComputeMatchingATE(TestEffectBase):
+    n = 1000
     alpha = [-1, 0.1, 0.1, 0]
 
     def test_compute_matching_ate(self):

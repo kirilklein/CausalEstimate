@@ -2,6 +2,8 @@ from scipy.special import expit, logit
 from statsmodels.genmod.families import Binomial
 from statsmodels.genmod.generalized_linear_model import GLM
 
+import numpy as np
+
 
 def compute_tmle_ate(A, Y, ps, Y0_hat, Y1_hat, Yhat):
     """
@@ -37,4 +39,4 @@ def estimate_fluctuation_parameter(A, Y, ps, Yhat) -> float:
 
     # Fit the model with offset
     model = GLM(Y, H, family=Binomial(), offset=offset).fit()
-    return model.params[0]
+    return np.asarray(model.params)[0]
