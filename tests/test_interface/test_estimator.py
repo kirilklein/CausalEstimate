@@ -8,6 +8,14 @@ from CausalEstimate import MultiEstimator
 from CausalEstimate.estimators.aipw import AIPW
 from CausalEstimate.estimators.tmle import TMLE
 from CausalEstimate.estimators.ipw import IPW
+from CausalEstimate.utils.constants import (
+    OUTCOME_COL,
+    PS_COL,
+    TREATMENT_COL,
+    PROBAS_COL,
+    PROBAS_T0_COL,
+    PROBAS_T1_COL,
+)
 
 
 class TestMultiEstimator(unittest.TestCase):
@@ -40,12 +48,12 @@ class TestMultiEstimator(unittest.TestCase):
 
         cls.sample_data = pd.DataFrame(
             {
-                "treatment": treatment,
-                "outcome": outcome,
-                "propensity_score": propensity_score,
-                "predicted_outcome": outcome_probability,
-                "predicted_outcome_treated": outcome_treated_probability,
-                "predicted_outcome_control": outcome_control_probability,
+                TREATMENT_COL: treatment,
+                OUTCOME_COL: outcome,
+                PS_COL: propensity_score,
+                PROBAS_COL: outcome_probability,
+                PROBAS_T1_COL: outcome_treated_probability,
+                PROBAS_T0_COL: outcome_control_probability,
             }
         )
 
@@ -54,11 +62,11 @@ class TestMultiEstimator(unittest.TestCase):
         Helper to instantiate an AIPW estimator for testing.
         """
         return AIPW(
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
-            probas_t1_col="predicted_outcome_treated",
-            probas_t0_col="predicted_outcome_control",
+            treatment_col=TREATMENT_COL,
+            outcome_col=OUTCOME_COL,
+            ps_col=PS_COL,
+            probas_t1_col=PROBAS_T1_COL,
+            probas_t0_col=PROBAS_T0_COL,
             effect_type="ATE",
         )
 
@@ -67,12 +75,12 @@ class TestMultiEstimator(unittest.TestCase):
         Helper to instantiate a TMLE estimator for testing.
         """
         return TMLE(
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
-            probas_col="predicted_outcome",
-            probas_t1_col="predicted_outcome_treated",
-            probas_t0_col="predicted_outcome_control",
+            treatment_col=TREATMENT_COL,
+            outcome_col=OUTCOME_COL,
+            ps_col=PS_COL,
+            probas_col=PROBAS_COL,
+            probas_t1_col=PROBAS_T1_COL,
+            probas_t0_col=PROBAS_T0_COL,
             effect_type="ATE",
         )
 
@@ -81,9 +89,9 @@ class TestMultiEstimator(unittest.TestCase):
         Helper to instantiate an IPW estimator for testing.
         """
         return IPW(
-            treatment_col="treatment",
-            outcome_col="outcome",
-            ps_col="propensity_score",
+            treatment_col=TREATMENT_COL,
+            outcome_col=OUTCOME_COL,
+            ps_col=PS_COL,
             effect_type="ATE",
         )
 

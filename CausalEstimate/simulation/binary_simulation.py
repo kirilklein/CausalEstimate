@@ -1,6 +1,12 @@
 import numpy as np
 import pandas as pd
 from scipy.special import expit as logistic
+from CausalEstimate.utils.constants import (
+    TREATMENT_COL,
+    OUTCOME_COL,
+    PID_COL,
+    OUTCOME_CF_COL,
+)
 
 
 def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataFrame:
@@ -58,7 +64,9 @@ def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataF
     q_cf = logistic(logit_q_cf)
     Y_cf = rng.binomial(1, q_cf)
 
-    data = pd.DataFrame({"X1": X1, "X2": X2, "A": A, "Y": Y, "Y_cf": Y_cf})
+    data = pd.DataFrame(
+        {"X1": X1, "X2": X2, TREATMENT_COL: A, OUTCOME_COL: Y, OUTCOME_CF_COL: Y_cf}
+    )
 
     return data
 
@@ -89,7 +97,7 @@ def compute_ATE_theoretical_from_data(data: pd.DataFrame, beta: list):
 
 def compute_ATT_theoretical_from_data(data: pd.DataFrame, beta: list):
     """Compute the true average treatment effect on the treated (ATT) from the model coefficients, using the data."""
-    treated_data = data[data.A == 1]
+    treated_data = data[data[TREATMENT_COL] == 1]
     E_Y1 = compute_expected_outcome(treated_data, beta, 1)
     E_Y0 = compute_expected_outcome(treated_data, beta, 0)
     return E_Y1 - E_Y0

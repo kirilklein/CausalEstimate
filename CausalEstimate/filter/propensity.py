@@ -1,11 +1,12 @@
 import pandas as pd
 from CausalEstimate.utils.utils import get_treated_ps, get_untreated_ps, filter_column
+from CausalEstimate.utils.constants import PS_COL, TREATMENT_COL
 
 
 def filter_common_support(
     df: pd.DataFrame,
-    ps_col: str = "propensity_score",
-    treatment_col: str = "treatment",
+    ps_col: str = PS_COL,
+    treatment_col: str = TREATMENT_COL,
     threshold: float = 0.05,
 ) -> pd.DataFrame:
     """

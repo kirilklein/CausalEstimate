@@ -4,6 +4,15 @@ import numpy as np
 import pandas as pd
 
 from CausalEstimate.datasets import load_binary, load_binary_with_probas
+from CausalEstimate.utils.constants import (
+    TREATMENT_COL,
+    OUTCOME_COL,
+    PS_COL,
+    PROBAS_COL,
+    PROBAS_T0_COL,
+    PROBAS_T1_COL,
+    OUTCOME_CF_COL,
+)
 
 
 class TestBinaryDataset(unittest.TestCase):
@@ -23,7 +32,7 @@ class TestBinaryDataset(unittest.TestCase):
         self.assertEqual(data.shape, (self.n_samples, 5))
 
         # Test column names
-        expected_columns = {"X1", "X2", "A", "Y", "Y_cf"}
+        expected_columns = {"X1", "X2", TREATMENT_COL, OUTCOME_COL, OUTCOME_CF_COL}
         self.assertEqual(set(data.columns), expected_columns)
 
     def test_binary_values(self):
@@ -31,11 +40,11 @@ class TestBinaryDataset(unittest.TestCase):
         data = load_binary(n_samples=self.n_samples)
 
         # Test treatment values
-        treatment_values = set(data["A"].unique())
+        treatment_values = set(data[TREATMENT_COL].unique())
         self.assertTrue(treatment_values.issubset({0, 1}))
 
         # Test outcome values
-        outcome_values = set(data["Y"].unique())
+        outcome_values = set(data[OUTCOME_COL].unique())
         self.assertTrue(outcome_values.issubset({0, 1}))
 
     def test_reproducibility(self):
@@ -74,12 +83,12 @@ class TestBinaryDatasetWithProbas(unittest.TestCase):
         self.expected_columns = {
             "X1",
             "X2",
-            "A",
-            "Y",
-            "ps",
-            "Y_prob",
-            "Y_cf_0",
-            "Y_cf_1",
+            TREATMENT_COL,
+            OUTCOME_COL,
+            PS_COL,
+            PROBAS_COL,
+            PROBAS_T0_COL,
+            PROBAS_T1_COL,
         }
 
     def test_basic_loading(self):
@@ -98,11 +107,15 @@ class TestBinaryDatasetWithProbas(unittest.TestCase):
         data = load_binary_with_probas(n_samples=self.n_samples)
 
         # Binary variables
-        self.assertTrue(data["A"].isin([0, 1]).all(), "Treatment should be binary")
-        self.assertTrue(data["Y"].isin([0, 1]).all(), "Outcome should be binary")
+        self.assertTrue(
+            data[TREATMENT_COL].isin([0, 1]).all(), "Treatment should be binary"
+        )
+        self.assertTrue(
+            data[OUTCOME_COL].isin([0, 1]).all(), "Outcome should be binary"
+        )
 
         # Probability ranges
-        prob_columns = ["ps", "Y_prob", "Y_cf_0", "Y_cf_1"]
+        prob_columns = [PS_COL, PROBAS_COL, PROBAS_T0_COL, PROBAS_T1_COL]
         for col in prob_columns:
             self.assertTrue(
                 (data[col] >= 0).all() and (data[col] <= 1).all(),
@@ -152,20 +165,22 @@ class TestBinaryDatasetWithProbas(unittest.TestCase):
 
         # Y_prob should match Y_cf_1 when A=1
         np.testing.assert_array_almost_equal(
-            data.loc[data["A"] == 1, "Y_prob"], data.loc[data["A"] == 1, "Y_cf_1"]
+            data.loc[data[TREATMENT_COL] == 1, PROBAS_COL],
+            data.loc[data[TREATMENT_COL] == 1, PROBAS_T1_COL],
         )
 
         # Y_prob should match Y_cf_0 when A=0
         np.testing.assert_array_almost_equal(
-            data.loc[data["A"] == 0, "Y_prob"], data.loc[data["A"] == 0, "Y_cf_0"]
+            data.loc[data[TREATMENT_COL] == 0, PROBAS_COL],
+            data.loc[data[TREATMENT_COL] == 0, PROBAS_T0_COL],
         )
 
     def test_no_extreme_propensities(self):
         """Test if propensity scores are properly clipped"""
         data = load_binary_with_probas(n_samples=self.n_samples)
 
-        self.assertTrue((data["ps"] >= 0.01).all(), "Minimum ps should be 0.01")
-        self.assertTrue((data["ps"] <= 0.99).all(), "Maximum ps should be 0.99")
+        self.assertTrue((data[PS_COL] >= 0.01).all(), "Minimum ps should be 0.01")
+        self.assertTrue((data[PS_COL] <= 0.99).all(), "Maximum ps should be 0.99")
 
     def test_different_sample_sizes(self):
         """Test if different sample sizes work correctly"""

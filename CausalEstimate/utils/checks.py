@@ -1,6 +1,14 @@
 import numpy as np
 from typing import List
 import pandas as pd
+from CausalEstimate.utils.constants import (
+    TREATMENT_COL,
+    OUTCOME_COL,
+    PS_COL,
+    PROBAS_COL,
+    PROBAS_T0_COL,
+    PROBAS_T1_COL,
+)
 
 
 def check_required_columns(df, required_columns):
@@ -65,29 +73,29 @@ def check_inputs(
     """
     # Map variables to their names for error messages
     variable_names = variable_names or {
-        "A": "A (Treatment)",
-        "Y": "Y (Outcome)",
-        "ps": "ps (Propensity Score)",
-        "Yhat": "Yhat (Predicted Outcome)",
-        "Y0_hat": "Y0_hat (Predicted Outcome under Control)",
-        "Y1_hat": "Y1_hat (Predicted Outcome under Treatment)",
+        TREATMENT_COL: "Treatment",
+        OUTCOME_COL: "Outcome",
+        PS_COL: "Propensity Score",
+        PROBAS_COL: "Predicted Outcome",
+        PROBAS_T0_COL: "Predicted Outcome under Control",
+        PROBAS_T1_COL: "Predicted Outcome under Treatment",
     }
 
-    check_binary_array(A, variable_names["A"])
-    check_binary_array(Y, variable_names["Y"])
-    check_probability_array(ps, variable_names["ps"])
+    check_binary_array(A, variable_names[TREATMENT_COL])
+    check_binary_array(Y, variable_names[OUTCOME_COL])
+    check_probability_array(ps, variable_names[PS_COL])
 
     # Check Yhat (predicted outcome)
     if Yhat is not None:
-        check_probability_array(Yhat, variable_names["Yhat"])
+        check_probability_array(Yhat, variable_names[PROBAS_COL])
 
     # Check Y0_hat (predicted outcome under control)
     if Y0_hat is not None:
-        check_probability_array(Y0_hat, variable_names["Y0_hat"])
+        check_probability_array(Y0_hat, variable_names[PROBAS_T0_COL])
 
     # Check Y1_hat (predicted outcome under treatment)
     if Y1_hat is not None:
-        check_probability_array(Y1_hat, variable_names["Y1_hat"])
+        check_probability_array(Y1_hat, variable_names[PROBAS_T1_COL])
 
 
 def check_binary_array(arr, name):

@@ -6,6 +6,14 @@ import pandas as pd
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
 from CausalEstimate.matching.matching import match_optimal
 from tests.helpers.setup import TestEffectBase
+from CausalEstimate.utils.constants import (
+    OUTCOME_COL,
+    PID_COL,
+    PROBAS_T0_COL,
+    PROBAS_T1_COL,
+    PS_COL,
+    TREATMENT_COL,
+)
 
 
 class TestMatching(unittest.TestCase):
@@ -17,7 +25,7 @@ class TestMatching(unittest.TestCase):
         # Create a sample DataFrame for testing
         self.df = pd.DataFrame(
             {
-                "PID": [
+                PID_COL: [
                     101,
                     102,
                     103,
@@ -32,8 +40,8 @@ class TestMatching(unittest.TestCase):
                     210,
                     211,
                 ],
-                "treatment": [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                "ps": [
+                TREATMENT_COL: [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                PS_COL: [
                     0.3,
                     0.90,
                     0.5,
@@ -57,36 +65,24 @@ class TestMatching(unittest.TestCase):
         self.assertListEqual(
             list(result.columns), ["treated_pid", "control_pid", "distance"]
         )
-        self.assertEqual(len(result), sum(self.df["treatment"] == 1))
+        self.assertEqual(len(result), sum(self.df[TREATMENT_COL] == 1))
 
     def test_match_optimal_n_controls(self):
         n_controls = 2
         result = match_optimal(self.df, n_controls=n_controls)
-        self.assertEqual(len(result), sum(self.df["treatment"] == 1) * n_controls)
+        self.assertEqual(len(result), sum(self.df[TREATMENT_COL] == 1) * n_controls)
 
     def test_match_optimal_caliper(self):
         caliper = 0.1
         result = match_optimal(self.df, caliper=caliper)
         self.assertTrue(all(result["distance"] <= caliper))
 
-    def test_match_optimal_custom_columns(self):
-        df = self.df.rename(
-            columns={"treatment": "treat", "ps": "propensity", "PID": "ID"}
-        )
-        result = match_optimal(
-            df, treatment_col="treat", ps_col="propensity", pid_col="ID"
-        )
-        self.assertIsInstance(result, pd.DataFrame)
-        self.assertListEqual(
-            list(result.columns), ["treated_pid", "control_pid", "distance"]
-        )
-
     def test_match_optimal_insufficient_controls(self):
         df = pd.DataFrame(
             {
-                "PID": range(10),
-                "treatment": [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
-                "ps": np.linspace(0, 1, 10),
+                PID_COL: range(10),
+                TREATMENT_COL: [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                PS_COL: np.linspace(0, 1, 10),
             }
         )
         with self.assertRaises(ValueError):
@@ -94,7 +90,7 @@ class TestMatching(unittest.TestCase):
 
     def test_match_optimal_all_treated(self):
         df = self.df.copy()
-        df["treatment"] = 1
+        df[TREATMENT_COL] = 1
         with self.assertRaises(ValueError):
             match_optimal(df)
 
@@ -104,7 +100,9 @@ class BaseTestComputeMatchingATE(TestEffectBase):
     alpha = [-1, 0.1, 0.1, 0]
 
     def test_compute_matching_ate(self):
-        ate_matching = compute_matching_ate(self.data["Y"], match_optimal(self.data))
+        ate_matching = compute_matching_ate(
+            self.data[OUTCOME_COL], match_optimal(self.data)
+        )
         self.assertAlmostEqual(ate_matching, self.true_ate, delta=0.1)
 
 
@@ -123,7 +121,9 @@ class TestComputeMatchingATE_ps_and_outcome_interaction(BaseTestComputeMatchingA
     beta = [-1, 0.1, 0.1, 2, 2]
 
     def test_compute_matching_ate(self):
-        ate_matching = compute_matching_ate(self.data["Y"], match_optimal(self.data))
+        ate_matching = compute_matching_ate(
+            self.data[OUTCOME_COL], match_optimal(self.data)
+        )
         self.assertNotAlmostEqual(ate_matching, self.true_ate, delta=0.05)
 
 

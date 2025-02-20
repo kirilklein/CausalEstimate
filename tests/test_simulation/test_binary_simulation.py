@@ -2,6 +2,7 @@ import unittest
 from CausalEstimate.simulation.binary_simulation import (
     simulate_binary_data,
 )
+from CausalEstimate.utils.constants import TREATMENT_COL, OUTCOME_COL
 
 
 class TestSimulation(unittest.TestCase):
@@ -12,7 +13,7 @@ class TestSimulation(unittest.TestCase):
         data = simulate_binary_data(100, alpha, beta, seed=42)
 
         self.assertEqual(data.shape[0], 100)
-        self.assertTrue("A" in data.columns and "Y" in data.columns)
+        self.assertTrue(TREATMENT_COL in data.columns and OUTCOME_COL in data.columns)
 
 
 if __name__ == "__main__":
