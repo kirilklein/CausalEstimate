@@ -38,7 +38,7 @@ class IPW(BaseEstimator):
                 return compute_ipw_ate_stabilized(A, Y, ps)
             else:
                 return compute_ipw_ate(A, Y, ps)
-        elif self.effect_type in ["ATT", "ARR"]:
+        elif self.effect_type in ["ATT"]:
             return compute_ipw_att(A, Y, ps)
         elif self.effect_type == "RR":
             return compute_ipw_risk_ratio(A, Y, ps)
