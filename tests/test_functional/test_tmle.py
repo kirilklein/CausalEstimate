@@ -22,6 +22,7 @@ class TestTMLEFunctions(TestEffectBase):
         # Check that epsilon is a finite number
         self.assertTrue(np.isfinite(epsilon))
 
+
 class TestTMLE_ATT_Functions(TestEffectBase):
     """Basic tests for TMLE functions"""
 
@@ -29,6 +30,7 @@ class TestTMLE_ATT_Functions(TestEffectBase):
         epsilon = estimate_fluctuation_parameter_att(self.A, self.Y, self.ps, self.Yhat)
         self.assertIsInstance(epsilon, float)
         self.assertTrue(np.isfinite(epsilon))
+
 
 class TestTMLE_ATE_base(TestEffectBase):
     def test_compute_tmle_ate(self):
@@ -112,8 +114,6 @@ class TestTMLE_ATT_PS_misspecified_and_OutcomeModel_misspecified(TestTMLE_ATT):
             self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
         )
         self.assertNotAlmostEqual(att_tmle, self.true_att, delta=0.1)
-
-
 
 
 if __name__ == "__main__":
