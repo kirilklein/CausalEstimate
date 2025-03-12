@@ -1,8 +1,10 @@
 # CausalEstimate/estimators/tmle.py
-from CausalEstimate.estimators.base import BaseEstimator
-from CausalEstimate.estimators.functional.tmle import compute_tmle_ate
-from CausalEstimate.utils.checks import check_inputs, check_required_columns
 import pandas as pd
+
+from CausalEstimate.estimators.base import BaseEstimator
+from CausalEstimate.estimators.functional.tmle import compute_tmle_ate, compute_tmle_rr
+from CausalEstimate.estimators.functional.tmle_att import compute_tmle_att
+from CausalEstimate.utils.checks import check_inputs, check_required_columns
 
 
 class TMLE(BaseEstimator):
@@ -51,5 +53,9 @@ class TMLE(BaseEstimator):
 
         if self.effect_type == "ATE":
             return compute_tmle_ate(A, Y, ps, Y0_hat, Y1_hat, Yhat)
+        elif self.effect_type == "ATT":
+            return compute_tmle_att(A, Y, ps, Y0_hat, Y1_hat, Yhat)
+        elif self.effect_type == "RR":
+            return compute_tmle_rr(A, Y, ps, Y0_hat, Y1_hat, Yhat)
         else:
             raise ValueError(f"Effect type '{self.effect_type}' is not supported.")
