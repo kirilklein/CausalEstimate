@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 from CausalEstimate.estimators.functional.tmle import (
     compute_tmle_ate,
+    compute_tmle_rr,
     estimate_fluctuation_parameter,
 )
 from tests.helpers.setup import TestEffectBase
@@ -44,6 +45,34 @@ class TestTMLE_PS_misspecified_and_OutcomeModel_misspecified(TestTMLE_ATE_base):
             self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
         )
         self.assertNotAlmostEqual(ate_tmle, self.true_ate, delta=0.1)
+
+
+class TestTMLE_RR(TestEffectBase):
+    def test_compute_tmle_rr(self):
+        rr_tmle = compute_tmle_rr(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertAlmostEqual(rr_tmle, self.true_rr, delta=1)
+
+
+class TestTMLE_RR_PS_misspecified(TestTMLE_RR):
+    alpha = [0.1, 0.2, -0.3, 5]
+
+
+class TestTMLE_RR_OutcomeModel_misspecified(TestTMLE_RR):
+    beta = [0.5, 0.8, -0.6, 0.3, 5]
+
+
+class TestTMLE_RR_PS_misspecified_and_OutcomeModel_misspecified(TestEffectBase):
+    alpha = [0.1, 0.2, -0.3, 5]
+    beta = [0.5, 0.8, -0.6, 0.3, 5]
+
+    # extreme misspecification
+    def test_compute_tmle_rr(self):
+        rr_tmle = compute_tmle_rr(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertNotAlmostEqual(rr_tmle, self.true_rr, delta=0.1)
 
 
 if __name__ == "__main__":

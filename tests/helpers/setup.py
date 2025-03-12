@@ -7,6 +7,7 @@ from scipy.special import expit
 from CausalEstimate.simulation.binary_simulation import (
     compute_ATE_theoretical_from_data,
     compute_ATT_theoretical_from_data,
+    compute_RR_theoretical_from_data,
     simulate_binary_data,
 )
 from CausalEstimate.utils.constants import (
@@ -74,8 +75,10 @@ class TestEffectBase(unittest.TestCase):
 
         true_ate = compute_ATE_theoretical_from_data(data, beta=cls.beta)
         true_att = compute_ATT_theoretical_from_data(data, beta=cls.beta)
+        true_rr = compute_RR_theoretical_from_data(data, beta=cls.beta)
         cls.true_ate = true_ate
         cls.true_att = true_att
+        cls.true_rr = true_rr
 
         # for classes that take dataframe as input
         cls.data = data
