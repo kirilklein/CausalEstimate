@@ -97,3 +97,10 @@ def compute_ATT_theoretical_from_data(data: pd.DataFrame, beta: list):
     E_Y1 = compute_expected_outcome(treated_data, beta, 1)
     E_Y0 = compute_expected_outcome(treated_data, beta, 0)
     return E_Y1 - E_Y0
+
+
+def compute_RR_theoretical_from_data(data: pd.DataFrame, beta: list):
+    """Compute the true risk ratio (RR) from the model coefficients, using the data."""
+    E_Y1 = compute_expected_outcome(data, beta, 1)
+    E_Y0 = compute_expected_outcome(data, beta, 0)
+    return E_Y1 / E_Y0
