@@ -1,8 +1,10 @@
 # CausalEstimate/estimators/tmle.py
-from CausalEstimate.estimators.base import BaseEstimator
-from CausalEstimate.estimators.functional.tmle import compute_tmle_ate
-from CausalEstimate.utils.checks import check_inputs, check_required_columns
 import pandas as pd
+
+from CausalEstimate.estimators.base import BaseEstimator
+from CausalEstimate.estimators.functional.tmle import compute_tmle_ate, compute_tmle_rr
+from CausalEstimate.estimators.functional.tmle_att import compute_tmle_att
+from CausalEstimate.utils.checks import check_inputs, check_required_columns
 
 
 class TMLE(BaseEstimator):
@@ -28,13 +30,11 @@ class TMLE(BaseEstimator):
         self.probas_t1_col = probas_t1_col
         self.probas_t0_col = probas_t0_col
 
-    def compute_effect(self, df: pd.DataFrame) -> float:
+    def _compute_effect(self, df: pd.DataFrame) -> float:
+        # additional checks required for TMLE
         check_required_columns(
             df,
             [
-                self.treatment_col,
-                self.outcome_col,
-                self.ps_col,
                 self.probas_col,
                 self.probas_t1_col,
                 self.probas_t0_col,
@@ -49,7 +49,11 @@ class TMLE(BaseEstimator):
 
         check_inputs(A, Y, ps, Yhat=Yhat, Y1_hat=Y1_hat, Y0_hat=Y0_hat)
 
-        if self.effect_type == "ATE":
+        if self.effect_type in ["ATE", "ARR"]:
             return compute_tmle_ate(A, Y, ps, Y0_hat, Y1_hat, Yhat)
+        elif self.effect_type == "ATT":
+            return compute_tmle_att(A, Y, ps, Y0_hat, Y1_hat, Yhat)
+        elif self.effect_type == "RR":
+            return compute_tmle_rr(A, Y, ps, Y0_hat, Y1_hat, Yhat)
         else:
             raise ValueError(f"Effect type '{self.effect_type}' is not supported.")
