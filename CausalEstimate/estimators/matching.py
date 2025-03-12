@@ -1,10 +1,11 @@
+import warnings
+
 import numpy as np
+
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
-from CausalEstimate.matching.matching import match_optimal, match_eager
-from CausalEstimate.utils.checks import check_inputs, check_required_columns
-import warnings
-from CausalEstimate.utils.constants import TREATMENT_COL, OUTCOME_COL, PS_COL
+from CausalEstimate.matching.matching import match_eager, match_optimal
+from CausalEstimate.utils.constants import OUTCOME_COL, PS_COL, TREATMENT_COL
 
 
 class Matching(BaseEstimator):
@@ -24,7 +25,7 @@ class Matching(BaseEstimator):
         self.match_optimal = match_optimal
         self.kwargs = kwargs
 
-    def compute_effect(
+    def _compute_effect(
         self,
         df,
     ) -> float:
@@ -43,9 +44,7 @@ class Matching(BaseEstimator):
                 examining the relationship between adolescent marijuana use and adult outcomes."
                 Developmental psychology 44.2 (2008): 395.
         """
-        check_required_columns(df, [self.treatment_col, self.outcome_col, self.ps_col])
         Y = df[self.outcome_col]
-        check_inputs(df[self.treatment_col], Y, df[self.ps_col])
         df = df.copy()  # Create a copy to avoid SettingWithCopyWarning
 
         # Add tiny random noise to propensity scores to break ties
@@ -73,7 +72,7 @@ class Matching(BaseEstimator):
                 ps_col=self.ps_col,
                 pid_col="index",
             )
-        if self.effect_type == "ATE":
+        if self.effect_type in ["ATE", "ARR"]:
             warnings.warn(
                 "This is strictly speaking not ATE if we used a caliper or other matching methods. But can be interpreted as such."
             )
