@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 from scipy.special import expit, logit
 from statsmodels.genmod.families import Binomial
@@ -6,7 +8,7 @@ from statsmodels.genmod.generalized_linear_model import GLM
 
 def compute_tmle_ate(A, Y, ps, Y0_hat, Y1_hat, Yhat):
     """
-    Estimate the risk ratio using the targeted maximum likelihood estimation (TMLE) method.
+    Estimate the average treatment effect using the targeted maximum likelihood estimation (TMLE) method.
 
     Parameters:
     -----------
@@ -25,7 +27,7 @@ def compute_tmle_ate(A, Y, ps, Y0_hat, Y1_hat, Yhat):
 
     Returns:
     --------
-    float: Risk ratio estimate
+    float: Average treatment effect estimate
     """
     Q_star_1, Q_star_0 = compute_estimates(A, Y, ps, Y0_hat, Y1_hat, Yhat)
     return (Q_star_1 - Q_star_0).mean()
@@ -55,7 +57,11 @@ def compute_tmle_rr(A, Y, ps, Y0_hat, Y1_hat, Yhat):
     float: Risk ratio estimate
     """
     Q_star_1, Q_star_0 = compute_estimates(A, Y, ps, Y0_hat, Y1_hat, Yhat)
-    return Q_star_1.mean() / Q_star_0.mean()
+    Q_star_0_m = Q_star_0.mean()
+    if Q_star_0_m == 0:
+        warnings.warn("Q_star_0 is 0, returning inf", RuntimeWarning)
+        return np.inf
+    return Q_star_1.mean() / Q_star_0_m
 
 
 def compute_estimates(A, Y, ps, Y0_hat, Y1_hat, Yhat):
@@ -125,7 +131,13 @@ def estimate_fluctuation_parameter(A, Y, ps, Yhat) -> float:
     """
     # compute the clever covariate H
     H = A / ps - (1 - A) / (1 - ps)
-
+    # Check for extreme values in clever covariate
+    if np.any(np.abs(H) > 100):
+        warnings.warn(
+            "Extreme values detected in clever covariate H. "
+            "This may indicate issues with propensity scores near 0 or 1.",
+            RuntimeWarning,
+        )
     # Use logit of the current outcome as offset
     offset = logit(Yhat)
 

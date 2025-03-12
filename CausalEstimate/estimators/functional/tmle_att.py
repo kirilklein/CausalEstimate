@@ -4,6 +4,8 @@ Van der Laan MJ, Rose S. Targeted learning: causal inference for observational a
 But slightly modified for simpler implementation, following advice from: https://stats.stackexchange.com/questions/520472/can-targeted-maximum-likelihood-estimation-find-the-average-treatment-effect-on/534018#534018
 """
 
+import warnings
+
 import numpy as np
 from scipy.special import expit, logit
 from statsmodels.genmod.families import Binomial
@@ -80,6 +82,13 @@ def estimate_fluctuation_parameter_att(A, Y, ps, Yhat) -> float:
     # Define the clever covariate H for each observation:
     # For treated: 1/p_treated, for controls: -ps/(p_treated*(1-ps))
     H = (A / p_treated) - ((1 - A) * ps / (p_treated * (1 - ps)))
+    # Check for extreme values in H
+    if np.any(np.abs(H) > 100):
+        warnings.warn(
+            "Extreme values detected in clever covariate H. "
+            "This may indicate issues with propensity scores near 0 or 1.",
+            RuntimeWarning,
+        )
     # Reshape H for statsmodels (needs a 2D array)
     H_2d = H.reshape(-1, 1)
     offset = logit(Yhat)
