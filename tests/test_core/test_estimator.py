@@ -25,13 +25,13 @@ class TestMultiEstimatorCombined(unittest.TestCase):
         # Generate sample data for testing
         np.random.seed(42)
         size = 500
-        epsilon = 1e-3  # Small value to avoid 0/1 extremes
+        epsilon = 1e-2  # Small value to avoid 0/1 extremes
         propensity_score = np.random.uniform(epsilon, 1 - epsilon, size)
         outcome_probability = np.random.uniform(epsilon, 1 - epsilon, size)
         treatment = np.random.binomial(1, propensity_score, size)
         outcome = np.random.binomial(1, outcome_probability, size)
 
-        # For treated and untreated probabilities, we create simple placeholders
+        # For treated and untreated probabilities, create simple placeholders
         outcome_treated_probability = np.where(
             treatment == 1,
             outcome_probability,
@@ -83,8 +83,33 @@ class TestMultiEstimatorCombined(unittest.TestCase):
             effect_type="ATE",
         )
 
+    def _assert_result_structure(
+        self, result, bootstrap_requested=False, n_bootstraps=1
+    ):
+        """
+        Helper to assert that the result dictionary has the expected structure.
+        When bootstrap is not applied (n_bootstraps=1), we expect a minimal summary.
+        """
+        # Basic keys we expect in all cases (at least the effect)
+        self.assertIn(EFFECT, result)
+        # When bootstrapping is not applied, we expect n_bootstraps to be 0.
+        if n_bootstraps == 1:
+            self.assertEqual(result["n_bootstraps"], 0)
+        else:
+            self.assertEqual(result["n_bootstraps"], n_bootstraps)
+            # If bootstrap samples were requested, ensure they are present;
+            # otherwise, they should be absent.
+            if bootstrap_requested:
+                self.assertIn("bootstrap_samples", result)
+                bs = result["bootstrap_samples"]
+                for key in [EFFECT, EFFECT_treated, EFFECT_untreated]:
+                    self.assertIn(key, bs)
+                    self.assertEqual(len(bs[key]), n_bootstraps)
+            else:
+                self.assertNotIn("bootstrap_samples", result)
+
     def test_compute_effect_no_bootstrap(self):
-        """Test that when n_bootstraps=1 (no bootstrap), results have the expected keys and flags."""
+        """Test that when n_bootstraps=1 (no bootstrap), results have the expected structure."""
         aipw = self._make_aipw()
         tmle = self._make_tmle()
         multi_est = MultiEstimator([aipw, tmle])
@@ -95,56 +120,53 @@ class TestMultiEstimatorCombined(unittest.TestCase):
             apply_common_support=False,
         )
         # Check that results exist for both estimators
-        self.assertIn("AIPW", results)
-        self.assertIn("TMLE", results)
-
         for estimator_key in ["AIPW", "TMLE"]:
-            res = results[estimator_key]
-            # Expect summary keys to be present
-            for key in [EFFECT]:
-                self.assertIn(key, res)
-            # With n_bootstraps=1, bootstrapping was not applied
-            self.assertEqual(res["n_bootstraps"], 0)
+            with self.subTest(estimator=estimator_key):
+                self.assertIn(estimator_key, results)
+                self._assert_result_structure(
+                    results[estimator_key], bootstrap_requested=False, n_bootstraps=1
+                )
 
     def test_compute_effect_with_bootstrap(self):
-        """Test that when n_bootstraps>1 and no bootstrap samples flag, the summary is computed correctly."""
+        """Test that when n_bootstraps > 1 and bootstrap samples are not requested, the summary is computed correctly."""
         aipw = self._make_aipw()
         tmle = self._make_tmle()
         multi_est = MultiEstimator([aipw, tmle])
 
+        n_boot = 10
         results = multi_est.compute_effects(
             df=self.sample_data,
-            n_bootstraps=10,
+            n_bootstraps=n_boot,
             apply_common_support=False,
             return_bootstrap_samples=False,
         )
         for estimator_key in ["AIPW", "TMLE"]:
-            res = results[estimator_key]
-            self.assertEqual(res["n_bootstraps"], 10)
-            # When bootstrap samples are not requested, the key should not be present
-            self.assertNotIn("bootstrap_samples", res)
+            with self.subTest(estimator=estimator_key):
+                self._assert_result_structure(
+                    results[estimator_key],
+                    bootstrap_requested=False,
+                    n_bootstraps=n_boot,
+                )
 
     def test_bootstrap_with_samples_flag(self):
-        """Test that the bootstrap samples are included when requested."""
+        """Test that bootstrap samples are included when requested."""
         tmle = self._make_tmle()
         multi_est = MultiEstimator([tmle])
+        n_boot = 10
 
         results = multi_est.compute_effects(
             df=self.sample_data,
-            n_bootstraps=10,
+            n_bootstraps=n_boot,
             apply_common_support=False,
             return_bootstrap_samples=True,
         )
         res = results["TMLE"]
-        self.assertEqual(res["n_bootstraps"], 10)
-        self.assertIn("bootstrap_samples", res)
-        bs_samples = res["bootstrap_samples"]
-        for key in [EFFECT, EFFECT_treated, EFFECT_untreated]:
-            self.assertIn(key, bs_samples)
-            self.assertEqual(len(bs_samples[key]), 10)
+        self._assert_result_structure(
+            res, bootstrap_requested=True, n_bootstraps=n_boot
+        )
 
     def test_missing_columns(self):
-        """Test that a missing required column raises an error (e.g. missing treatment column)."""
+        """Test that a missing required column (e.g., treatment column) raises an error."""
         data_missing = self.sample_data.drop(columns=[TREATMENT_COL])
         aipw = self._make_aipw()
         multi_est = MultiEstimator([aipw])
@@ -152,7 +174,7 @@ class TestMultiEstimatorCombined(unittest.TestCase):
             multi_est.compute_effects(data_missing)
 
     def test_input_validation(self):
-        """Test that input data with NaNs (e.g. in the outcome column) triggers an error."""
+        """Test that input data with NaNs (e.g., in the outcome column) triggers an error."""
         data_nan = self.sample_data.copy()
         data_nan.loc[0, OUTCOME_COL] = np.nan
         aipw = self._make_aipw()
@@ -190,7 +212,8 @@ class TestMultiEstimatorCombined(unittest.TestCase):
         multi_est = MultiEstimator([aipw, tmle, ipw])
         results = multi_est.compute_effects(df=self.sample_data, n_bootstraps=1)
         for estimator_name in ["AIPW", "TMLE", "IPW"]:
-            self.assertIn(estimator_name, results)
+            with self.subTest(estimator=estimator_name):
+                self.assertIn(estimator_name, results)
 
 
 if __name__ == "__main__":
