@@ -33,7 +33,7 @@ class BaseEstimator(ABC):
         self.ps_col = ps_col
         self.kwargs = kwargs  # if child classes want extra toggles
 
-    def compute_effect(self, df: pd.DataFrame) -> float:
+    def compute_effect(self, df: pd.DataFrame) -> dict:
         """
         Compute the causal effect from the given dataframe.
         The columns to use are already known from the constructor.
@@ -43,7 +43,7 @@ class BaseEstimator(ABC):
         return self._compute_effect(df)
 
     @abstractmethod
-    def _compute_effect(self, df: pd.DataFrame) -> float:
+    def _compute_effect(self, df: pd.DataFrame) -> dict:
         """
         Concrete implementation to be provided by child classes.
         Input df is guaranteed to be validated.

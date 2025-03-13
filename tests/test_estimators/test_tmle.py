@@ -8,6 +8,7 @@ from CausalEstimate.utils.constants import (
     PROBAS_T1_COL,
     PS_COL,
     TREATMENT_COL,
+    EFFECT,
 )
 from tests.helpers.setup import TestEffectBase
 
@@ -24,7 +25,7 @@ class TestTMLE(TestEffectBase):
             probas_t0_col=PROBAS_T0_COL,
         )
         ate_tmle = tmle.compute_effect(self.data)
-        self.assertAlmostEqual(ate_tmle, self.true_ate, delta=0.01)
+        self.assertAlmostEqual(ate_tmle[EFFECT], self.true_ate, delta=0.01)
 
 
 if __name__ == "__main__":

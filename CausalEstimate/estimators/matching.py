@@ -28,7 +28,7 @@ class Matching(BaseEstimator):
     def _compute_effect(
         self,
         df,
-    ) -> float:
+    ) -> dict:
         """
         Compute the effect using matching.
         Available effect types: ATE

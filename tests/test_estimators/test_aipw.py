@@ -2,6 +2,7 @@ import unittest
 
 from CausalEstimate.estimators.aipw import AIPW
 from CausalEstimate.utils.constants import (
+    EFFECT,
     OUTCOME_COL,
     PROBAS_T0_COL,
     PROBAS_T1_COL,
@@ -22,7 +23,7 @@ class TestAIPW(TestEffectBase):
             probas_t0_col=PROBAS_T0_COL,
         )
         ate_aipw = aipw.compute_effect(self.data)
-        self.assertAlmostEqual(ate_aipw, self.true_ate, delta=0.01)
+        self.assertAlmostEqual(ate_aipw[EFFECT], self.true_ate, delta=0.01)
 
 
 if __name__ == "__main__":
