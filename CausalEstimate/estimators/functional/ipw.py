@@ -18,9 +18,11 @@ ATT:
     https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9271225/
 """
 
+import warnings
 from typing import Tuple
 
 import numpy as np
+
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
 
@@ -87,6 +89,9 @@ def compute_ipw_risk_ratio_treated(
     A: treatment assignment, Y: outcome, ps: propensity score
     """
     mu_1, mu_0 = compute_mean_potential_outcomes_treated(A, Y, ps)
+    if mu_0 == 0:
+        warnings.warn("mu_0 is 0, returning inf", RuntimeWarning)
+        return {EFFECT: np.inf, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
     rr = mu_1 / mu_0
     return {EFFECT: rr, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
