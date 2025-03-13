@@ -30,7 +30,7 @@ class TMLE(BaseEstimator):
         self.probas_t1_col = probas_t1_col
         self.probas_t0_col = probas_t0_col
 
-    def _compute_effect(self, df: pd.DataFrame) -> float:
+    def _compute_effect(self, df: pd.DataFrame) -> dict:
         # additional checks required for TMLE
         check_required_columns(
             df,

@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 from CausalEstimate.estimators.functional.aipw import compute_aipw_ate, compute_aipw_att
-
+from CausalEstimate.utils.constants import EFFECT
 from tests.helpers.setup import TestEffectBase
 
 
@@ -24,7 +24,7 @@ class TestComputeAIPWATE(TestEffectBase):
 class TestAIPW_ATE_base(TestEffectBase):
     def test_compute_aipw_ate(self):
         ate_aipw = compute_aipw_ate(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
-        self.assertAlmostEqual(ate_aipw, self.true_ate, delta=0.03)
+        self.assertAlmostEqual(ate_aipw[EFFECT], self.true_ate, delta=0.03)
 
 
 class TestAIPW_ATE_ps_misspecified(TestAIPW_ATE_base):
@@ -38,7 +38,7 @@ class TestAIPW_ATE_outcome_model_misspecified(TestAIPW_ATE_base):
 class TestAIPW_ATT_base(TestEffectBase):
     def test_compute_aipw_att(self):
         att_aipw = compute_aipw_att(self.A, self.Y, self.ps, self.Y0_hat)
-        self.assertAlmostEqual(att_aipw, self.true_att, delta=0.03)
+        self.assertAlmostEqual(att_aipw[EFFECT], self.true_att, delta=0.03)
 
 
 class TestAIPW_ATT_outcome_model_misspecified(TestAIPW_ATT_base):
@@ -55,7 +55,7 @@ class TestAIPW_ATT_PS_misspecified_and_OutcomeModel_misspecified(TestAIPW_ATT_ba
 
     def test_compute_aipw_att(self):
         att_aipw = compute_aipw_att(self.A, self.Y, self.ps, self.Y0_hat)
-        self.assertNotAlmostEqual(att_aipw, self.true_att, delta=0.01)
+        self.assertNotAlmostEqual(att_aipw[EFFECT], self.true_att, delta=0.01)
 
 
 # Run the unittests

@@ -11,6 +11,7 @@ from CausalEstimate.utils.constants import (
     PS_COL,
     TREATMENT_COL,
     TREATED_PID_COL,
+    EFFECT,
 )
 
 
@@ -29,9 +30,9 @@ class TestMatchingEstimator(unittest.TestCase):
     def test_compute_matching_ate_basic(self):
         Y = pd.Series(self.df[OUTCOME_COL].values, index=self.df[PID_COL])
         ate = compute_matching_ate(Y, self.matching_result)
-        self.assertIsInstance(ate, float)
+        self.assertIsInstance(ate[EFFECT], float)
         self.assertTrue(
-            -20 < ate < 20
+            -20 < ate[EFFECT] < 20
         )  # Assuming the effect is within a reasonable range
 
     def test_compute_matching_ate_missing_column(self):
@@ -52,7 +53,7 @@ class TestMatchingEstimator(unittest.TestCase):
         Y = pd.Series(df[OUTCOME_COL].values, index=df[PID_COL])
         matching_result = match_optimal(df)
         ate = compute_matching_ate(Y, matching_result)
-        self.assertEqual(ate, 5)  # (10-5 + 20-15) / 2 = 5
+        self.assertEqual(ate[EFFECT], 5)  # (10-5 + 20-15) / 2 = 5
 
 
 class TestEagerMatchingEstimator(unittest.TestCase):
@@ -75,8 +76,8 @@ class TestEagerMatchingEstimator(unittest.TestCase):
     def test_compute_matching_ate_eager_basic(self):
         Y = pd.Series(self.df[OUTCOME_COL].values, index=self.df[PID_COL])
         ate = compute_matching_ate(Y, self.matching_result_eager)
-        self.assertIsInstance(ate, float)
-        self.assertTrue(-20 < ate < 20)
+        self.assertIsInstance(ate[EFFECT], float)
+        self.assertTrue(-20 < ate[EFFECT] < 20)
 
     def test_compute_matching_ate_eager_missing_column(self):
         Y = pd.Series(self.df[OUTCOME_COL].values, index=self.df[PID_COL])
@@ -100,10 +101,10 @@ class TestEagerMatchingEstimator(unittest.TestCase):
         # For example, a known effect check depends on how the eager matching pairs them.
         # If the pairing is the same as the optimal in this example, we might also get 5.
         # Let's see:
-        self.assertIsInstance(ate, float)
+        self.assertIsInstance(ate[EFFECT], float)
         # you could do an assertEqual if you know the expected pairing,
         # or just check it's in a plausible range:
-        self.assertTrue(-20 < ate < 20)
+        self.assertTrue(-20 < ate[EFFECT] < 20)
 
 
 class TestEagerMultipleControls(unittest.TestCase):
@@ -153,7 +154,7 @@ class TestEagerMultipleControls(unittest.TestCase):
         # We have an outcome column in df, let's build a series
         Y = pd.Series(self.df["outcome"].values, index=self.df["PID"].values)
         ate = compute_matching_ate(Y, result)
-        self.assertIsInstance(ate, float)
+        self.assertIsInstance(ate[EFFECT], float)
 
     def test_two_controls_strict_error(self):
         # In this scenario, we'll reduce the caliper to 0.02 so that subject 2 can't find 2 controls

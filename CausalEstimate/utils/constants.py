@@ -13,3 +13,7 @@ OUTCOME_CF_COL = "Y_cf"
 TREATED_PID_COL = "treated_pid_col"
 CONTROL_PID_COL = "control_pid_col"
 DISTANCE_COL = "distance_col"
+
+EFFECT = "effect"
+EFFECT_treated = "effect_1"
+EFFECT_untreated = "effect_0"

@@ -25,7 +25,7 @@ class IPW(BaseEstimator):
         self.ps_col = ps_col
         self.kwargs = kwargs
 
-    def _compute_effect(self, df: pd.DataFrame) -> float:
+    def _compute_effect(self, df: pd.DataFrame) -> dict:
         """
         Compute the effect using the functional IPW.
         Available effect types: ATE, ATT, RR, RRT

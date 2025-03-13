@@ -13,6 +13,7 @@ from CausalEstimate.utils.constants import (
     PS_COL,
     TREATED_PID_COL,
     TREATMENT_COL,
+    EFFECT,
 )
 from tests.helpers.setup import TestEffectBase
 
@@ -104,7 +105,7 @@ class BaseTestComputeMatchingATE(TestEffectBase):
         ate_matching = compute_matching_ate(
             self.data[OUTCOME_COL], match_optimal(self.data)
         )
-        self.assertAlmostEqual(ate_matching, self.true_ate, delta=0.1)
+        self.assertAlmostEqual(ate_matching[EFFECT], self.true_ate, delta=0.1)
 
 
 class TestComputeMatchingATE_ps_interaction(BaseTestComputeMatchingATE):
@@ -125,7 +126,7 @@ class TestComputeMatchingATE_ps_and_outcome_interaction(BaseTestComputeMatchingA
         ate_matching = compute_matching_ate(
             self.data[OUTCOME_COL], match_optimal(self.data)
         )
-        self.assertNotAlmostEqual(ate_matching, self.true_ate, delta=0.05)
+        self.assertNotAlmostEqual(ate_matching[EFFECT], self.true_ate, delta=0.05)
 
 
 if __name__ == "__main__":

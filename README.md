@@ -73,46 +73,63 @@ results = ipw_estimator.compute_effect(df)
 print("IPW estimated effect:", results)
 ```
 
-`results` here is simply a floating-point effect estimate for a single-sample run (no bootstrap). If you want bootstrapping in a single pass, see the **MultiEstimator** below.
+In this case, `results` is simply a dictionary with the effect estimate computed from a single sample run (n_bootstraps=1). When no bootstrapping is applied, the output includes the key `"n_bootstraps": 0`.
 
 ---
 
 ### 2) Multi Estimator Usage
 
-If you want to run **multiple** estimators (e.g., IPW, TMLE, AIPW) on the **same** dataset in one pass—optionally applying bootstrap or common-support filtering—you can use `MultiEstimator`.
+If you want to run **multiple** estimators (e.g., IPW, TMLE, AIPW) on the **same** dataset in one pass—optionally applying bootstrap or common-support filtering—you can use the `MultiEstimator`.
 
 ```python
 from CausalEstimate.estimators import IPW, AIPW, TMLE, MultiEstimator
 
-ipw = IPW(effect_type="ATE", treatment_col="treatment", outcome_col="outcome", ps_col="ps")
-aipw = AIPW(effect_type="ATE", treatment_col="treatment", outcome_col="outcome", ps_col="ps",
-            probas_t1_col="predicted_outcome_treated", probas_t0_col="predicted_outcome_control")
-tmle = TMLE(effect_type="ATE", treatment_col="treatment", outcome_col="outcome", ps_col="ps",
-            probas_col="predicted_outcome", probas_t1_col="predicted_outcome_treated",
-            probas_t0_col="predicted_outcome_control")
+ipw = IPW(
+    effect_type="ATE",
+    treatment_col="treatment",
+    outcome_col="outcome",
+    ps_col="ps"
+)
+aipw = AIPW(
+    effect_type="ATE",
+    treatment_col="treatment",
+    outcome_col="outcome",
+    ps_col="ps",
+    probas_t1_col="predicted_outcome_treated",
+    probas_t0_col="predicted_outcome_control"
+)
+tmle = TMLE(
+    effect_type="ATE",
+    treatment_col="treatment",
+    outcome_col="outcome",
+    ps_col="ps",
+    probas_col="predicted_outcome",
+    probas_t1_col="predicted_outcome_treated",
+    probas_t0_col="predicted_outcome_control"
+)
 
 multi_estimator = MultiEstimator([ipw, aipw, tmle])
 
-# Apply bootstrap, common support, etc.
+# Apply bootstrap (n_bootstraps > 1 triggers bootstrapping), common support, etc.
 results = multi_estimator.compute_effects(
-    df,
-    bootstrap=True,
-    n_bootstraps=50,
+    df, 
+    n_bootstraps=50,  # If n_bootstraps > 1, bootstrapping is applied.
     apply_common_support=True,
     common_support_threshold=0.05,
+    return_bootstrap_samples=True  # Optionally return raw bootstrap estimates.
 )
 print(results)
 ```
 
-`results` will be a dictionary like:
+Here, `results` is a dictionary with keys corresponding to each estimator's class name (e.g., `"IPW"`, `"AIPW"`, `"TMLE"`). For estimators that perform bootstrapping (i.e. when n_bootstraps > 1), the output dictionary includes:
 
-```python
-{
-  "IPW":    {"effect": ..., "std_err": ..., "bootstrap": True, ...},
-  "AIPW":   {"effect": ..., "std_err": ..., ...},
-  "TMLE":   {...},
-}
-```
+- `"effect"`: The mean effect across bootstrap samples.
+- `"std_err"`: The standard deviation of the bootstrap estimates.
+- `"CI95_lower"` and `"CI95_upper"`: The 95% confidence interval computed using the percentile method.
+- `"n_bootstraps"`: The number of bootstrap samples (e.g., 50).
+- Optionally, if `return_bootstrap_samples=True`, a `"bootstrap_samples"` key with the raw bootstrap estimates (e.g., for the overall effect, treated, and untreated effects).
+
+When no bootstrapping is performed (i.e. n_bootstraps is set to 1), `"n_bootstraps"` is set to 0 and the bootstrap summary keys (like `"std_err"`, `"CI95_lower"`, `"CI95_upper"`) may not be present.
 
 ---
 
@@ -132,13 +149,18 @@ df = pd.DataFrame({
 })
 
 # Optimal matching (with caliper=0.05, 1 control per treated)
-matched_optimal = match_optimal(df, n_controls=1, caliper=0.05,
-                                treatment_col="treatment", ps_col="ps", pid_col="PID")
+matched_optimal = match_optimal(
+    df, n_controls=1, caliper=0.05,
+    treatment_col="treatment", ps_col="ps", pid_col="PID"
+)
 print("Optimal Matching Results:")
 print(matched_optimal)
 
 # Eager (greedy) matching
-matched_eager = match_eager(df, caliper=0.05, treatment_col="treatment", ps_col="ps", pid_col="PID")
+matched_eager = match_eager(
+    df, caliper=0.05,
+    treatment_col="treatment", ps_col="ps", pid_col="PID"
+)
 print("Eager Matching Results:")
 print(matched_eager)
 ```

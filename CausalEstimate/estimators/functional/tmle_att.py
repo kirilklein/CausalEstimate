@@ -5,14 +5,23 @@ But slightly modified for simpler implementation, following advice from: https:/
 """
 
 import warnings
+from typing import Tuple
 
 import numpy as np
 from scipy.special import expit, logit
 from statsmodels.genmod.families import Binomial
 from statsmodels.genmod.generalized_linear_model import GLM
+from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
 
-def compute_estimates_att(A, Y, ps, Y0_hat, Y1_hat, Yhat):
+def compute_estimates_att(
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    Y0_hat: np.ndarray,
+    Y1_hat: np.ndarray,
+    Yhat: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute updated outcome estimates for ATT using a one-step TMLE targeting step.
 
@@ -55,7 +64,9 @@ def compute_estimates_att(A, Y, ps, Y0_hat, Y1_hat, Yhat):
     return Q_star_1, Q_star_0
 
 
-def estimate_fluctuation_parameter_att(A, Y, ps, Yhat) -> float:
+def estimate_fluctuation_parameter_att(
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, Yhat: np.ndarray
+) -> float:
     """
     Estimate the fluctuation parameter epsilon for the ATT TMLE via logistic regression.
 
@@ -101,7 +112,14 @@ def estimate_fluctuation_parameter_att(A, Y, ps, Yhat) -> float:
     return epsilon
 
 
-def compute_tmle_att(A, Y, ps, Y0_hat, Y1_hat, Yhat):
+def compute_tmle_att(
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    Y0_hat: np.ndarray,
+    Y1_hat: np.ndarray,
+    Yhat: np.ndarray,
+) -> dict:
     """
     Estimate the Average Treatment Effect on the Treated (ATT) using TMLE.
 
@@ -133,4 +151,4 @@ def compute_tmle_att(A, Y, ps, Y0_hat, Y1_hat, Yhat):
 
     # Compute plugin ATT estimator: average of (Q*_1 - Q*_0) over treated units reweighted by ps/P(A=1)
     psi = np.mean((ps / p_treated) * (Q_star_1 - Q_star_0))
-    return psi
+    return {EFFECT: psi, EFFECT_treated: Q_star_1, EFFECT_untreated: Q_star_0}
