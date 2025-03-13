@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+
 from CausalEstimate.estimators.functional.tmle import (
     compute_tmle_ate,
     compute_tmle_rr,
@@ -10,6 +11,7 @@ from CausalEstimate.estimators.functional.tmle_att import (
     compute_tmle_att,
     estimate_fluctuation_parameter_att,
 )
+from CausalEstimate.utils.constants import EFFECT
 from tests.helpers.setup import TestEffectBase
 
 
@@ -37,7 +39,7 @@ class TestTMLE_ATE_base(TestEffectBase):
         ate_tmle = compute_tmle_ate(
             self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
         )
-        self.assertAlmostEqual(ate_tmle, self.true_ate, delta=0.02)
+        self.assertAlmostEqual(ate_tmle[EFFECT], self.true_ate, delta=0.02)
 
 
 class TestTMLE_PS_misspecified(TestTMLE_ATE_base):
@@ -57,7 +59,7 @@ class TestTMLE_PS_misspecified_and_OutcomeModel_misspecified(TestTMLE_ATE_base):
         ate_tmle = compute_tmle_ate(
             self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
         )
-        self.assertNotAlmostEqual(ate_tmle, self.true_ate, delta=0.1)
+        self.assertNotAlmostEqual(ate_tmle[EFFECT], self.true_ate, delta=0.1)
 
 
 class TestTMLE_RR(TestEffectBase):
@@ -65,7 +67,7 @@ class TestTMLE_RR(TestEffectBase):
         rr_tmle = compute_tmle_rr(
             self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
         )
-        self.assertAlmostEqual(rr_tmle, self.true_rr, delta=1)
+        self.assertAlmostEqual(rr_tmle[EFFECT], self.true_rr, delta=1)
 
 
 class TestTMLE_RR_PS_misspecified(TestTMLE_RR):
@@ -85,7 +87,7 @@ class TestTMLE_RR_PS_misspecified_and_OutcomeModel_misspecified(TestEffectBase):
         rr_tmle = compute_tmle_rr(
             self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
         )
-        self.assertNotAlmostEqual(rr_tmle, self.true_rr, delta=0.1)
+        self.assertNotAlmostEqual(rr_tmle[EFFECT], self.true_rr, delta=0.1)
 
 
 class TestTMLE_ATT(TestEffectBase):
@@ -93,7 +95,7 @@ class TestTMLE_ATT(TestEffectBase):
         att_tmle = compute_tmle_att(
             self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
         )
-        self.assertAlmostEqual(att_tmle, self.true_att, delta=0.02)
+        self.assertAlmostEqual(att_tmle[EFFECT], self.true_att, delta=0.02)
 
 
 class TestTMLE_ATT_PS_misspecified(TestTMLE_ATT):
@@ -113,7 +115,7 @@ class TestTMLE_ATT_PS_misspecified_and_OutcomeModel_misspecified(TestTMLE_ATT):
         att_tmle = compute_tmle_att(
             self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
         )
-        self.assertNotAlmostEqual(att_tmle, self.true_att, delta=0.1)
+        self.assertNotAlmostEqual(att_tmle[EFFECT], self.true_att, delta=0.1)
 
 
 if __name__ == "__main__":

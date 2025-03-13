@@ -1,7 +1,13 @@
 import pandas as pd
 
 from CausalEstimate.utils.checks import check_required_columns
-from CausalEstimate.utils.constants import CONTROL_PID_COL, TREATED_PID_COL
+from CausalEstimate.utils.constants import (
+    CONTROL_PID_COL,
+    TREATED_PID_COL,
+    EFFECT,
+    EFFECT_treated,
+    EFFECT_untreated,
+)
 
 
 def compute_matching_ate(
@@ -41,4 +47,9 @@ def compute_matching_ate(
     diffs = treated_outcomes - avg_control_outcomes
 
     # Return the average difference (ATE)
-    return diffs.mean()
+    ate = diffs.mean()
+    return {
+        EFFECT: ate,
+        EFFECT_treated: treated_outcomes.mean(),
+        EFFECT_untreated: avg_control_outcomes.mean(),
+    }

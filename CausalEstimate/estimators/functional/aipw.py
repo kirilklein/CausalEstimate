@@ -21,28 +21,31 @@ from typing import Tuple
 import numpy as np
 
 from CausalEstimate.estimators.functional.ipw import compute_ipw_ate
+from CausalEstimate.utils.constants import EFFECT
 
 
-def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat):
+def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat) -> dict:
     """
     Augmented Inverse Probability of Treatment Weighting (AIPW) for ATE.
     A: treatment assignment, Y: outcome, ps: propensity score
     Y0_hat: P[Y|A=0], Y1_hat: P[Y|A=1]
     """
-    ate_ipw = compute_ipw_ate(A, Y, ps).mean()
+    ate_ipw_dict = compute_ipw_ate(A, Y, ps)
+    ate_ipw = ate_ipw_dict[EFFECT]
     ate_augmentation = ((A - ps) * ((Y1_hat / ps) - (Y0_hat / (1 - ps)))).mean()
     ate = ate_ipw - ate_augmentation
-    return ate
+    return {EFFECT: ate}
 
 
-def compute_aipw_att(A, Y, ps, Y0_hat) -> float:
+def compute_aipw_att(A, Y, ps, Y0_hat) -> dict:
     """
     Augmented Inverse Probability Weighting (AIPW) for ATT.
     A: treatment assignment (binary), Y: outcome, ps: propensity score
     Y0_hat: predicted outcome under control
     """
     S = compute_att_weights(A, ps)
-    return (S * (Y - Y0_hat)).sum()
+    att = (S * (Y - Y0_hat)).sum()
+    return {EFFECT: att}
 
 
 def compute_att_weights(A, ps) -> np.ndarray:

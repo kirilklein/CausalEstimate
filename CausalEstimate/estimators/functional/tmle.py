@@ -1,12 +1,22 @@
 import warnings
+from typing import Tuple
 
 import numpy as np
 from scipy.special import expit, logit
 from statsmodels.genmod.families import Binomial
 from statsmodels.genmod.generalized_linear_model import GLM
 
+from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
-def compute_tmle_ate(A, Y, ps, Y0_hat, Y1_hat, Yhat):
+
+def compute_tmle_ate(
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    Y0_hat: np.ndarray,
+    Y1_hat: np.ndarray,
+    Yhat: np.ndarray,
+) -> dict:
     """
     Estimate the average treatment effect using the targeted maximum likelihood estimation (TMLE) method.
 
@@ -30,10 +40,18 @@ def compute_tmle_ate(A, Y, ps, Y0_hat, Y1_hat, Yhat):
     float: Average treatment effect estimate
     """
     Q_star_1, Q_star_0 = compute_estimates(A, Y, ps, Y0_hat, Y1_hat, Yhat)
-    return (Q_star_1 - Q_star_0).mean()
+    ate = (Q_star_1 - Q_star_0).mean()
+    return {EFFECT: ate, EFFECT_treated: Q_star_1, EFFECT_untreated: Q_star_0}
 
 
-def compute_tmle_rr(A, Y, ps, Y0_hat, Y1_hat, Yhat):
+def compute_tmle_rr(
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    Y0_hat: np.ndarray,
+    Y1_hat: np.ndarray,
+    Yhat: np.ndarray,
+) -> dict:
     """
     Estimate the risk ratio using the targeted maximum likelihood estimation (TMLE) method.
 
@@ -61,10 +79,18 @@ def compute_tmle_rr(A, Y, ps, Y0_hat, Y1_hat, Yhat):
     if Q_star_0_m == 0:
         warnings.warn("Q_star_0 is 0, returning inf", RuntimeWarning)
         return np.inf
-    return Q_star_1.mean() / Q_star_0_m
+    rr = Q_star_1.mean() / Q_star_0_m
+    return {EFFECT: rr, EFFECT_treated: Q_star_1.mean(), EFFECT_untreated: Q_star_0_m}
 
 
-def compute_estimates(A, Y, ps, Y0_hat, Y1_hat, Yhat):
+def compute_estimates(
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    Y0_hat: np.ndarray,
+    Y1_hat: np.ndarray,
+    Yhat: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute updated outcome estimates using TMLE targeting step.
 
@@ -93,7 +119,9 @@ def compute_estimates(A, Y, ps, Y0_hat, Y1_hat, Yhat):
     return Q_star_1, Q_star_0
 
 
-def update_estimates(ps, Y0_hat, Y1_hat, epsilon):
+def update_estimates(
+    ps: np.ndarray, Y0_hat: np.ndarray, Y1_hat: np.ndarray, epsilon: float
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Update the initial outcome estimates using the fluctuation parameter.
 
@@ -124,7 +152,9 @@ def update_estimates(ps, Y0_hat, Y1_hat, epsilon):
     return Q_star_1, Q_star_0
 
 
-def estimate_fluctuation_parameter(A, Y, ps, Yhat) -> float:
+def estimate_fluctuation_parameter(
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, Yhat: np.ndarray
+) -> float:
     """
     Estimate the fluctuation parameter epsilon using a logistic regression model.
     Returns the estimated epsilon.

@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
-from CausalEstimate.utils.constants import CONTROL_PID_COL, TREATED_PID_COL
+from CausalEstimate.utils.constants import CONTROL_PID_COL, TREATED_PID_COL, EFFECT
 
 
 # Create the unittest class
@@ -44,7 +44,7 @@ class TestComputeMatchingATE(unittest.TestCase):
         result_ate = compute_matching_ate(Y, matching_df)
 
         # Check if the result matches the expected ATE
-        self.assertAlmostEqual(result_ate, expected_ate, places=5)
+        self.assertAlmostEqual(result_ate[EFFECT], expected_ate, places=5)
 
     def test_missing_columns(self):
         # Test for missing columns in the matching DataFrame
