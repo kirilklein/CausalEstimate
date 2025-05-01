@@ -81,7 +81,7 @@ class TestMultiEstimatorCombined(unittest.TestCase):
     def _make_ipw(self):
         """
         Creates and returns an IPW estimator configured for Average Treatment Effect (ATE).
-        
+
         The estimator uses predefined column names for treatment, outcome, and propensity scores.
         """
         return IPW(
