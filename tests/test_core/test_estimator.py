@@ -65,6 +65,9 @@ class TestMultiEstimatorCombined(unittest.TestCase):
         )
 
     def _make_tmle(self):
+        """
+        Creates a TMLE estimator instance configured to estimate the Average Treatment effect on the Treated (ATT) using predefined column names.
+        """
         return TMLE(
             treatment_col=TREATMENT_COL,
             outcome_col=OUTCOME_COL,
@@ -72,10 +75,15 @@ class TestMultiEstimatorCombined(unittest.TestCase):
             probas_col=PROBAS_COL,
             probas_t1_col=PROBAS_T1_COL,
             probas_t0_col=PROBAS_T0_COL,
-            effect_type="ATE",
+            effect_type="ATT",
         )
 
     def _make_ipw(self):
+        """
+        Creates and returns an IPW estimator configured for Average Treatment Effect (ATE).
+
+        The estimator uses predefined column names for treatment, outcome, and propensity scores.
+        """
         return IPW(
             treatment_col=TREATMENT_COL,
             outcome_col=OUTCOME_COL,

@@ -29,6 +29,20 @@ class AIPW(BaseEstimator):
         self.probas_t0_col = probas_t0_col
 
     def _compute_effect(self, df: pd.DataFrame) -> dict:
+        """
+        Computes the causal effect estimate using the Augmented Inverse Probability Weighting (AIPW) method.
+
+        Depending on the specified effect type, calculates the average treatment effect (ATE), average risk reduction (ARR), or average treatment effect on the treated (ATT) using the provided DataFrame. Requires columns for treatment assignment, observed outcome, propensity score, and predicted potential outcomes under treatment and control.
+
+        Args:
+            df: Input DataFrame containing the necessary columns for effect estimation.
+
+        Returns:
+            A dictionary with the estimated effect and related statistics.
+
+        Raises:
+            ValueError: If the specified effect type is not supported.
+        """
         check_required_columns(
             df,
             [
@@ -36,11 +50,16 @@ class AIPW(BaseEstimator):
                 self.probas_t0_col,
             ],
         )
-        A = df[self.treatment_col]
-        Y = df[self.outcome_col]
-        ps = df[self.ps_col]
-        Y1_hat = df[self.probas_t1_col]
-        Y0_hat = df[self.probas_t0_col]
+        A, Y, ps, Y1_hat, Y0_hat = self._get_numpy_arrays(
+            df,
+            [
+                self.treatment_col,
+                self.outcome_col,
+                self.ps_col,
+                self.probas_t1_col,
+                self.probas_t0_col,
+            ],
+        )
 
         check_inputs(A, Y, ps, Y1_hat=Y1_hat, Y0_hat=Y0_hat)
 

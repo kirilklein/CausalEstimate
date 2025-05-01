@@ -32,6 +32,20 @@ class TMLE(BaseEstimator):
 
     def _compute_effect(self, df: pd.DataFrame) -> dict:
         # additional checks required for TMLE
+        """
+        Computes the specified causal effect estimate using Targeted Maximum Likelihood Estimation.
+
+        Validates required columns and input arrays, then calculates the effect based on the estimator's effect type ("ATE", "ARR", "ATT", or "RR") using the appropriate TMLE computation function.
+
+        Args:
+            df: A pandas DataFrame containing treatment, outcome, propensity score, and predicted probability columns.
+
+        Returns:
+            A dictionary with the estimated effect and related statistics.
+
+        Raises:
+            ValueError: If the specified effect type is not supported.
+        """
         check_required_columns(
             df,
             [
@@ -40,12 +54,17 @@ class TMLE(BaseEstimator):
                 self.probas_t0_col,
             ],
         )
-        A = df[self.treatment_col]
-        Y = df[self.outcome_col]
-        ps = df[self.ps_col]
-        Yhat = df[self.probas_col]
-        Y1_hat = df[self.probas_t1_col]
-        Y0_hat = df[self.probas_t0_col]
+        A, Y, ps, Yhat, Y1_hat, Y0_hat = self._get_numpy_arrays(
+            df,
+            [
+                self.treatment_col,
+                self.outcome_col,
+                self.ps_col,
+                self.probas_col,
+                self.probas_t1_col,
+                self.probas_t0_col,
+            ],
+        )
 
         check_inputs(A, Y, ps, Yhat=Yhat, Y1_hat=Y1_hat, Y0_hat=Y0_hat)
 

@@ -1,8 +1,9 @@
 # CausalEstimate/estimators/base.py
 import warnings
 from abc import ABC, abstractmethod
-from typing import Literal
+from typing import List, Literal
 
+import numpy as np
 import pandas as pd
 
 
@@ -35,18 +36,46 @@ class BaseEstimator(ABC):
 
     def compute_effect(self, df: pd.DataFrame) -> dict:
         """
-        Compute the causal effect from the given dataframe.
-        The columns to use are already known from the constructor.
-        This method is to be implemented by child classes.
+        Computes the causal effect estimate from the provided DataFrame.
+
+        Validates the input DataFrame and delegates the actual effect computation to the subclass implementation.
+
+        Args:
+            df: Input pandas DataFrame containing the required columns for estimation.
+
+        Returns:
+            A dictionary with the computed causal effect estimate.
         """
         self._validate_input_df(df)
         return self._compute_effect(df)
 
+    def _get_numpy_arrays(
+        self, df: pd.DataFrame, columns: List[str]
+    ) -> List[np.ndarray]:
+        """
+        Converts specified DataFrame columns to numpy arrays.
+
+        Args:
+            df: The input pandas DataFrame.
+            columns: List of column names to convert.
+
+        Returns:
+            A list of numpy arrays corresponding to the specified columns, in order.
+        """
+        return [df[col].to_numpy() for col in columns]
+
     @abstractmethod
     def _compute_effect(self, df: pd.DataFrame) -> dict:
         """
-        Concrete implementation to be provided by child classes.
-        Input df is guaranteed to be validated.
+        Computes the causal effect estimate using the validated input DataFrame.
+
+        This abstract method must be implemented by subclasses to perform the specific effect estimation logic. The input DataFrame is guaranteed to have passed all validation checks.
+
+        Args:
+            df: A validated pandas DataFrame containing the required columns for effect estimation.
+
+        Returns:
+            A dictionary containing the computed causal effect estimate.
         """
         pass
 
