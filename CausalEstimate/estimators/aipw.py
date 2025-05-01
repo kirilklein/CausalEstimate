@@ -36,11 +36,16 @@ class AIPW(BaseEstimator):
                 self.probas_t0_col,
             ],
         )
-        A = df[self.treatment_col]
-        Y = df[self.outcome_col]
-        ps = df[self.ps_col]
-        Y1_hat = df[self.probas_t1_col]
-        Y0_hat = df[self.probas_t0_col]
+        A, Y, ps, Y1_hat, Y0_hat = self._get_numpy_arrays(
+            df,
+            [
+                self.treatment_col,
+                self.outcome_col,
+                self.ps_col,
+                self.probas_t1_col,
+                self.probas_t0_col,
+            ],
+        )
 
         check_inputs(A, Y, ps, Y1_hat=Y1_hat, Y0_hat=Y0_hat)
 

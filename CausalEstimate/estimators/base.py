@@ -1,8 +1,9 @@
 # CausalEstimate/estimators/base.py
 import warnings
 from abc import ABC, abstractmethod
-from typing import Literal
+from typing import List, Literal
 
+import numpy as np
 import pandas as pd
 
 
@@ -41,6 +42,26 @@ class BaseEstimator(ABC):
         """
         self._validate_input_df(df)
         return self._compute_effect(df)
+
+    def _get_numpy_arrays(
+        self, df: pd.DataFrame, columns: List[str]
+    ) -> List[np.ndarray]:
+        """
+        Get numpy arrays from DataFrame columns.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            Input DataFrame
+        columns : List[str]
+            List of column names to convert
+
+        Returns
+        -------
+        List[np.ndarray]
+            List of numpy arrays in the same order as input columns
+        """
+        return [df[col].to_numpy() for col in columns]
 
     @abstractmethod
     def _compute_effect(self, df: pd.DataFrame) -> dict:

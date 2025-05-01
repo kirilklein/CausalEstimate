@@ -30,9 +30,9 @@ class IPW(BaseEstimator):
         Compute the effect using the functional IPW.
         Available effect types: ATE, ATT, RR, RRT
         """
-        A = df[self.treatment_col]
-        Y = df[self.outcome_col]
-        ps = df[self.ps_col]
+        A, Y, ps = self._get_numpy_arrays(
+            df, [self.treatment_col, self.outcome_col, self.ps_col]
+        )
         if self.effect_type in ["ATE", "ARR"]:
             if self.kwargs.get("stabilized", False):
                 return compute_ipw_ate_stabilized(A, Y, ps)
