@@ -72,7 +72,7 @@ class TestMultiEstimatorCombined(unittest.TestCase):
             probas_col=PROBAS_COL,
             probas_t1_col=PROBAS_T1_COL,
             probas_t0_col=PROBAS_T0_COL,
-            effect_type="ATE",
+            effect_type="ATT",
         )
 
     def _make_ipw(self):
