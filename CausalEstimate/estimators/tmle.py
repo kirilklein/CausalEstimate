@@ -34,15 +34,15 @@ class TMLE(BaseEstimator):
         # additional checks required for TMLE
         """
         Computes the specified causal effect estimate using Targeted Maximum Likelihood Estimation.
-        
+
         Validates required columns and input arrays, then calculates the effect based on the estimator's effect type ("ATE", "ARR", "ATT", or "RR") using the appropriate TMLE computation function.
-        
+
         Args:
             df: A pandas DataFrame containing treatment, outcome, propensity score, and predicted probability columns.
-        
+
         Returns:
             A dictionary with the estimated effect and related statistics.
-        
+
         Raises:
             ValueError: If the specified effect type is not supported.
         """

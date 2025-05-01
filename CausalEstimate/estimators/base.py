@@ -37,12 +37,12 @@ class BaseEstimator(ABC):
     def compute_effect(self, df: pd.DataFrame) -> dict:
         """
         Computes the causal effect estimate from the provided DataFrame.
-        
+
         Validates the input DataFrame and delegates the actual effect computation to the subclass implementation.
-        
+
         Args:
             df: Input pandas DataFrame containing the required columns for estimation.
-        
+
         Returns:
             A dictionary with the computed causal effect estimate.
         """
@@ -54,11 +54,11 @@ class BaseEstimator(ABC):
     ) -> List[np.ndarray]:
         """
         Converts specified DataFrame columns to numpy arrays.
-        
+
         Args:
             df: The input pandas DataFrame.
             columns: List of column names to convert.
-        
+
         Returns:
             A list of numpy arrays corresponding to the specified columns, in order.
         """
@@ -68,12 +68,12 @@ class BaseEstimator(ABC):
     def _compute_effect(self, df: pd.DataFrame) -> dict:
         """
         Computes the causal effect estimate using the validated input DataFrame.
-        
+
         This abstract method must be implemented by subclasses to perform the specific effect estimation logic. The input DataFrame is guaranteed to have passed all validation checks.
-        
+
         Args:
             df: A validated pandas DataFrame containing the required columns for effect estimation.
-        
+
         Returns:
             A dictionary containing the computed causal effect estimate.
         """

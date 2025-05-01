@@ -31,15 +31,15 @@ class AIPW(BaseEstimator):
     def _compute_effect(self, df: pd.DataFrame) -> dict:
         """
         Computes the causal effect estimate using the Augmented Inverse Probability Weighting (AIPW) method.
-        
+
         Depending on the specified effect type, calculates the average treatment effect (ATE), average risk reduction (ARR), or average treatment effect on the treated (ATT) using the provided DataFrame. Requires columns for treatment assignment, observed outcome, propensity score, and predicted potential outcomes under treatment and control.
-        
+
         Args:
             df: Input DataFrame containing the necessary columns for effect estimation.
-        
+
         Returns:
             A dictionary with the estimated effect and related statistics.
-        
+
         Raises:
             ValueError: If the specified effect type is not supported.
         """

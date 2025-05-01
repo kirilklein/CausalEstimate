@@ -28,15 +28,15 @@ class IPW(BaseEstimator):
     def _compute_effect(self, df: pd.DataFrame) -> dict:
         """
         Calculates the specified causal effect using inverse probability weighting (IPW).
-        
+
         Extracts treatment, outcome, and propensity score arrays from the input DataFrame and computes the effect based on the configured effect type. Supports average treatment effect (ATE), average treatment effect on the treated (ATT), risk ratio (RR), and risk ratio for the treated (RRT). For ATE or ARR, uses stabilized weights if specified.
-        
+
         Args:
             df: Input DataFrame containing treatment, outcome, and propensity score columns.
-        
+
         Returns:
             A dictionary with the computed effect estimate.
-        
+
         Raises:
             ValueError: If the effect type is not supported.
         """
