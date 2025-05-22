@@ -104,7 +104,7 @@ def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataF
         + beta[4] * X1 * X2
         + beta[5] * X1**2
         + beta[6] * X2**2
-        + beta[7] * A**2
+        + beta[7] * (1 - A) ** 2
     )
     q_cf = logistic(logit_q_cf)
     Y_cf = rng.binomial(1, q_cf)
