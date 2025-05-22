@@ -7,11 +7,53 @@ from CausalEstimate.utils.constants import OUTCOME_CF_COL, OUTCOME_COL, TREATMEN
 
 def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataFrame:
     """
-    Simulate simple binary outcome data with two covariates and
-    a binary treatment simulated from a logistic regression model.
-    n: number of samples
-    alpha: coefficients for the treatment model (intercept, X1, X2, X1*X2)
-    beta: coefficients for the outcome model (intercept, A, X1, X2, X1*X2)
+    Generate a synthetic dataset with two continuous covariates, a binary treatment,
+    and potential binary outcomes under both observed and counterfactual treatments.
+
+    Parameters
+    ----------
+    n : int
+        Number of samples to simulate.
+    alpha : sequence of float
+        Coefficients for the treatment assignment model (logistic):
+        - alpha[0]: intercept
+        - alpha[1]: linear effect of X1
+        - alpha[2]: linear effect of X2
+        - alpha[3]: interaction effect X1 * X2
+        - alpha[4]: quadratic effect X1²  (optional; defaults to 0 if not provided)
+        - alpha[5]: quadratic effect X2²  (optional; defaults to 0 if not provided)
+        If `len(alpha) < 6`, remaining coefficients are padded with zeros.
+    beta : sequence of float
+        Coefficients for the potential outcome model (logistic):
+        - beta[0]: intercept
+        - beta[1]: main effect of treatment A
+        - beta[2]: linear effect of X1
+        - beta[3]: linear effect of X2
+        - beta[4]: interaction effect X1 * X2
+        - beta[5]: quadratic effect X1²  (optional; defaults to 0)
+        - beta[6]: quadratic effect X2²  (optional; defaults to 0)
+        - beta[7]: optional squared‐treatment term A² (defaults to 0)
+        If `len(beta) < 8`, remaining coefficients are padded with zeros.
+    seed : int or None, optional
+        Random seed for reproducibility. If None (default), a random generator
+        without a fixed seed is used.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with columns:
+        - "X1", "X2": continuous covariates ~ N(0,1)
+        - `<TREATMENT_COL>`: binary treatment assignment A ∼ Bernoulli(sigmoid(alpha⋅[1, X1, X2, …]))
+        - `<OUTCOME_COL>`: observed binary outcome Y ∼ Bernoulli(sigmoid(beta⋅[A, X1, X2, …]))
+        - `<OUTCOME_CF_COL>`: counterfactual outcome Y_cf under the *opposite* treatment A_cf = 1−A.
+
+    Notes
+    -----
+    - Uses a logistic link (`scipy.special.expit`) internally.
+    - Quadratic and interaction terms beyond the first four coefficients are
+      optional and default to zero if omitted.
+    - Counterfactual outcomes are generated with the same coefficient set,
+      simply flipping the treatment value.
     """
     if seed is not None:
         # ise new generator with seed
@@ -55,7 +97,14 @@ def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataF
     Y = rng.binomial(1, q)
 
     logit_q_cf = (
-        beta[0] + beta[1] * (1 - A) + beta[2] * X1 + beta[3] * X2 + beta[4] * X1 * X2
+        beta[0]
+        + beta[1] * (1 - A)
+        + beta[2] * X1
+        + beta[3] * X2
+        + beta[4] * X1 * X2
+        + beta[5] * X1**2
+        + beta[6] * X2**2
+        + beta[7] * A**2
     )
     q_cf = logistic(logit_q_cf)
     Y_cf = rng.binomial(1, q_cf)
