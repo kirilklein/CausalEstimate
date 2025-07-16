@@ -1,10 +1,9 @@
-from typing import Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
-from sklearn.metrics import brier_score_loss, calibration_curve
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Tuple, Optional, Union, Dict, Any
 import pandas as pd
+from sklearn.metrics import brier_score_loss, calibration_curve
 
 
 def plot_outcome_proba_dist(
