@@ -3,7 +3,8 @@ from typing import Any, Dict, Optional, Tuple, Union
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.metrics import brier_score_loss, calibration_curve
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import brier_score_loss
 
 
 def plot_outcome_proba_dist(
