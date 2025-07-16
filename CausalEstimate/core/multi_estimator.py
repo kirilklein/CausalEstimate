@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -7,7 +7,15 @@ from CausalEstimate.core.bootstrap import generate_bootstrap_samples
 from CausalEstimate.core.logging import log_table_stats
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.filter.propensity import filter_common_support
-from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
+from CausalEstimate.utils.constants import (
+    EFFECT,
+    EFFECT_treated,
+    EFFECT_untreated,
+    INITIAL_EFFECT_treated,
+    INITIAL_EFFECT_untreated,
+    ADJUSTMENT_treated,
+    ADJUSTMENT_untreated,
+)
 
 
 class MultiEstimator:
@@ -47,6 +55,14 @@ class MultiEstimator:
             threshold=common_support_threshold,
         ).reset_index(drop=True)
         return filtered_df, ps_col, treatment_col, outcome_col
+
+    @staticmethod
+    def _safe_mean(values: List) -> float | None:
+        """Computes mean of a list, ignoring None values."""
+        valid_values = [v for v in values if v is not None]
+        if not valid_values:
+            return None
+        return float(np.mean(valid_values))
 
     @staticmethod
     def _compute_ci(effects: List[float]) -> Tuple[float, float]:
@@ -113,46 +129,48 @@ class MultiEstimator:
         df: pd.DataFrame,
         n_bootstraps: int,
         return_bootstrap_samples: bool,
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """
         Performs bootstrap resampling for a given estimator and returns summary statistics.
         """
-        effects = []
-        effects_treated = []
-        effects_untreated = []
+        result_keys = [
+            EFFECT,
+            EFFECT_treated,
+            EFFECT_untreated,
+            INITIAL_EFFECT_treated,
+            INITIAL_EFFECT_untreated,
+            ADJUSTMENT_treated,
+            ADJUSTMENT_untreated,
+        ]
+        bootstrap_results = {key: [] for key in result_keys}
+
         samples = generate_bootstrap_samples(df, n_bootstraps)
 
         for sample in samples:
-            result: dict = estimator.compute_effect(sample)
-            effects.append(result[EFFECT])
-            effects_treated.append(result.get(EFFECT_treated))
-            effects_untreated.append(result.get(EFFECT_untreated))
+            result = estimator.compute_effect(sample)
+            for key in result_keys:
+                bootstrap_results[key].append(result.get(key))
 
+        effects = bootstrap_results[EFFECT]
         mean_effect = float(np.mean(effects))
         std_err = float(np.std(effects))
-        ci_lower, ci_upper = self._compute_ci(effects)
+        ci95_lower, ci95_upper = self._compute_ci(effects)
 
-        summary = {
+        summary: Dict[str, Any] = {
             EFFECT: mean_effect,
             "std_err": std_err,
-            "CI95_lower": ci_lower,
-            "CI95_upper": ci_upper,
-            EFFECT_treated: (
-                float(np.mean(effects_treated))
-                if all(x is not None for x in effects_treated)
-                else None
-            ),
-            EFFECT_untreated: (
-                float(np.mean(effects_untreated))
-                if all(x is not None for x in effects_untreated)
-                else None
-            ),
+            "CI95_lower": ci95_lower,
+            "CI95_upper": ci95_upper,
         }
+
+        other_keys = [key for key in result_keys if key != EFFECT]
+        for key in other_keys:
+            summary[key] = self._safe_mean(bootstrap_results[key])
 
         if return_bootstrap_samples:
             summary["bootstrap_samples"] = {
-                EFFECT: effects,
-                EFFECT_treated: effects_treated,
-                EFFECT_untreated: effects_untreated,
+                EFFECT: bootstrap_results[EFFECT],
+                EFFECT_treated: bootstrap_results[EFFECT_treated],
+                EFFECT_untreated: bootstrap_results[EFFECT_untreated],
             }
         return summary
