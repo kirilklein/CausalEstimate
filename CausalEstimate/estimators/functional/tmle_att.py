@@ -11,6 +11,8 @@ import numpy as np
 from scipy.special import expit, logit
 from statsmodels.genmod.families import Binomial
 from statsmodels.genmod.generalized_linear_model import GLM
+
+from CausalEstimate.estimators.functional.utils import compute_initial_effect
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
 
@@ -151,4 +153,10 @@ def compute_tmle_att(
 
     # Compute plugin ATT estimator: average of (Q*_1 - Q*_0) over treated units reweighted by ps/P(A=1)
     psi = np.mean((ps / p_treated) * (Q_star_1 - Q_star_0))
-    return {EFFECT: psi, EFFECT_treated: Q_star_1, EFFECT_untreated: Q_star_0}
+
+    return {
+        EFFECT: psi,
+        EFFECT_treated: Q_star_1,
+        EFFECT_untreated: Q_star_0,
+        **compute_initial_effect(Y1_hat, Y0_hat, Q_star_1, Q_star_0),
+    }

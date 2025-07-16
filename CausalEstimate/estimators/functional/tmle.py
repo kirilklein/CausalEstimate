@@ -6,7 +6,12 @@ from scipy.special import expit, logit
 from statsmodels.genmod.families import Binomial
 from statsmodels.genmod.generalized_linear_model import GLM
 
-from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
+from CausalEstimate.estimators.functional.utils import compute_initial_effect
+from CausalEstimate.utils.constants import (
+    EFFECT,
+    EFFECT_treated,
+    EFFECT_untreated,
+)
 
 
 def compute_tmle_ate(
@@ -41,7 +46,13 @@ def compute_tmle_ate(
     """
     Q_star_1, Q_star_0 = compute_estimates(A, Y, ps, Y0_hat, Y1_hat, Yhat)
     ate = (Q_star_1 - Q_star_0).mean()
-    return {EFFECT: ate, EFFECT_treated: Q_star_1, EFFECT_untreated: Q_star_0}
+
+    return {
+        EFFECT: ate,
+        EFFECT_treated: Q_star_1,
+        EFFECT_untreated: Q_star_0,
+        **compute_initial_effect(Y1_hat, Y0_hat, Q_star_1, Q_star_0),
+    }
 
 
 def compute_tmle_rr(
@@ -80,7 +91,13 @@ def compute_tmle_rr(
         warnings.warn("Q_star_0 is 0, returning inf", RuntimeWarning)
         return np.inf
     rr = Q_star_1.mean() / Q_star_0_m
-    return {EFFECT: rr, EFFECT_treated: Q_star_1.mean(), EFFECT_untreated: Q_star_0_m}
+
+    return {
+        EFFECT: rr,
+        EFFECT_treated: Q_star_1.mean(),
+        EFFECT_untreated: Q_star_0_m,
+        **compute_initial_effect(Y1_hat, Y0_hat, Q_star_1, Q_star_0, rr=True),
+    }
 
 
 def compute_estimates(
