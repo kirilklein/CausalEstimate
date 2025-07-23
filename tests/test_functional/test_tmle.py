@@ -118,5 +118,14 @@ class TestTMLE_ATT_PS_misspecified_and_OutcomeModel_misspecified(TestTMLE_ATT):
         self.assertNotAlmostEqual(att_tmle[EFFECT], self.true_att, delta=0.1)
 
 
+class TestTMLE_ATT_bounded(TestEffectBase):
+    def test_att_is_bounded(self):
+        att_tmle = compute_tmle_att(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertLessEqual(att_tmle[EFFECT], 1)
+        self.assertGreaterEqual(att_tmle[EFFECT], -1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -125,10 +125,6 @@ def compute_tmle_att(
     """
     Estimate the Average Treatment Effect on the Treated (ATT) using TMLE.
 
-    The TMLE ATT estimator is given by:
-      Ψ* = (1/n) * sum [ ps(W_i)/P(A=1) * ( Q*_n(1,W_i) - Q*_n(0,W_i) ) ],
-    where Q*_n(1,W) and Q*_n(0,W) are the updated outcome predictions.
-
     Parameters:
     -----------
     A: array-like
@@ -149,10 +145,8 @@ def compute_tmle_att(
     float: ATT estimate.
     """
     Q_star_1, Q_star_0 = compute_estimates_att(A, Y, ps, Y0_hat, Y1_hat, Yhat)
-    p_treated = np.mean(A == 1)
 
-    # Compute plugin ATT estimator: average of (Q*_1 - Q*_0) over treated units reweighted by ps/P(A=1)
-    psi = np.mean((ps / p_treated) * (Q_star_1 - Q_star_0))
+    psi = np.mean(Q_star_1[A == 1] - Q_star_0[A == 1])
 
     return {
         EFFECT: psi,
