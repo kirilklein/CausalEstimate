@@ -21,7 +21,7 @@ def compute_tmle_ate(
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
     Yhat: np.ndarray,
-    stabilized: bool = False,  # New parameter
+    stabilized: bool = False,
 ) -> dict:
     """
     Estimate the ATE using TMLE, with optional weight stabilization.
@@ -46,7 +46,7 @@ def compute_tmle_rr(
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
     Yhat: np.ndarray,
-    stabilized: bool = False,  # New parameter
+    stabilized: bool = False,
 ) -> dict:
     """
     Estimate the Risk Ratio using TMLE, with optional weight stabilization.
