@@ -1,16 +1,63 @@
 import unittest
-
+from typing import List
 import numpy as np
 
 from CausalEstimate.estimators.functional.ipw import (
     compute_ipw_ate,
-    compute_ipw_ate_stabilized,
     compute_ipw_att,
     compute_ipw_risk_ratio,
     compute_ipw_risk_ratio_treated,
+    compute_ipw_weights,
 )
-from CausalEstimate.utils.constants import EFFECT
+from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 from tests.helpers.setup import TestEffectBase
+
+
+class TestIPWSanityChecks(unittest.TestCase):
+    """
+    Basic smoke tests and edge case handling for IPW estimators using random data.
+    These tests ensure the functions run without crashing and produce plausible outputs.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Simulate simple data for testing
+        rng = np.random.default_rng(42)
+        n = 1000
+        # Ensure both groups are present
+        cls.A = rng.choice([0, 1], size=n, p=[0.5, 0.5])
+        cls.Y = rng.binomial(1, 0.3 + 0.2 * cls.A)  # Outcome now depends on treatment
+        cls.ps = np.clip(rng.uniform(0.1, 0.9, size=n), 0.01, 0.99)
+
+    def test_ipw_ate(self):
+        ate = compute_ipw_ate(self.A, self.Y, self.ps)
+        self.assertIsInstance(ate[EFFECT], float)
+        self.assertTrue(-1 <= ate[EFFECT] <= 1)
+
+    def test_ipw_ate_stabilized(self):
+        # This test now runs on data guaranteed to have both groups
+        ate_stabilized = compute_ipw_ate(self.A, self.Y, self.ps, stabilized=True)
+        self.assertIsInstance(ate_stabilized[EFFECT], float)
+        self.assertTrue(-1 <= ate_stabilized[EFFECT] <= 1)
+        # For this type of estimator, the point estimate of ATE should be identical
+        ate_unstabilized = compute_ipw_ate(self.A, self.Y, self.ps, stabilized=False)
+        self.assertAlmostEqual(ate_stabilized[EFFECT], ate_unstabilized[EFFECT])
+
+    def test_ipw_att(self):
+        att = compute_ipw_att(self.A, self.Y, self.ps)
+        self.assertIsInstance(att[EFFECT], float)
+        self.assertTrue(-1 <= att[EFFECT] <= 1)
+
+    def test_empty_group_handling(self):
+        # Test that providing data with only one group results in NaNs and warnings
+        A_all_treated = np.ones(5)
+        Y_all_treated = np.ones(5)
+        ps_all_treated = np.full(5, 0.8)
+
+        with self.assertWarns(RuntimeWarning):
+            ate = compute_ipw_ate(A_all_treated, Y_all_treated, ps_all_treated)
+            self.assertTrue(np.isnan(ate[EFFECT]))
+            self.assertTrue(np.isnan(ate[EFFECT_untreated]))
 
 
 class TestIPWEstimators(unittest.TestCase):
@@ -31,7 +78,7 @@ class TestIPWEstimators(unittest.TestCase):
         self.assertTrue(-1 <= ate[EFFECT] <= 1)  # Check ATE is within reasonable range
 
     def test_ipw_ate_stabilized(self):
-        ate_stabilized = compute_ipw_ate_stabilized(self.A, self.Y, self.ps)
+        ate_stabilized = compute_ipw_ate(self.A, self.Y, self.ps, stabilized=True)
         self.assertIsInstance(ate_stabilized[EFFECT], float)
         self.assertTrue(
             -1 <= ate_stabilized[EFFECT] <= 1
@@ -84,6 +131,71 @@ class TestIPWEstimators(unittest.TestCase):
         self.assertIsInstance(ate[EFFECT], float)
 
 
+class TestIPWCorrectness(unittest.TestCase):
+    """
+    Tests the correctness of IPW estimates on a small, fixed dataset.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.A = np.array([1, 1, 0, 0, 1])
+        cls.Y = np.array([1, 0, 1, 1, 0])
+        cls.ps = np.array([0.8, 0.6, 0.4, 0.2, 0.7])
+
+    def test_ate_calculation(self):
+        res = compute_ipw_ate(self.A, self.Y, self.ps)
+        self.assertAlmostEqual(res[EFFECT_treated], 0.28767, places=4)
+        self.assertAlmostEqual(res[EFFECT_untreated], 1.0, places=4)
+        self.assertAlmostEqual(res[EFFECT], -0.71233, places=4)
+
+
+class TestIPWWeightFunction(unittest.TestCase):
+    """
+    Directly tests the `compute_ipw_weights` function to ensure logic is correct.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.A = np.array([1, 1, 0, 0])
+        cls.ps = np.array([0.8, 0.4, 0.5, 0.2])
+        cls.pi = 0.5
+
+    def test_ate_stabilized_weights(self):
+        weights = compute_ipw_weights(
+            self.A, self.ps, weight_type="ATE", stabilized=True
+        )
+        expected = np.array(
+            [
+                self.pi / 0.8,
+                self.pi / 0.4,
+                (1 - self.pi) / (1 - 0.5),
+                (1 - self.pi) / (1 - 0.2),
+            ]
+        )
+        np.testing.assert_allclose(weights, expected)
+
+    def test_att_stabilized_weights(self):
+        weights = compute_ipw_weights(
+            self.A, self.ps, weight_type="ATT", stabilized=True
+        )
+        stabilization_factor = (1 - self.pi) / self.pi
+        expected = np.array(
+            [
+                1.0,
+                1.0,
+                (0.5 / 0.5) * stabilization_factor,
+                (0.2 / 0.8) * stabilization_factor,
+            ]
+        )
+        np.testing.assert_allclose(weights, expected)
+
+
+# =============================================================================
+# SECTION 2: Simulation-Based Tests
+# These tests use the TestEffectBase to simulate data where the true effect is known.
+# =============================================================================
+
+
 class TestComputeIPW_base(TestEffectBase):
     def test_compute_ipw_ate(self):
         ate_ipw = compute_ipw_ate(self.A, self.Y, self.ps)
@@ -105,6 +217,64 @@ class TestComputeIPWATE_both_models_misspecified(TestComputeIPW_base):
     def test_compute_ipw_ate(self):
         ate_ipw = compute_ipw_ate(self.A, self.Y, self.ps)
         self.assertNotAlmostEqual(ate_ipw[EFFECT], self.true_ate, delta=0.05)
+
+
+class TestIPWStabilizationVariance(TestEffectBase):
+    """
+    Tests the primary benefit of weight stabilization: variance reduction.
+    This test uses the bootstrap method to estimate the standard error of the ATE
+    in a scenario designed to produce extreme weights.
+    """
+
+    # Use large coefficients to create ps values near 0 and 1 (poor overlap)
+    alpha: List[float] = [0.5, -2.5, 3.0, 0]
+    # Use a reasonably large sample for the bootstrap base
+    n: int = 3000
+
+    def _bootstrap_std_error(self, n_replicates: int, stabilized: bool) -> float:
+        """Helper function to run the bootstrap and return the standard error."""
+        rng = np.random.default_rng(self.seed)
+        n_obs = len(self.A)
+        bootstrap_ates = []
+
+        for _ in range(n_replicates):
+            # Draw bootstrap sample indices with replacement
+            indices = rng.choice(n_obs, size=n_obs, replace=True)
+            A_boot, Y_boot, ps_boot = self.A[indices], self.Y[indices], self.ps[indices]
+
+            # Calculate ATE for the bootstrap sample
+            ate_boot = compute_ipw_ate(A_boot, Y_boot, ps_boot, stabilized=stabilized)
+
+            # Store result if it's valid (not NaN)
+            if not np.isnan(ate_boot[EFFECT]):
+                bootstrap_ates.append(ate_boot[EFFECT])
+
+        # The standard deviation of the bootstrap estimates is the standard error
+        return np.std(bootstrap_ates)
+
+    def test_stabilization_yields_lower_bootstrap_variance(self):
+        """
+        Asserts that the bootstrap standard error is smaller for the stabilized estimator.
+        """
+        n_replicates = 100  # Keep this reasonably low so the test runs fast
+
+        # --- Estimate Standard Error for both estimators ---
+        se_unstabilized = self._bootstrap_std_error(
+            n_replicates=n_replicates, stabilized=False
+        )
+        se_stabilized = self._bootstrap_std_error(
+            n_replicates=n_replicates, stabilized=True
+        )
+
+        print(f"\n[Bootstrap Variance Test] Unstabilized ATE SE: {se_unstabilized:.4f}")
+        print(f"[Bootstrap Variance Test] Stabilized ATE SE:   {se_stabilized:.4f}")
+
+        # --- The Definitive Assertion ---
+        self.assertLess(
+            se_stabilized,
+            se_unstabilized,
+            "Stabilized weights must yield a lower bootstrap standard error, indicating reduced variance.",
+        )
 
 
 # Run the unittests

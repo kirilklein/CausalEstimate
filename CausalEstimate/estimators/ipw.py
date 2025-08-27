@@ -3,7 +3,6 @@ import pandas as pd
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.ipw import (
     compute_ipw_ate,
-    compute_ipw_ate_stabilized,
     compute_ipw_att,
     compute_ipw_risk_ratio,
     compute_ipw_risk_ratio_treated,
@@ -43,16 +42,16 @@ class IPW(BaseEstimator):
         A, Y, ps = self._get_numpy_arrays(
             df, [self.treatment_col, self.outcome_col, self.ps_col]
         )
+        stabilized = self.kwargs.get("stabilized", False)
         if self.effect_type in ["ATE", "ARR"]:
-            if self.kwargs.get("stabilized", False):
-                return compute_ipw_ate_stabilized(A, Y, ps)
-            else:
-                return compute_ipw_ate(A, Y, ps)
+
+            return compute_ipw_ate(A, Y, ps, stabilized=stabilized)
+
         elif self.effect_type in ["ATT"]:
-            return compute_ipw_att(A, Y, ps)
+            return compute_ipw_att(A, Y, ps, stabilized=stabilized)
         elif self.effect_type == "RR":
-            return compute_ipw_risk_ratio(A, Y, ps)
+            return compute_ipw_risk_ratio(A, Y, ps, stabilized=stabilized)
         elif self.effect_type == "RRT":
-            return compute_ipw_risk_ratio_treated(A, Y, ps)
+            return compute_ipw_risk_ratio_treated(A, Y, ps, stabilized=stabilized)
         else:
             raise ValueError(f"Effect type '{self.effect_type}' is not supported.")

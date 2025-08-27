@@ -16,112 +16,216 @@ ATT:
     inverse probability weighting.
     American Journal of Epidemiology, 191(6), 1092-1097.
     https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9271225/
+
+
+We also provide an option to use stabilized weights as described in:
+Hernán MA, Robins JM (2020). Causal Inference: What If.
+Boca Raton: Chapman & Hall/CRC. (Chapter 12)
+https://www.hsph.harvard.edu/miguel-hernan/causal-inference-book/
+
 """
 
 import warnings
-from typing import Tuple
+from typing import Tuple, Literal
 
 import numpy as np
 
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
+# --- Core Effect Calculation Functions ---
 
-def compute_ipw_risk_ratio(A: np.ndarray, Y: np.ndarray, ps: np.ndarray) -> dict:
+
+def compute_ipw_risk_ratio(
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
+) -> dict:
     """
-    Relative Risk
-    A: treatment assignment, Y: outcome, ps: propensity score
+    Computes the Relative Risk using IPW.
     """
-    mu_1, mu_0 = compute_mean_potential_outcomes(A, Y, ps)
-    rr = mu_1 / mu_0
+    mu_1, mu_0 = compute_mean_potential_outcomes(A, Y, ps, stabilized=stabilized)
+    if mu_0 == 0:
+        warnings.warn(
+            "Risk in untreated group (mu_0) is 0, returning inf for Risk Ratio.",
+            RuntimeWarning,
+        )
+        rr = np.inf
+    else:
+        rr = mu_1 / mu_0
     return {EFFECT: rr, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
-def compute_ipw_ate(A: np.ndarray, Y: np.ndarray, ps: np.ndarray) -> dict:
+def compute_ipw_ate(
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
+) -> dict:
     """
-    Average Treatment Effect
-    A: treatment assignment, Y: outcome, ps: propensity score
+    Computes the Average Treatment Effect (ATE) using IPW.
     """
-    mu1, mu0 = compute_mean_potential_outcomes(A, Y, ps)
-    ate = mu1 - mu0
-    return {EFFECT: ate, EFFECT_treated: mu1, EFFECT_untreated: mu0}
+    mu_1, mu_0 = compute_mean_potential_outcomes(A, Y, ps, stabilized=stabilized)
+    ate = mu_1 - mu_0
+    return {EFFECT: ate, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
-def compute_mean_potential_outcomes(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray
-) -> Tuple[float, float]:
+def compute_ipw_att(
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
+) -> dict:
     """
-    Compute E[Y|A=1] and E[Y|A=0] for Y=0/1
+    Computes the Average Treatment Effect on the Treated (ATT) using IPW.
     """
-    mu_1 = (A * Y / ps).mean()
-    mu_0 = ((1 - A) * Y / (1 - ps)).mean()
-    return mu_1, mu_0
-
-
-def compute_ipw_ate_stabilized(A: np.ndarray, Y: np.ndarray, ps: np.ndarray) -> dict:
-    """
-    Given by Austin (2016)
-    Average Treatment Effect with stabilized weights.
-    A: treatment assignment, Y: outcome, ps: propensity score
-    """
-    W = compute_stabilized_ate_weights(A, ps)
-    Y1_weighed = (W * A * Y).mean()
-    Y0_weighed = (W * (1 - A) * Y).mean()
-    ate = Y1_weighed - Y0_weighed
-    return {EFFECT: ate, EFFECT_treated: Y1_weighed, EFFECT_untreated: Y0_weighed}
-
-
-def compute_ipw_att(A: np.ndarray, Y: np.ndarray, ps: np.ndarray) -> dict:
-    """
-    Average Treatment Effect on the Treated with stabilized weights.
-    Reifeis et. al. (2022).
-    A: treatment assignment, Y: outcome, ps: propensity score
-    """
-    mu_1, mu_0 = compute_mean_potential_outcomes_treated(A, Y, ps)
+    mu_1, mu_0 = compute_mean_potential_outcomes_treated(
+        A, Y, ps, stabilized=stabilized
+    )
     att = mu_1 - mu_0
     return {EFFECT: att, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
 def compute_ipw_risk_ratio_treated(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
 ) -> dict:
     """
-    Relative Risk of the Treated with stabilized weights. Reifeis et. al. (2022)
-    A: treatment assignment, Y: outcome, ps: propensity score
+    Computes the Relative Risk for the Treated (RRT) using IPW.
     """
-    mu_1, mu_0 = compute_mean_potential_outcomes_treated(A, Y, ps)
+    mu_1, mu_0 = compute_mean_potential_outcomes_treated(
+        A, Y, ps, stabilized=stabilized
+    )
     if mu_0 == 0:
-        warnings.warn("mu_0 is 0, returning inf", RuntimeWarning)
-        return {EFFECT: np.inf, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
-    rr = mu_1 / mu_0
-    return {EFFECT: rr, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
+        warnings.warn(
+            "Risk in counterfactual untreated group (mu_0) is 0, returning inf for RRT.",
+            RuntimeWarning,
+        )
+        rrt = np.inf
+    else:
+        rrt = mu_1 / mu_0
+    return {EFFECT: rrt, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
-def compute_mean_potential_outcomes_treated(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray
+# --- Potential Outcome Mean Estimators (Refactored) ---
+
+
+def compute_mean_potential_outcomes(
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
 ) -> Tuple[float, float]:
     """
-    Compute E[Y|A=1] for Y=0/1
+    Computes E[Y(1)] and E[Y(0)] for the ATE using a consistent weighted mean formula.
+    Handles edge cases where one treatment group is empty.
     """
-    W = compute_stabilized_att_weights(A, ps)
-    mu_1 = (W * A * Y).sum() / (W * A).sum()
-    mu_0 = (W * (1 - A) * Y).sum() / (W * (1 - A)).sum()
+    W = compute_ipw_weights(A, ps, weight_type="ATE", stabilized=stabilized)
+
+    # --- Calculate for Treated Group (mu_1) ---
+    sum_w_treated = (W * A).sum()
+    if sum_w_treated == 0:
+        warnings.warn(
+            "No subjects in the treated group (or sum of weights is zero). mu_1 is NaN.",
+            RuntimeWarning,
+        )
+        mu_1 = np.nan
+    else:
+        mu_1 = (W * A * Y).sum() / sum_w_treated
+
+    # --- Calculate for Control Group (mu_0) ---
+    sum_w_control = (W * (1 - A)).sum()
+    if sum_w_control == 0:
+        warnings.warn(
+            "No subjects in the control group (or sum of weights is zero). mu_0 is NaN.",
+            RuntimeWarning,
+        )
+        mu_0 = np.nan
+    else:
+        mu_0 = (W * (1 - A) * Y).sum() / sum_w_control
+
     return mu_1, mu_0
 
 
-def compute_stabilized_ate_weights(A: np.ndarray, ps: np.ndarray) -> np.ndarray:
+def compute_mean_potential_outcomes_treated(
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
+) -> Tuple[float, float]:
     """
-    Compute the (stabilized) weights for the ATE estimator
-    Austin (2016)
+    Computes E[Y(1)|A=1] and E[Y(0)|A=1] for the ATT using a consistent weighted mean formula.
+    Handles edge cases where one treatment group is empty.
     """
-    weight_treated = A.mean() * A / ps
-    weight_control = (1 - A).mean() * (1 - A) / (1 - ps)
-    return weight_treated + weight_control
+    W = compute_ipw_weights(A, ps, weight_type="ATT", stabilized=stabilized)
+
+    # --- Calculate for Treated Group (mu_1) ---
+    num_treated = A.sum()
+    if num_treated == 0:
+        warnings.warn(
+            "No subjects in the treated group for ATT (or sum of weights is zero). mu_1 is NaN.",
+            RuntimeWarning,
+        )
+        mu_1 = np.nan
+    else:
+        # For ATT, the weight for the treated is 1, so this simplifies to mean(Y[A==1])
+        mu_1 = Y[A == 1].mean()
+
+    # --- Calculate for Control Group (mu_0) ---
+    sum_w_control = (W * (1 - A)).sum()
+    if sum_w_control == 0:
+        warnings.warn(
+            "No subjects in the control group for ATT (or sum of weights is zero). mu_0 is NaN.",
+            RuntimeWarning,
+        )
+        mu_0 = np.nan
+    else:
+        # For ATT, controls are weighted to look like the treated population
+        mu_0 = (W * (1 - A) * Y).sum() / sum_w_control
+
+    return mu_1, mu_0
 
 
-def compute_stabilized_att_weights(A: np.ndarray, ps: np.ndarray) -> np.ndarray:
+# --- Centralized Weight Calculation Function (Corrected and Finalized) ---
+
+
+def compute_ipw_weights(
+    A: np.ndarray,
+    ps: np.ndarray,
+    weight_type: Literal["ATE", "ATT"] = "ATE",
+    stabilized: bool = False,
+) -> np.ndarray:
     """
-    Compute the (stabilized) weights for the ATT estimator
-    As given in the web appendix of Reifeis et. al. (2022)
+    Compute IPW weights for ATE or ATT with optional stabilization.
+
+    Args:
+        A: Treatment assignment vector (binary).
+        ps: Propensity score vector.
+        weight_type: The type of effect, either 'ATE' or 'ATT'.
+        stabilized: If True, computes stabilized weights.
+
+    Returns:
+        A numpy array containing the IPW weights for each observation.
+
+    Formulas:
+        pi = P(A=1) estimated as mean(A)
+
+        ATE:
+            - Unstabilized: w = A/ps + (1-A)/(1-ps)
+            - Stabilized:   w = A*(pi/ps) + (1-A)*((1-pi)/(1-ps))
+
+        ATT:
+            - Unstabilized: w = A + (1-A)*(ps/(1-ps))
+            - Stabilized:   w = A + (1-A)*(ps/(1-ps)) * ((1-pi)/pi)
     """
-    h = ps / (1 - ps)
-    return A + (1 - A) * h
+    if weight_type == "ATE":
+        if stabilized:
+            pi = A.mean()
+            weight_treated = pi / ps
+            weight_control = (1 - pi) / (1 - ps)
+        else:
+            weight_treated = 1 / ps
+            weight_control = 1 / (1 - ps)
+        return A * weight_treated + (1 - A) * weight_control
+
+    elif weight_type == "ATT":
+        # Weight for treated is always 1
+        weight_treated = np.ones_like(A, dtype=float)
+
+        # Weight for control
+        weight_control = ps / (1 - ps)
+        if stabilized:
+            pi = A.mean()
+            # Avoid division by zero if there are no treated subjects
+            if pi > 0:
+                stabilization_factor = (1 - pi) / pi
+                weight_control *= stabilization_factor
+
+        return A * weight_treated + (1 - A) * weight_control
+
+    else:
+        raise ValueError("weight_type must be 'ATE' or 'ATT'")
