@@ -11,7 +11,6 @@ from CausalEstimate.estimators.functional.tmle import (
 )
 from CausalEstimate.estimators.functional.tmle_att import (
     compute_tmle_att,
-    estimate_fluctuation_parameter_att,
 )
 from CausalEstimate.estimators.functional.utils import (
     compute_clever_covariate_ate,
@@ -37,7 +36,7 @@ class TestTMLE_ATT_Functions(TestEffectBase):
 
     def test_estimate_fluctuation_parameter_att(self):
         H = compute_clever_covariate_att(self.A, self.ps)
-        epsilon = estimate_fluctuation_parameter_att(H, self.Y, self.Yhat)
+        epsilon = estimate_fluctuation_parameter(H, self.Y, self.Yhat)
         self.assertIsInstance(epsilon, float)
         self.assertTrue(np.isfinite(epsilon))
 
@@ -614,7 +613,7 @@ class TestTMLEFluctuationParameter(TestEffectBase):
         H_ate = compute_clever_covariate_ate(self.A, self.ps)
         H_att = compute_clever_covariate_att(self.A, self.ps)
         epsilon_ate = estimate_fluctuation_parameter(H_ate, self.Y, self.Yhat)
-        epsilon_att = estimate_fluctuation_parameter_att(H_att, self.Y, self.Yhat)
+        epsilon_att = estimate_fluctuation_parameter(H_att, self.Y, self.Yhat)
 
         # Should be finite numbers
         self.assertTrue(np.isfinite(epsilon_ate))

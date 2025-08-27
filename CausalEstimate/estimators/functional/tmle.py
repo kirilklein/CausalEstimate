@@ -3,12 +3,12 @@ from typing import Tuple, Optional
 
 import numpy as np
 from scipy.special import expit, logit
-from statsmodels.genmod.families import Binomial
-from statsmodels.genmod.generalized_linear_model import GLM
+
 
 from CausalEstimate.estimators.functional.utils import (
     compute_initial_effect,
     compute_clever_covariate_ate,
+    estimate_fluctuation_parameter,
 )
 from CausalEstimate.utils.constants import (
     EFFECT,
@@ -122,19 +122,3 @@ def update_estimates(
     Q_star_0 = expit(logit(Y0_hat) + epsilon * H0)
 
     return Q_star_1, Q_star_0
-
-
-def estimate_fluctuation_parameter(
-    H: np.ndarray,
-    Y: np.ndarray,
-    Yhat: np.ndarray,
-) -> float:
-    """
-    Estimate the fluctuation parameter epsilon using a logistic regression model.
-    """
-
-    offset = logit(Yhat)
-    model = GLM(Y, H, family=Binomial(), offset=offset).fit()
-
-    # model.params is a one-element array containing epsilon
-    return np.asarray(model.params)[0]

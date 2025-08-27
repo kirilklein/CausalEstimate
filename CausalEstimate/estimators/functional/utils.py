@@ -8,6 +8,9 @@ from CausalEstimate.utils.constants import (
     INITIAL_EFFECT_treated,
     INITIAL_EFFECT_untreated,
 )
+from statsmodels.genmod.families import Binomial
+from statsmodels.genmod.generalized_linear_model import GLM
+from scipy.special import logit
 
 
 def compute_clever_covariate_ate(
@@ -165,3 +168,19 @@ def compute_initial_effect(
         ADJUSTMENT_treated: adjustment_1,
         ADJUSTMENT_untreated: adjustment_0,
     }
+
+
+def estimate_fluctuation_parameter(
+    H: np.ndarray,
+    Y: np.ndarray,
+    Yhat: np.ndarray,
+) -> float:
+    """
+    Estimate the fluctuation parameter epsilon using a logistic regression model.
+    """
+
+    offset = logit(Yhat)
+    model = GLM(Y, H, family=Binomial(), offset=offset).fit()
+
+    # model.params is a one-element array containing epsilon
+    return np.asarray(model.params)[0]

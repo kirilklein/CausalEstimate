@@ -8,12 +8,11 @@ from typing import Tuple
 
 import numpy as np
 from scipy.special import expit, logit
-from statsmodels.genmod.families import Binomial
-from statsmodels.genmod.generalized_linear_model import GLM
 
 from CausalEstimate.estimators.functional.utils import (
     compute_initial_effect,
     compute_clever_covariate_att,
+    estimate_fluctuation_parameter,
 )
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
@@ -32,7 +31,7 @@ def compute_estimates_att(
     """
     # Estimate the fluctuation parameter epsilon using a logistic regression:
     H = compute_clever_covariate_att(A, ps, stabilized=stabilized)
-    epsilon = estimate_fluctuation_parameter_att(H, Y, Yhat)
+    epsilon = estimate_fluctuation_parameter(H, Y, Yhat)
 
     p_treated = np.mean(A == 1)
 
@@ -51,23 +50,6 @@ def compute_estimates_att(
     Q_star_0 = expit(logit(Y0_hat) + update_term_0)
 
     return Q_star_1, Q_star_0
-
-
-def estimate_fluctuation_parameter_att(
-    H: np.ndarray,
-    Y: np.ndarray,
-    Yhat: np.ndarray,
-) -> float:
-    """
-    Estimate the fluctuation parameter epsilon for the ATT TMLE via logistic regression.
-    """
-    H_2d: np.ndarray = H.reshape(-1, 1)  # reshape to 2D array for statsmodels
-    offset = logit(Yhat)
-    model = GLM(Y, H_2d, family=Binomial(), offset=offset)
-    results = model.fit()
-
-    epsilon = results.params[0]
-    return epsilon
 
 
 def compute_tmle_att(
