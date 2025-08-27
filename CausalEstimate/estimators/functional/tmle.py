@@ -88,7 +88,8 @@ def compute_estimates(
     """
     Compute updated outcome estimates using TMLE targeting step.
     """
-    epsilon = estimate_fluctuation_parameter(A, Y, ps, Yhat, stabilized=stabilized)
+    H = compute_clever_covariate_ate(A, ps, stabilized=stabilized)
+    epsilon = estimate_fluctuation_parameter(H, Y, Yhat)
 
     pi = A.mean() if stabilized else None
     Q_star_1, Q_star_0 = update_estimates(ps, Y0_hat, Y1_hat, epsilon, pi=pi)
@@ -124,16 +125,13 @@ def update_estimates(
 
 
 def estimate_fluctuation_parameter(
-    A: np.ndarray,
+    H: np.ndarray,
     Y: np.ndarray,
-    ps: np.ndarray,
     Yhat: np.ndarray,
-    stabilized: bool = False,
 ) -> float:
     """
     Estimate the fluctuation parameter epsilon using a logistic regression model.
     """
-    H = compute_clever_covariate_ate(A, ps, stabilized=stabilized)
 
     offset = logit(Yhat)
     model = GLM(Y, H, family=Binomial(), offset=offset).fit()

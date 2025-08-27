@@ -31,7 +31,8 @@ def compute_estimates_att(
     Compute updated outcome estimates for ATT using a one-step TMLE targeting step.
     """
     # Estimate the fluctuation parameter epsilon using a logistic regression:
-    epsilon = estimate_fluctuation_parameter_att(A, Y, ps, Yhat, stabilized=stabilized)
+    H = compute_clever_covariate_att(A, ps, stabilized=stabilized)
+    epsilon = estimate_fluctuation_parameter_att(H, Y, Yhat)
 
     p_treated = np.mean(A == 1)
 
@@ -53,18 +54,14 @@ def compute_estimates_att(
 
 
 def estimate_fluctuation_parameter_att(
-    A: np.ndarray,
+    H: np.ndarray,
     Y: np.ndarray,
-    ps: np.ndarray,
     Yhat: np.ndarray,
-    stabilized: bool = False,
 ) -> float:
     """
     Estimate the fluctuation parameter epsilon for the ATT TMLE via logistic regression.
     """
-    H = compute_clever_covariate_att(A, ps, stabilized=stabilized)
-
-    H_2d: np.ndarray = H.reshape(-1, 1)
+    H_2d: np.ndarray = H.reshape(-1, 1)  # reshape to 2D array for statsmodels
     offset = logit(Yhat)
     model = GLM(Y, H_2d, family=Binomial(), offset=offset)
     results = model.fit()

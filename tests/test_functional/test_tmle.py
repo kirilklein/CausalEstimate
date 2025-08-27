@@ -13,6 +13,10 @@ from CausalEstimate.estimators.functional.tmle_att import (
     compute_tmle_att,
     estimate_fluctuation_parameter_att,
 )
+from CausalEstimate.estimators.functional.utils import (
+    compute_clever_covariate_ate,
+    compute_clever_covariate_att,
+)
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 from tests.helpers.setup import TestEffectBase
 
@@ -21,7 +25,8 @@ class TestTMLEFunctions(TestEffectBase):
     """Basic tests for TMLE functions"""
 
     def test_estimate_fluctuation_parameter(self):
-        epsilon = estimate_fluctuation_parameter(self.A, self.Y, self.ps, self.Yhat)
+        H = compute_clever_covariate_ate(self.A, self.ps)
+        epsilon = estimate_fluctuation_parameter(H, self.Y, self.Yhat)
         self.assertIsInstance(epsilon, float)
         # Check that epsilon is a finite number
         self.assertTrue(np.isfinite(epsilon))
@@ -31,7 +36,8 @@ class TestTMLE_ATT_Functions(TestEffectBase):
     """Basic tests for TMLE functions"""
 
     def test_estimate_fluctuation_parameter_att(self):
-        epsilon = estimate_fluctuation_parameter_att(self.A, self.Y, self.ps, self.Yhat)
+        H = compute_clever_covariate_att(self.A, self.ps)
+        epsilon = estimate_fluctuation_parameter_att(H, self.Y, self.Yhat)
         self.assertIsInstance(epsilon, float)
         self.assertTrue(np.isfinite(epsilon))
 
@@ -605,10 +611,10 @@ class TestTMLEFluctuationParameter(TestEffectBase):
 
     def test_fluctuation_parameter_properties(self):
         """Test properties of the estimated fluctuation parameter"""
-        epsilon_ate = estimate_fluctuation_parameter(self.A, self.Y, self.ps, self.Yhat)
-        epsilon_att = estimate_fluctuation_parameter_att(
-            self.A, self.Y, self.ps, self.Yhat
-        )
+        H_ate = compute_clever_covariate_ate(self.A, self.ps)
+        H_att = compute_clever_covariate_att(self.A, self.ps)
+        epsilon_ate = estimate_fluctuation_parameter(H_ate, self.Y, self.Yhat)
+        epsilon_att = estimate_fluctuation_parameter_att(H_att, self.Y, self.Yhat)
 
         # Should be finite numbers
         self.assertTrue(np.isfinite(epsilon_ate))
@@ -624,11 +630,13 @@ class TestTMLEFluctuationParameter(TestEffectBase):
 
     def test_fluctuation_parameter_stabilized_vs_unstabilized(self):
         """Test fluctuation parameter with and without stabilization"""
+        H_unstabilized = compute_clever_covariate_ate(self.A, self.ps, stabilized=False)
+        H_stabilized = compute_clever_covariate_ate(self.A, self.ps, stabilized=True)
         epsilon_unstabilized = estimate_fluctuation_parameter(
-            self.A, self.Y, self.ps, self.Yhat, stabilized=False
+            H_unstabilized, self.Y, self.Yhat
         )
         epsilon_stabilized = estimate_fluctuation_parameter(
-            self.A, self.Y, self.ps, self.Yhat, stabilized=True
+            H_stabilized, self.Y, self.Yhat
         )
 
         # Both should be finite
