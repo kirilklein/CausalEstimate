@@ -9,7 +9,13 @@ from CausalEstimate.utils.constants import (
 )
 
 
-def compute_initial_effect(Y1_hat, Y0_hat, Q_star_1, Q_star_0, rr=False) -> dict:
+def compute_initial_effect(
+    Y1_hat: np.ndarray,
+    Y0_hat: np.ndarray,
+    Q_star_1: np.ndarray,
+    Q_star_0: np.ndarray,
+    rr: bool = False,
+) -> dict:
     """
     Compute the initial effect and adjustments.
 
