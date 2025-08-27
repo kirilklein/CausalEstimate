@@ -4,7 +4,6 @@ Van der Laan MJ, Rose S. Targeted learning: causal inference for observational a
 But slightly modified for simpler implementation, following advice from: https://stats.stackexchange.com/questions/520472/can-targeted-maximum-likelihood-estimation-find-the-average-treatment-effect-on/534018#534018
 """
 
-import warnings
 from typing import Tuple
 
 import numpy as np
@@ -12,7 +11,10 @@ from scipy.special import expit, logit
 from statsmodels.genmod.families import Binomial
 from statsmodels.genmod.generalized_linear_model import GLM
 
-from CausalEstimate.estimators.functional.utils import compute_initial_effect
+from CausalEstimate.estimators.functional.utils import (
+    compute_initial_effect,
+    compute_clever_covariate_att,
+)
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
 
@@ -60,36 +62,7 @@ def estimate_fluctuation_parameter_att(
     """
     Estimate the fluctuation parameter epsilon for the ATT TMLE via logistic regression.
     """
-    p_treated = np.mean(A == 1)
-    if p_treated == 0:
-        warnings.warn("No treated subjects found, returning epsilon=0.", RuntimeWarning)
-        return 0.0
-
-    # Component for treated individuals
-    H_treated: np.ndarray = A / p_treated
-
-    # Component for control individuals
-    if stabilized:
-        # Stabilized clever covariate for controls
-        H_control: np.ndarray = (1 - A) * ps * (1 - p_treated) / (p_treated * (1 - ps))
-    else:
-        # Unstabilized clever covariate for controls
-        H_control: np.ndarray = (1 - A) * ps / (p_treated * (1 - ps))
-
-    H: np.ndarray = H_treated - H_control
-
-    if np.any(np.abs(H) > 100):
-        warnings.warn(
-            "Extremely large values > 100 detected in clever covariate H for ATT. "
-            "This may indicate issues with propensity scores near 0 or 1.",
-            RuntimeWarning,
-        )
-    if np.any(np.abs(H) < 1e-6):
-        warnings.warn(
-            "Extremely small values < 1e-6 detected in clever covariate H for ATT. "
-            "This may indicate issues with propensity scores near 0 or 1.",
-            RuntimeWarning,
-        )
+    H = compute_clever_covariate_att(A, ps, stabilized=stabilized)
 
     H_2d: np.ndarray = H.reshape(-1, 1)
     offset = logit(Yhat)

@@ -6,7 +6,10 @@ from scipy.special import expit, logit
 from statsmodels.genmod.families import Binomial
 from statsmodels.genmod.generalized_linear_model import GLM
 
-from CausalEstimate.estimators.functional.utils import compute_initial_effect
+from CausalEstimate.estimators.functional.utils import (
+    compute_initial_effect,
+    compute_clever_covariate_ate,
+)
 from CausalEstimate.utils.constants import (
     EFFECT,
     EFFECT_treated,
@@ -130,26 +133,7 @@ def estimate_fluctuation_parameter(
     """
     Estimate the fluctuation parameter epsilon using a logistic regression model.
     """
-    if stabilized:
-        pi = A.mean()
-        # Stabilized clever covariate
-        H = A * pi / ps - (1 - A) * (1 - pi) / (1 - ps)
-    else:
-        # Unstabilized clever covariate
-        H = A / ps - (1 - A) / (1 - ps)
-
-    if np.any(np.abs(H) > 100):
-        warnings.warn(
-            "Extremely large values > 100 detected in clever covariate H. "
-            "This may indicate issues with propensity scores near 0 or 1.",
-            RuntimeWarning,
-        )
-    if np.any(np.abs(H) < 1e-6):
-        warnings.warn(
-            "Extremely small values < 1e-6 detected in clever covariate H. "
-            "This may indicate issues with propensity scores near 0 or 1.",
-            RuntimeWarning,
-        )
+    H = compute_clever_covariate_ate(A, ps, stabilized=stabilized)
 
     offset = logit(Yhat)
     model = GLM(Y, H, family=Binomial(), offset=offset).fit()
