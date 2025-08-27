@@ -17,12 +17,10 @@ ATT:
     American Journal of Epidemiology, 191(6), 1092-1097.
     https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9271225/
 
-
 We also provide an option to use stabilized weights as described in:
-Hernán MA, Robins JM (2020). Causal Inference: What If.
-Boca Raton: Chapman & Hall/CRC. (Chapter 12)
-https://www.hsph.harvard.edu/miguel-hernan/causal-inference-book/
-
+Miguel A Hernán 1, James M Robins
+Estimating causal effects from epidemiological data
+https://pubmed.ncbi.nlm.nih.gov/16790829/
 """
 
 import warnings
