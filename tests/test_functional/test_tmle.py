@@ -363,11 +363,14 @@ class TestTMLERiskRatioSpecialCases(TestEffectBase):
             rr_result = compute_tmle_rr(
                 self.A, self.Y, self.ps, Y0_hat_zero, Y1_hat_nonzero, Yhat_mixed
             )
-
+            print("=" * 100)
+            print(rr_result)
+            print("=" * 100)
             # Should warn about zero denominator and return inf
             self.assertTrue(
                 any("Mean of Q_star_0 is 0" in str(warning.message) for warning in w)
             )
+
             self.assertEqual(rr_result[EFFECT], np.inf)
 
 

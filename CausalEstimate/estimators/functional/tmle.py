@@ -60,13 +60,19 @@ def compute_tmle_rr(
     Q_star_1_m = Q_star_1.mean()
     Q_star_0_m = Q_star_0.mean()
 
-    if Q_star_0_m == 0:
+    if np.isclose(Q_star_0_m, 0, atol=1e-8):
         warnings.warn(
             "Mean of Q_star_0 is 0, returning inf for Risk Ratio.", RuntimeWarning
         )
         rr = np.inf
     else:
         rr = Q_star_1_m / Q_star_0_m
+
+    if rr > 1e5:
+        warnings.warn(
+            "Risk ratio is unrealistically large, returning inf.", RuntimeWarning
+        )
+        rr = np.inf
 
     return {
         EFFECT: rr,

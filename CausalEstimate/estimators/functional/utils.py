@@ -10,6 +10,7 @@ from CausalEstimate.utils.constants import (
 )
 from statsmodels.genmod.families import Binomial
 from statsmodels.genmod.generalized_linear_model import GLM
+import statsmodels.tools.sm_exceptions as sm_exceptions
 from scipy.special import logit
 
 
@@ -146,16 +147,26 @@ def compute_initial_effect(
     initial_effect_0 = Y0_hat.mean()
 
     if rr:
-        if initial_effect_0 == 0:
+        # Check for practically zero denominator (not just exact zero)
+        if np.isclose(initial_effect_0, 0, atol=1e-8):
             import warnings
 
             warnings.warn(
-                "Initial effect for untreated group is 0, risk ratio undefined",
+                "Initial effect for untreated group is 0 or very close to 0, risk ratio undefined",
                 RuntimeWarning,
             )
             initial_effect = np.inf
         else:
-            initial_effect = initial_effect_1 / initial_effect_0
+            # Also check if the resulting ratio would be unrealistically large
+            ratio = initial_effect_1 / initial_effect_0
+            if np.abs(ratio) > 1e5:  # Threshold for "unrealistically large"
+                warnings.warn(
+                    f"Risk ratio is unrealistically large ({ratio:.2e}), setting to inf",
+                    RuntimeWarning,
+                )
+                initial_effect = np.inf
+            else:
+                initial_effect = ratio
     else:
         initial_effect = initial_effect_1 - initial_effect_0
 
@@ -176,11 +187,107 @@ def estimate_fluctuation_parameter(
     Yhat: np.ndarray,
 ) -> float:
     """
-    Estimate the fluctuation parameter epsilon using a logistic regression model.
+    Robustly estimates the fluctuation parameter epsilon for the TMLE targeting step.
+
+    This function attempts to fit a standard iterative Maximum Likelihood Estimate (MLE)
+    for epsilon. It includes safety checks for common failure modes of the logistic
+    regression, such as perfect separation, convergence failure, or numerically
+    unstable (i.e., extremely large) estimates.
+
+    If any of these issues are detected, it issues a warning and falls back to the
+    computationally stable `_compute_epsilon_one_step` function.
+
+    Args:
+        H: The clever covariate array, H(A,X).
+        Y: The binary outcome array.
+        Yhat: The initial predictions for the outcome, Q(A,X).
+
+    Returns:
+        The estimated epsilon, choosing the most stable and reliable result.
     """
-
     offset = logit(Yhat)
-    model = GLM(Y, H, family=Binomial(), offset=offset).fit()
+    epsilon_mle = np.nan
+    converged = False
 
-    # model.params is a one-element array containing epsilon
-    return np.asarray(model.params)[0]
+    # --- 1. Attempt to fit the standard MLE for epsilon ---
+    # We catch both explicit errors (like perfect separation) and implicit
+    # convergence warnings from the statsmodels GLM fitter.
+    try:
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always", sm_exceptions.ConvergenceWarning)
+
+            # Reshape H for statsmodels (it expects a 2D array for the predictor)
+            H_2d = H.reshape(-1, 1)
+            model = GLM(Y, H_2d, family=Binomial(), offset=offset).fit()
+
+            # Check if a ConvergenceWarning was issued during the fit
+            if not any(
+                issubclass(warn.category, sm_exceptions.ConvergenceWarning)
+                for warn in w
+            ):
+                converged = True
+
+            epsilon_mle = np.asarray(model.params)[0]
+
+    except (np.linalg.LinAlgError, sm_exceptions.PerfectSeparationError):
+        # Catch explicit errors where the model cannot be fit at all.
+        # epsilon_mle remains NaN and converged remains False.
+        pass
+
+    # --- 2. Check if the MLE result is stable and reliable ---
+    # The heuristic checks if epsilon is non-finite, if the GLM failed to converge,
+    # or if the magnitude of the logit-scale update is extreme (>15) for 95% of the data.
+    p95_H = np.quantile(np.abs(H), 0.95)
+    is_unstable = (
+        not converged
+        or not np.isfinite(epsilon_mle)
+        or (np.abs(epsilon_mle) * p95_H > 15)
+    )
+
+    # --- 3. Return the MLE or fall back to the one-step estimate ---
+    if is_unstable:
+        warnings.warn(
+            "MLE for epsilon failed to converge or was numerically unstable. "
+            "Falling back to the one-step estimate.",
+            RuntimeWarning,
+        )
+        return _compute_epsilon_one_step(H, Y, Yhat)
+    else:
+        return epsilon_mle
+
+
+def _compute_epsilon_one_step(H: np.ndarray, Y: np.ndarray, Yhat: np.ndarray) -> float:
+    """
+    Computes a stable, non-iterative one-step estimate for epsilon.
+
+    This serves as a robust fallback if the iterative MLE fails or is unstable.
+    The one-step estimate is the first step of the Newton-Raphson algorithm for
+    solving the score equation of the logistic fluctuation model, starting from epsilon = 0.
+
+    The formula is:
+        epsilon_1-step = Score(0) / Information(0)
+
+    where Score(0) is the gradient and Information(0) is the observed information
+    (negative second derivative) of the log-likelihood, both evaluated at epsilon = 0.
+
+    Args:
+        H: The clever covariate array, H(A,X).
+        Y: The binary outcome array.
+        Yhat: The initial predictions for the outcome, Q(A,X).
+
+    Returns:
+        The one-step epsilon estimate.
+    """
+    # The 'score' is the gradient of the log-likelihood at epsilon=0.
+    # d(logL)/d(epsilon)|_eps=0 = sum(H * (Y - P(Y=1|A,X,eps=0))) = sum(H * (Y - Yhat))
+    score = np.sum(H * (Y - Yhat))
+
+    # The 'information' is the negative of the second derivative (Hessian).
+    # -d^2(logL)/d(epsilon)^2|_eps=0 = sum(H^2 * Var(Y|A,X)) = sum(H^2 * Yhat * (1-Yhat))
+    information = np.sum(H**2 * Yhat * (1 - Yhat))
+
+    # Avoid division by zero if there is no information
+    if information == 0:
+        return 0.0
+
+    return score / information
