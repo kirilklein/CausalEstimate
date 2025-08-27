@@ -3,6 +3,9 @@ import warnings
 from typing import List
 
 import numpy as np
+from scipy.special import logit
+from statsmodels.genmod.families import Binomial
+from statsmodels.genmod.generalized_linear_model import GLM
 
 from CausalEstimate.estimators.functional.tmle import (
     compute_tmle_ate,
@@ -15,6 +18,7 @@ from CausalEstimate.estimators.functional.tmle_att import (
 from CausalEstimate.estimators.functional.utils import (
     compute_clever_covariate_ate,
     compute_clever_covariate_att,
+    _compute_epsilon_one_step,
 )
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 from tests.helpers.setup import TestEffectBase
@@ -363,9 +367,6 @@ class TestTMLERiskRatioSpecialCases(TestEffectBase):
             rr_result = compute_tmle_rr(
                 self.A, self.Y, self.ps, Y0_hat_zero, Y1_hat_nonzero, Yhat_mixed
             )
-            print("=" * 100)
-            print(rr_result)
-            print("=" * 100)
             # Should warn about zero denominator and return inf
             self.assertTrue(
                 any("Mean of Q_star_0 is 0" in str(warning.message) for warning in w)
@@ -648,6 +649,94 @@ class TestTMLEFluctuationParameter(TestEffectBase):
         # They may differ but should both be reasonable
         self.assertLess(abs(epsilon_unstabilized), 20)
         self.assertLess(abs(epsilon_stabilized), 20)
+
+
+class TestFluctuationParameterRealistic(TestEffectBase):
+    """Tests for fluctuation parameter estimation using realistic data."""
+
+    def test_estimate_fluctuation_parameter_stable_case(self):
+        """Test epsilon estimation in a normal, stable case."""
+        H = compute_clever_covariate_ate(self.A, self.ps)
+        epsilon = estimate_fluctuation_parameter(H, self.Y, self.Yhat)
+
+        # Should be finite and reasonable
+        self.assertTrue(np.isfinite(epsilon))
+        self.assertLess(np.abs(epsilon), 10.0)  # Reasonable bound
+
+    def test_one_step_vs_glm_realistic_data(self):
+        """Test that one-step estimator provides realistic results compared to GLM."""
+        H = compute_clever_covariate_ate(self.A, self.ps)
+
+        # Compute GLM estimate directly
+        offset = logit(self.Yhat)
+        H_2d = H.reshape(-1, 1)
+        model = GLM(self.Y, H_2d, family=Binomial(), offset=offset).fit()
+        epsilon_glm = np.asarray(model.params)[0]
+
+        # Compute one-step estimate
+        epsilon_one_step = _compute_epsilon_one_step(H, self.Y, self.Yhat)
+
+        # Both should be finite
+        self.assertTrue(np.isfinite(epsilon_glm))
+        self.assertTrue(np.isfinite(epsilon_one_step))
+
+        # They should be reasonably close (within an order of magnitude for most cases)
+        # This is a realistic expectation since one-step is just one Newton-Raphson iteration
+        ratio = np.abs(epsilon_one_step / epsilon_glm) if epsilon_glm != 0 else np.inf
+
+        # Allow for some difference, but they shouldn't be wildly different
+        # In well-behaved cases, one-step should be a reasonable approximation
+        if np.abs(epsilon_glm) < 1.0:  # For small updates
+            self.assertLess(np.abs(epsilon_one_step - epsilon_glm), 0.5)
+        else:  # For larger updates, allow more relative difference
+            self.assertLess(ratio, 10.0)
+            self.assertGreater(ratio, 0.1)
+
+    def test_numerical_stability_comparison(self):
+        """Compare numerical stability of GLM vs one-step across different scenarios."""
+        scenarios = [
+            # (H_multiplier, description)
+            (1.0, "normal"),
+            (5.0, "moderate_extreme"),
+            (0.1, "small_values"),
+        ]
+
+        base_H = compute_clever_covariate_ate(self.A, self.ps)
+
+        for multiplier, description in scenarios:
+            with self.subTest(scenario=description):
+                H = base_H * multiplier
+
+                # One-step should always be stable
+                epsilon_one_step = _compute_epsilon_one_step(H, self.Y, self.Yhat)
+                self.assertTrue(
+                    np.isfinite(epsilon_one_step),
+                    f"One-step not finite in {description} scenario",
+                )
+
+                # Main function should return something finite
+                epsilon_main = estimate_fluctuation_parameter(H, self.Y, self.Yhat)
+                self.assertTrue(
+                    np.isfinite(epsilon_main),
+                    f"Main function not finite in {description} scenario",
+                )
+
+    def test_consistency_across_estimands(self):
+        """Test that epsilon estimation works consistently across different estimands."""
+        # ATE
+        H_ate = compute_clever_covariate_ate(self.A, self.ps)
+        epsilon_ate = estimate_fluctuation_parameter(H_ate, self.Y, self.Yhat)
+
+        # ATT
+        H_att = compute_clever_covariate_att(self.A, self.ps)
+        epsilon_att = estimate_fluctuation_parameter(H_att, self.Y, self.Yhat)
+
+        # Both should produce finite results
+        self.assertTrue(np.isfinite(epsilon_ate))
+        self.assertTrue(np.isfinite(epsilon_att))
+
+        # H arrays should be different (they're for different estimands)
+        self.assertFalse(np.allclose(H_ate, H_att))
 
 
 if __name__ == "__main__":
