@@ -65,23 +65,28 @@ def estimate_fluctuation_parameter_att(
         warnings.warn("No treated subjects found, returning epsilon=0.", RuntimeWarning)
         return 0.0
 
-    # --- MODIFIED: Define the clever covariate H based on stabilization flag ---
     # Component for treated individuals
-    H_treated = A / p_treated
+    H_treated: np.ndarray = A / p_treated
 
     # Component for control individuals
     if stabilized:
         # Stabilized clever covariate for controls
-        H_control = (1 - A) * ps * (1 - p_treated) / (p_treated * (1 - ps))
+        H_control: np.ndarray = (1 - A) * ps * (1 - p_treated) / (p_treated * (1 - ps))
     else:
         # Unstabilized clever covariate for controls
-        H_control = (1 - A) * ps / (p_treated * (1 - ps))
+        H_control: np.ndarray = (1 - A) * ps / (p_treated * (1 - ps))
 
-    H = H_treated - H_control
+    H: np.ndarray = H_treated - H_control
 
     if np.any(np.abs(H) > 100):
         warnings.warn(
-            "Extreme values detected in clever covariate H for ATT. "
+            "Extremely large values > 100 detected in clever covariate H for ATT. "
+            "This may indicate issues with propensity scores near 0 or 1.",
+            RuntimeWarning,
+        )
+    if np.any(np.abs(H) < 1e-6):
+        warnings.warn(
+            "Extremely small values < 1e-6 detected in clever covariate H for ATT. "
             "This may indicate issues with propensity scores near 0 or 1.",
             RuntimeWarning,
         )
@@ -102,7 +107,7 @@ def compute_tmle_att(
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
     Yhat: np.ndarray,
-    stabilized: bool = False,  # New parameter
+    stabilized: bool = False,
 ) -> dict:
     """
     Estimate the Average Treatment Effect on the Treated (ATT) using TMLE,

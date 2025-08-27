@@ -140,7 +140,13 @@ def estimate_fluctuation_parameter(
 
     if np.any(np.abs(H) > 100):
         warnings.warn(
-            "Extreme values detected in clever covariate H. "
+            "Extremely large values > 100 detected in clever covariate H. "
+            "This may indicate issues with propensity scores near 0 or 1.",
+            RuntimeWarning,
+        )
+    if np.any(np.abs(H) < 1e-6):
+        warnings.warn(
+            "Extremely small values < 1e-6 detected in clever covariate H. "
             "This may indicate issues with propensity scores near 0 or 1.",
             RuntimeWarning,
         )
