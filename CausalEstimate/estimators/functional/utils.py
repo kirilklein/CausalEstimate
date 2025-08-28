@@ -209,7 +209,7 @@ def estimate_fluctuation_parameter(
     eps = 1e-6
     Yhat_clipped = np.clip(Yhat, eps, 1 - eps)
     offset = logit(Yhat_clipped)
-    
+
     epsilon_mle = np.nan
     converged = False
 
