@@ -205,7 +205,11 @@ def estimate_fluctuation_parameter(
     Returns:
         The estimated epsilon, choosing the most stable and reliable result.
     """
-    offset = logit(Yhat)
+    # Clip Yhat to avoid ±inf in logit transformation
+    eps = 1e-6
+    Yhat_clipped = np.clip(Yhat, eps, 1 - eps)
+    offset = logit(Yhat_clipped)
+    
     epsilon_mle = np.nan
     converged = False
 
@@ -251,7 +255,7 @@ def estimate_fluctuation_parameter(
             "Falling back to the one-step estimate.",
             RuntimeWarning,
         )
-        return _compute_epsilon_one_step(H, Y, Yhat)
+        return _compute_epsilon_one_step(H, Y, Yhat_clipped)
     else:
         return epsilon_mle
 
@@ -273,7 +277,7 @@ def _compute_epsilon_one_step(H: np.ndarray, Y: np.ndarray, Yhat: np.ndarray) ->
     Args:
         H: The clever covariate array, H(A,X).
         Y: The binary outcome array.
-        Yhat: The initial predictions for the outcome, Q(A,X).
+        Yhat: The initial predictions for the outcome, Q(A,X). Should be pre-clipped.
 
     Returns:
         The one-step epsilon estimate.
@@ -286,8 +290,13 @@ def _compute_epsilon_one_step(H: np.ndarray, Y: np.ndarray, Yhat: np.ndarray) ->
     # -d^2(logL)/d(epsilon)^2|_eps=0 = sum(H^2 * Var(Y|A,X)) = sum(H^2 * Yhat * (1-Yhat))
     information = np.sum(H**2 * Yhat * (1 - Yhat))
 
-    # Avoid division by zero if there is no information
-    if information == 0:
-        return 0.0
+    # Guard against non-finite score or information
+    if not np.isfinite(score) or not np.isfinite(information) or information == 0:
+        warnings.warn(
+            "Non-finite score or information in one-step epsilon estimation. "
+            "Returning epsilon = np.nan.",
+            RuntimeWarning,
+        )
+        return np.nan
 
     return score / information
