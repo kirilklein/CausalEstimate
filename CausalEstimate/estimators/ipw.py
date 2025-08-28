@@ -16,42 +16,42 @@ class IPW(BaseEstimator):
         treatment_col="treatment",
         outcome_col="outcome",
         ps_col="ps",
-        **kwargs,
+        stabilized: bool = False,
     ):
-        super().__init__(effect_type=effect_type, **kwargs)
-        self.treatment_col = treatment_col
-        self.outcome_col = outcome_col
-        self.ps_col = ps_col
-        self.kwargs = kwargs
-
-    def _compute_effect(self, df: pd.DataFrame) -> dict:
         """
-        Calculates the specified causal effect using inverse probability weighting (IPW).
-
-        Extracts treatment, outcome, and propensity score arrays from the input DataFrame and computes the effect based on the configured effect type. Supports average treatment effect (ATE), average treatment effect on the treated (ATT), risk ratio (RR), and risk ratio for the treated (RRT). For ATE or ARR, uses stabilized weights if specified.
+        Inverse Probability Weighting estimator.
 
         Args:
-            df: Input DataFrame containing treatment, outcome, and propensity score columns.
-
-        Returns:
-            A dictionary with the computed effect estimate.
-
-        Raises:
-            ValueError: If the effect type is not supported.
+            effect_type: Type of causal effect to estimate
+            treatment_col: Name of treatment column
+            outcome_col: Name of outcome column
+            ps_col: Name of propensity score column
+            stabilized: Whether to use stabilized weights
         """
+        # Initialize base class with core parameters
+        super().__init__(
+            effect_type=effect_type,
+            treatment_col=treatment_col,
+            outcome_col=outcome_col,
+            ps_col=ps_col,
+        )
+
+        # IPW-specific parameters
+        self.stabilized = stabilized
+
+    def _compute_effect(self, df: pd.DataFrame) -> dict:
+        """Calculate causal effect using IPW."""
         A, Y, ps = self._get_numpy_arrays(
             df, [self.treatment_col, self.outcome_col, self.ps_col]
         )
-        stabilized = self.kwargs.get("stabilized", False)
+
         if self.effect_type in ["ATE", "ARR"]:
-
-            return compute_ipw_ate(A, Y, ps, stabilized=stabilized)
-
-        elif self.effect_type in ["ATT"]:
-            return compute_ipw_att(A, Y, ps, stabilized=stabilized)
+            return compute_ipw_ate(A, Y, ps, stabilized=self.stabilized)
+        elif self.effect_type == "ATT":
+            return compute_ipw_att(A, Y, ps, stabilized=self.stabilized)
         elif self.effect_type == "RR":
-            return compute_ipw_risk_ratio(A, Y, ps, stabilized=stabilized)
+            return compute_ipw_risk_ratio(A, Y, ps, stabilized=self.stabilized)
         elif self.effect_type == "RRT":
-            return compute_ipw_risk_ratio_treated(A, Y, ps, stabilized=stabilized)
+            return compute_ipw_risk_ratio_treated(A, Y, ps, stabilized=self.stabilized)
         else:
             raise ValueError(f"Effect type '{self.effect_type}' is not supported.")

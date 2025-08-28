@@ -24,30 +24,53 @@ from CausalEstimate.utils.constants import (
 
 def match_optimal(
     df: pd.DataFrame,
-    n_controls: int = 1,
-    caliper: float = 0.05,
     treatment_col: str = TREATMENT_COL,
     ps_col: str = PS_COL,
     pid_col: str = PID_COL,
+    n_controls: int = 1,
+    caliper: float = None,
 ) -> pd.DataFrame:
     """
     Matches treated individuals to control individuals based on propensity scores
     with the option to specify the number of controls per treated individual and a caliper.
 
+    This function uses optimal matching to minimize the total distance between treated
+    and control subjects, which typically produces better overall balance than greedy
+    matching approaches.
+
     Args:
         df (pd.DataFrame): DataFrame containing treated and control individuals.
-        n_controls (int): Number of controls to match for each treated individual.
-        caliper (float): Maximum allowable distance (propensity score difference) for matching.
         treatment_col (str): Column name indicating treatment status.
         ps_col (str): Column name for propensity score.
         pid_col (str): Column name for individual ID.
+        n_controls (int): Number of controls to match for each treated individual.
+                         Must be >= 1. Common values:
+                         - 1: 1:1 matching (most common, maximizes precision)
+                         - 2-5: small ratios for bias-variance tradeoff
+                         - 10+: large ratios when controls are abundant
+        caliper (float): Maximum allowable distance (propensity score difference) for matching.
+                        Must be >= 0 when provided. If None, no caliper is applied.
+                        Common values:
+                        - 0.1: loose caliper, allows moderate PS differences
+                        - 0.05: moderate caliper, good balance of matches vs quality
+                        - 0.01-0.02: tight caliper, ensures close PS matches
+                        - 0.25*std(PS): standard recommendation (Rosenbaum & Rubin, 1985)
 
     Returns:
         pd.DataFrame: DataFrame with treated_pid, control_pid and distance columns.
+
+    Raises:
+        ValueError: If n_controls < 1 or caliper < 0.
     """
     check_required_columns(df, [treatment_col, ps_col, pid_col])
     check_unique_pid(df, pid_col)
     check_ps_validity(df, ps_col)
+
+    # Parameter validation
+    if n_controls < 1:
+        raise ValueError("n_controls must be >= 1")
+    if caliper is not None and caliper < 0:
+        raise ValueError("caliper must be >= 0 when provided")
 
     treated_df = filter_by_column(df, treatment_col, 1)
     control_df = filter_by_column(df, treatment_col, 0)
@@ -93,6 +116,10 @@ def match_eager(
     Performs a greedy nearest-neighbor matching based on propensity scores,
     allowing multiple controls per treated subject. By default, n_controls=1.
 
+    This function uses a greedy approach that matches each treated subject to their
+    nearest available control(s) in order. While faster than optimal matching,
+    it may not achieve the best overall balance across all matches.
+
     Matching proceeds in multiple "passes":
     - Pass 1: each treated tries to find its first best control
     - Pass 2: each treated tries to find its second best control, etc.
@@ -103,9 +130,17 @@ def match_eager(
         ps_col (str): Name of propensity score column.
         pid_col (str): Name of patient ID column.
         caliper (float, optional): Maximum allowed absolute difference in PS for matching.
-                                   If no control is within the caliper, that treated subject
-                                   remains unmatched (or raises ValueError if strict=True).
+                                   Must be >= 0 when provided. If no control is within the caliper,
+                                   that treated subject remains unmatched (or raises ValueError if strict=True).
+                                   Common values:
+                                   - 0.1: loose caliper, allows moderate PS differences
+                                   - 0.05: moderate caliper, good balance of matches vs quality
+                                   - 0.01-0.02: tight caliper, ensures close PS matches
         n_controls (int): How many distinct control matches to find per treated subject.
+                         Must be >= 1. Common values:
+                         - 1: 1:1 matching (most common, maximizes precision)
+                         - 2-5: small ratios for bias-variance tradeoff
+                         - 10+: large ratios when controls are abundant
         strict (bool): If True, raise a ValueError if any treated subject fails to find
                        a control at any pass. If False, skip unmatched passes.
 
@@ -115,8 +150,15 @@ def match_eager(
         if all can be matched on every pass.
 
     Raises:
-        ValueError: If strict=True and a treated subject cannot be matched on any pass.
+        ValueError: If strict=True and a treated subject cannot be matched on any pass,
+                   or if n_controls < 1 or caliper < 0.
     """
+    # Parameter validation
+    if n_controls < 1:
+        raise ValueError("n_controls must be >= 1")
+    if caliper is not None and caliper < 0:
+        raise ValueError("caliper must be >= 0 when provided")
+
     # Separate treated vs. control
     treated_array = df.loc[df[treatment_col] == 1, [pid_col, ps_col]].values
     control_array = df.loc[df[treatment_col] == 0, [pid_col, ps_col]].values
@@ -197,12 +239,12 @@ def match_eager(
 
 
 def create_matched_df(
-    matched_distances: np.array,
+    matched_distances: np.ndarray,
     treated_df: pd.DataFrame,
     control_df: pd.DataFrame,
     pid_col: str,
     n_controls: int,
-    col_ind: np.array,
+    col_ind: np.ndarray,
 ) -> pd.DataFrame:
     """
     Creates a DataFrame of matched treated-control pairs and their distances.

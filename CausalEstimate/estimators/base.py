@@ -8,8 +8,7 @@ import pandas as pd
 
 
 class BaseEstimator(ABC):
-    VALID_EFFECT_TYPES = {"ATE", "ARR", "ATT", "ATC", "RR", "RRT"}  #
-    PS_EXTREME_THRESHOLD = 0.01  # Configurable threshold for extreme PS warning
+    PS_EXTREME_THRESHOLD = 1e-2  # Configurable threshold for extreme PS warning
     MIN_GROUP_SIZE = 10  # Configurable minimum group size
 
     def __init__(
@@ -20,7 +19,6 @@ class BaseEstimator(ABC):
         treatment_col: str = "treatment",
         outcome_col: str = "outcome",
         ps_col: str = "ps",
-        **kwargs,
     ):
         """
         Base class for all estimators.
@@ -32,7 +30,6 @@ class BaseEstimator(ABC):
         self.treatment_col = treatment_col
         self.outcome_col = outcome_col
         self.ps_col = ps_col
-        self.kwargs = kwargs  # if child classes want extra toggles
 
     def compute_effect(self, df: pd.DataFrame) -> dict:
         """
