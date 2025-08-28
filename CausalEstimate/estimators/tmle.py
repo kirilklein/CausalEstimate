@@ -17,44 +17,43 @@ class TMLE(BaseEstimator):
         probas_col: str = "probas",
         probas_t1_col: str = "probas_t1",
         probas_t0_col: str = "probas_t0",
-        **kwargs,
+        stabilized: bool = False,
     ):
+        """
+        Targeted Maximum Likelihood Estimation (TMLE) estimator.
+
+        Args:
+            effect_type: Type of causal effect to estimate
+            treatment_col: Name of treatment column
+            outcome_col: Name of outcome column
+            ps_col: Name of propensity score column
+            probas_col: Name of predicted probabilities column
+            probas_t1_col: Name of predicted probabilities under treatment column
+            probas_t0_col: Name of predicted probabilities under control column
+            stabilized: Whether to use stabilized weights
+        """
+        # Initialize base class with core parameters
         super().__init__(
             effect_type=effect_type,
             treatment_col=treatment_col,
             outcome_col=outcome_col,
             ps_col=ps_col,
-            **kwargs,
         )
+
+        # TMLE-specific parameters
         self.probas_col = probas_col
         self.probas_t1_col = probas_t1_col
         self.probas_t0_col = probas_t0_col
-        self.stabilized = kwargs.get("stabilized", False)
+        self.stabilized = stabilized
 
     def _compute_effect(self, df: pd.DataFrame) -> dict:
-        # additional checks required for TMLE
-        """
-        Computes the specified causal effect estimate using Targeted Maximum Likelihood Estimation.
-
-        Validates required columns and input arrays, then calculates the effect based on the estimator's effect type ("ATE", "ARR", "ATT", or "RR") using the appropriate TMLE computation function.
-
-        Args:
-            df: A pandas DataFrame containing treatment, outcome, propensity score, and predicted probability columns.
-
-        Returns:
-            A dictionary with the estimated effect and related statistics.
-
-        Raises:
-            ValueError: If the specified effect type is not supported.
-        """
+        """Compute causal effect using TMLE."""
+        # Check TMLE-specific columns
         check_required_columns(
             df,
-            [
-                self.probas_col,
-                self.probas_t1_col,
-                self.probas_t0_col,
-            ],
+            [self.probas_col, self.probas_t1_col, self.probas_t0_col],
         )
+
         A, Y, ps, Yhat, Y1_hat, Y0_hat = self._get_numpy_arrays(
             df,
             [

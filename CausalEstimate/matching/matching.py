@@ -24,11 +24,11 @@ from CausalEstimate.utils.constants import (
 
 def match_optimal(
     df: pd.DataFrame,
-    n_controls: int = 1,
-    caliper: float = 0.05,
     treatment_col: str = TREATMENT_COL,
     ps_col: str = PS_COL,
     pid_col: str = PID_COL,
+    n_controls: int = 1,
+    caliper: float = None,
 ) -> pd.DataFrame:
     """
     Matches treated individuals to control individuals based on propensity scores
@@ -36,11 +36,12 @@ def match_optimal(
 
     Args:
         df (pd.DataFrame): DataFrame containing treated and control individuals.
-        n_controls (int): Number of controls to match for each treated individual.
-        caliper (float): Maximum allowable distance (propensity score difference) for matching.
         treatment_col (str): Column name indicating treatment status.
         ps_col (str): Column name for propensity score.
         pid_col (str): Column name for individual ID.
+        n_controls (int): Number of controls to match for each treated individual.
+        caliper (float): Maximum allowable distance (propensity score difference) for matching.
+                        If None, no caliper is applied.
 
     Returns:
         pd.DataFrame: DataFrame with treated_pid, control_pid and distance columns.
@@ -197,12 +198,12 @@ def match_eager(
 
 
 def create_matched_df(
-    matched_distances: np.array,
+    matched_distances: np.ndarray,
     treated_df: pd.DataFrame,
     control_df: pd.DataFrame,
     pid_col: str,
     n_controls: int,
-    col_ind: np.array,
+    col_ind: np.ndarray,
 ) -> pd.DataFrame:
     """
     Creates a DataFrame of matched treated-control pairs and their distances.

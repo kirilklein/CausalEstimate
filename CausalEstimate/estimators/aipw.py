@@ -16,15 +16,27 @@ class AIPW(BaseEstimator):
         ps_col: str = "ps",
         probas_t1_col: str = "probas_t1",
         probas_t0_col: str = "probas_t0",
-        **kwargs,
     ):
+        """
+        Augmented Inverse Probability Weighting (AIPW) estimator.
+
+        Args:
+            effect_type: Type of causal effect to estimate
+            treatment_col: Name of treatment column
+            outcome_col: Name of outcome column
+            ps_col: Name of propensity score column
+            probas_t1_col: Name of predicted probabilities under treatment column
+            probas_t0_col: Name of predicted probabilities under control column
+        """
+        # Initialize base class with core parameters
         super().__init__(
             effect_type=effect_type,
             treatment_col=treatment_col,
             outcome_col=outcome_col,
             ps_col=ps_col,
-            **kwargs,
         )
+
+        # AIPW-specific parameters
         self.probas_t1_col = probas_t1_col
         self.probas_t0_col = probas_t0_col
 
@@ -43,6 +55,7 @@ class AIPW(BaseEstimator):
         Raises:
             ValueError: If the specified effect type is not supported.
         """
+        # Check AIPW-specific columns
         check_required_columns(
             df,
             [
@@ -50,6 +63,7 @@ class AIPW(BaseEstimator):
                 self.probas_t0_col,
             ],
         )
+
         A, Y, ps, Y1_hat, Y0_hat = self._get_numpy_arrays(
             df,
             [
