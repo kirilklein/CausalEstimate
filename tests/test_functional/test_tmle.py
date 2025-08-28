@@ -739,5 +739,144 @@ class TestFluctuationParameterRealistic(TestEffectBase):
         self.assertFalse(np.allclose(H_ate, H_att))
 
 
+class TestTMLEUtilsIntegration(TestEffectBase):
+    """Integration tests for utils functions within the TMLE workflow."""
+
+    def test_full_workflow_ate_with_utils_validation(self):
+        """Test the full ATE workflow validating each utils step."""
+        # Step 1: Compute clever covariate
+        H = compute_clever_covariate_ate(self.A, self.ps, stabilized=False)
+        self.assertEqual(len(H), len(self.A))
+        self.assertTrue(np.all(np.isfinite(H)))
+
+        # Step 2: Estimate fluctuation parameter
+        epsilon = estimate_fluctuation_parameter(H, self.Y, self.Yhat)
+        self.assertTrue(np.isfinite(epsilon))
+
+        # Step 3: Update predictions (simplified targeting)
+        Q_star_1 = self.Y1_hat + epsilon * H * self.A
+        Q_star_0 = self.Y0_hat + epsilon * H * (1 - self.A)
+
+        # Step 4: Compute initial effect and adjustments
+        from CausalEstimate.estimators.functional.utils import compute_initial_effect
+
+        results = compute_initial_effect(
+            self.Y1_hat, self.Y0_hat, Q_star_1, Q_star_0, rr=False
+        )
+
+        # Validate all components are finite and reasonable
+        expected_keys = [
+            "initial_effect",
+            "initial_effect_1",
+            "initial_effect_0",
+            "adjustment_1",
+            "adjustment_0",
+        ]
+        for key in expected_keys:
+            self.assertIn(key, results)
+            self.assertTrue(np.isfinite(results[key]))
+
+        # The adjustment should be non-zero (epsilon had an effect)
+        self.assertNotEqual(results["adjustment_1"], 0.0)
+        self.assertNotEqual(results["adjustment_0"], 0.0)
+
+        # Compare with full TMLE result
+        ate_tmle = compute_tmle_ate(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+
+        # The manual calculation should be close to the full TMLE
+        manual_effect = (
+            results["initial_effect"]
+            + results["adjustment_1"]
+            - results["adjustment_0"]
+        )
+        self.assertAlmostEqual(manual_effect, ate_tmle[EFFECT], delta=0.01)
+
+    def test_full_workflow_att_with_utils_validation(self):
+        """Test the full ATT workflow validating each utils step."""
+        # Step 1: Compute ATT clever covariate
+        H = compute_clever_covariate_att(self.A, self.ps, stabilized=True)
+        self.assertEqual(len(H), len(self.A))
+        self.assertTrue(np.all(np.isfinite(H)))
+
+        # Step 2: Estimate fluctuation parameter
+        epsilon = estimate_fluctuation_parameter(H, self.Y, self.Yhat)
+        self.assertTrue(np.isfinite(epsilon))
+
+        # Step 3: Compare with full ATT TMLE
+        att_tmle = compute_tmle_att(
+            self.A,
+            self.Y,
+            self.ps,
+            self.Y0_hat,
+            self.Y1_hat,
+            self.Yhat,
+            stabilized=True,
+        )
+        self.assertTrue(np.isfinite(att_tmle[EFFECT]))
+
+    def test_utils_robustness_in_extreme_scenarios(self):
+        """Test that utils functions handle extreme scenarios within TMLE."""
+        # Create extreme propensity scores that would challenge the utils
+        ps_extreme = np.copy(self.ps)
+        ps_extreme[:100] = 0.001  # Very close to 0
+        ps_extreme[-100:] = 0.999  # Very close to 1
+
+        # Test that clever covariate computation issues warnings but doesn't crash
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+
+            H_ate = compute_clever_covariate_ate(self.A, ps_extreme)
+            H_att = compute_clever_covariate_att(self.A, ps_extreme)
+
+            # Should have warnings about extreme values
+            self.assertTrue(len(w) > 0)
+            warning_messages = [str(warning.message) for warning in w]
+            self.assertTrue(
+                any("Extremely large values" in msg for msg in warning_messages)
+            )
+
+        # Test that fluctuation parameter estimation handles this gracefully
+        epsilon_ate = estimate_fluctuation_parameter(H_ate, self.Y, self.Yhat)
+        epsilon_att = estimate_fluctuation_parameter(H_att, self.Y, self.Yhat)
+
+        # Should be finite even with extreme inputs
+        self.assertTrue(np.isfinite(epsilon_ate))
+        self.assertTrue(np.isfinite(epsilon_att))
+
+        # Full TMLE should still work
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # We already tested the warnings
+            ate_result = compute_tmle_ate(
+                self.A, self.Y, ps_extreme, self.Y0_hat, self.Y1_hat, self.Yhat
+            )
+            self.assertTrue(np.isfinite(ate_result[EFFECT]))
+
+    def test_epsilon_estimation_consistency_across_methods(self):
+        """Test that epsilon estimation is consistent when used in different TMLE contexts."""
+        # Test with different clever covariates but same data
+        H_ate_unstab = compute_clever_covariate_ate(self.A, self.ps, stabilized=False)
+        H_ate_stab = compute_clever_covariate_ate(self.A, self.ps, stabilized=True)
+        H_att_unstab = compute_clever_covariate_att(self.A, self.ps, stabilized=False)
+        H_att_stab = compute_clever_covariate_att(self.A, self.ps, stabilized=True)
+
+        # All should produce finite epsilon values
+        epsilons = []
+        for H, name in [
+            (H_ate_unstab, "ATE_unstab"),
+            (H_ate_stab, "ATE_stab"),
+            (H_att_unstab, "ATT_unstab"),
+            (H_att_stab, "ATT_stab"),
+        ]:
+            epsilon = estimate_fluctuation_parameter(H, self.Y, self.Yhat)
+            self.assertTrue(np.isfinite(epsilon), f"Non-finite epsilon for {name}")
+            epsilons.append(epsilon)
+
+        # While epsilons will differ, they should all be reasonable
+        for eps in epsilons:
+            self.assertLess(abs(eps), 20, "Epsilon suspiciously large")
+
+
 if __name__ == "__main__":
     unittest.main()
