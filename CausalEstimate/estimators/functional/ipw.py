@@ -16,112 +16,168 @@ ATT:
     inverse probability weighting.
     American Journal of Epidemiology, 191(6), 1092-1097.
     https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9271225/
+
+We also provide an option to use stabilized weights as described in:
+Miguel A Hernán 1, James M Robins
+Estimating causal effects from epidemiological data
+https://pubmed.ncbi.nlm.nih.gov/16790829/
 """
 
 import warnings
-from typing import Tuple
+from typing import Tuple, Literal
 
 import numpy as np
 
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
+# --- Core Effect Calculation Functions ---
 
-def compute_ipw_risk_ratio(A: np.ndarray, Y: np.ndarray, ps: np.ndarray) -> dict:
-    """
-    Relative Risk
-    A: treatment assignment, Y: outcome, ps: propensity score
-    """
-    mu_1, mu_0 = compute_mean_potential_outcomes(A, Y, ps)
-    rr = mu_1 / mu_0
+
+def compute_ipw_risk_ratio(
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
+) -> dict:
+    mu_1, mu_0 = compute_weighted_outcomes(A, Y, ps, stabilized=stabilized)
+    if mu_0 == 0:
+        warnings.warn(
+            "Risk in untreated group (mu_0) is 0, returning inf for Risk Ratio.",
+            RuntimeWarning,
+        )
+        rr = np.inf
+    else:
+        rr = mu_1 / mu_0
     return {EFFECT: rr, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
-def compute_ipw_ate(A: np.ndarray, Y: np.ndarray, ps: np.ndarray) -> dict:
-    """
-    Average Treatment Effect
-    A: treatment assignment, Y: outcome, ps: propensity score
-    """
-    mu1, mu0 = compute_mean_potential_outcomes(A, Y, ps)
-    ate = mu1 - mu0
-    return {EFFECT: ate, EFFECT_treated: mu1, EFFECT_untreated: mu0}
+def compute_ipw_ate(
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
+) -> dict:
+    mu_1, mu_0 = compute_weighted_outcomes(A, Y, ps, stabilized=stabilized)
+    ate = mu_1 - mu_0
+    return {EFFECT: ate, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
-def compute_mean_potential_outcomes(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray
-) -> Tuple[float, float]:
-    """
-    Compute E[Y|A=1] and E[Y|A=0] for Y=0/1
-    """
-    mu_1 = (A * Y / ps).mean()
-    mu_0 = ((1 - A) * Y / (1 - ps)).mean()
-    return mu_1, mu_0
-
-
-def compute_ipw_ate_stabilized(A: np.ndarray, Y: np.ndarray, ps: np.ndarray) -> dict:
-    """
-    Given by Austin (2016)
-    Average Treatment Effect with stabilized weights.
-    A: treatment assignment, Y: outcome, ps: propensity score
-    """
-    W = compute_stabilized_ate_weights(A, ps)
-    Y1_weighed = (W * A * Y).mean()
-    Y0_weighed = (W * (1 - A) * Y).mean()
-    ate = Y1_weighed - Y0_weighed
-    return {EFFECT: ate, EFFECT_treated: Y1_weighed, EFFECT_untreated: Y0_weighed}
-
-
-def compute_ipw_att(A: np.ndarray, Y: np.ndarray, ps: np.ndarray) -> dict:
-    """
-    Average Treatment Effect on the Treated with stabilized weights.
-    Reifeis et. al. (2022).
-    A: treatment assignment, Y: outcome, ps: propensity score
-    """
-    mu_1, mu_0 = compute_mean_potential_outcomes_treated(A, Y, ps)
+def compute_ipw_att(
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
+) -> dict:
+    mu_1, mu_0 = compute_weighted_outcomes_treated(A, Y, ps, stabilized=stabilized)
     att = mu_1 - mu_0
     return {EFFECT: att, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
 def compute_ipw_risk_ratio_treated(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
 ) -> dict:
     """
-    Relative Risk of the Treated with stabilized weights. Reifeis et. al. (2022)
-    A: treatment assignment, Y: outcome, ps: propensity score
+    Computes the Relative Risk for the Treated (RRT) using IPW.
     """
-    mu_1, mu_0 = compute_mean_potential_outcomes_treated(A, Y, ps)
+    mu_1, mu_0 = compute_weighted_outcomes_treated(A, Y, ps, stabilized=stabilized)
     if mu_0 == 0:
-        warnings.warn("mu_0 is 0, returning inf", RuntimeWarning)
-        return {EFFECT: np.inf, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
-    rr = mu_1 / mu_0
-    return {EFFECT: rr, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
+        warnings.warn(
+            "Risk in counterfactual untreated group (mu_0) is 0, returning inf for RRT.",
+            RuntimeWarning,
+        )
+        rrt = np.inf
+    else:
+        rrt = mu_1 / mu_0
+    return {EFFECT: rrt, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
-def compute_mean_potential_outcomes_treated(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray
+# --- Weighted Mean Estimators (Refactored) ---
+
+
+def compute_weighted_outcomes(
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
 ) -> Tuple[float, float]:
     """
-    Compute E[Y|A=1] for Y=0/1
+    Computes E[Y(1)] and E[Y(0)] for the ATE using the simple Horvitz-Thompson estimator,
+    with explicit checks for empty groups.
     """
-    W = compute_stabilized_att_weights(A, ps)
-    mu_1 = (W * A * Y).sum() / (W * A).sum()
-    mu_0 = (W * (1 - A) * Y).sum() / (W * (1 - A)).sum()
+    W = compute_ipw_weights(A, ps, weight_type="ATE", stabilized=stabilized)
+
+    # --- Calculate for Treated Group (mu_1) ---
+    if A.sum() > 0:
+        mu_1 = (W * A * Y).mean()
+    else:
+        warnings.warn("No subjects in the treated group. mu_1 is NaN.", RuntimeWarning)
+        mu_1 = np.nan
+
+    # --- Calculate for Control Group (mu_0) ---
+    if (1 - A).sum() > 0:
+        mu_0 = (W * (1 - A) * Y).mean()
+    else:
+        warnings.warn("No subjects in the control group. mu_0 is NaN.", RuntimeWarning)
+        mu_0 = np.nan
+
     return mu_1, mu_0
 
 
-def compute_stabilized_ate_weights(A: np.ndarray, ps: np.ndarray) -> np.ndarray:
+def compute_weighted_outcomes_treated(
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
+) -> Tuple[float, float]:
     """
-    Compute the (stabilized) weights for the ATE estimator
-    Austin (2016)
+    Computes E[Y(1)|A=1] and E[Y(0)|A=1] for the ATT, with explicit checks for empty groups.
     """
-    weight_treated = A.mean() * A / ps
-    weight_control = (1 - A).mean() * (1 - A) / (1 - ps)
-    return weight_treated + weight_control
+    W = compute_ipw_weights(A, ps, weight_type="ATT", stabilized=stabilized)
+
+    # --- Factual Outcome for the Treated (mu_1) ---
+    num_treated = A.sum()
+    if num_treated > 0:
+        mu_1 = Y[A == 1].mean()  # no asjustment for treated
+    else:
+        warnings.warn(
+            "No subjects in the treated group for ATT. mu_1 is NaN.", RuntimeWarning
+        )
+        mu_1 = np.nan
+
+    # --- Counterfactual Outcome for the Treated (mu_0) ---
+    if num_treated > 0 and (1 - A).sum() > 0:
+        mu_0 = (W * (1 - A) * Y).sum() / num_treated
+    else:
+        # mu_0 is NaN if there are no treated (target population) or no controls (source population)
+        if num_treated == 0:
+            warnings.warn(
+                "No subjects in the treated group for ATT. mu_0 is NaN.", RuntimeWarning
+            )
+        else:  # Implies no controls
+            warnings.warn(
+                "No subjects in the control group for ATT. mu_0 is NaN.", RuntimeWarning
+            )
+        mu_0 = np.nan
+
+    return mu_1, mu_0
 
 
-def compute_stabilized_att_weights(A: np.ndarray, ps: np.ndarray) -> np.ndarray:
+# --- Centralized Weight Calculation Functions ---
+
+
+def compute_ipw_weights(
+    A: np.ndarray,
+    ps: np.ndarray,
+    weight_type: Literal["ATE", "ATT"] = "ATE",
+    stabilized: bool = False,
+) -> np.ndarray:
     """
-    Compute the (stabilized) weights for the ATT estimator
-    As given in the web appendix of Reifeis et. al. (2022)
+    Compute IPW weights for ATE or ATT with optional stabilization.
     """
-    h = ps / (1 - ps)
-    return A + (1 - A) * h
+    if weight_type == "ATE":
+        if stabilized:
+            pi = A.mean()
+            weight_treated = pi / ps
+            weight_control = (1 - pi) / (1 - ps)
+        else:
+            weight_treated = 1 / ps
+            weight_control = 1 / (1 - ps)
+        return A * weight_treated + (1 - A) * weight_control
+
+    elif weight_type == "ATT":
+        weight_treated = np.ones_like(A, dtype=float)
+        weight_control = ps / (1 - ps)
+        if stabilized:
+            pi = A.mean()
+            if pi > 0:
+                stabilization_factor = (1 - pi) / pi
+                weight_control *= stabilization_factor
+        return A * weight_treated + (1 - A) * weight_control
+
+    else:
+        raise ValueError("weight_type must be 'ATE' or 'ATT'")
