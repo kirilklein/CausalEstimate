@@ -33,10 +33,8 @@ from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untrea
 # --- Core Effect Calculation Functions ---
 
 
-def compute_ipw_risk_ratio(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
-) -> dict:
-    mu_1, mu_0 = compute_weighted_outcomes(A, Y, ps, stabilized=stabilized)
+def compute_ipw_risk_ratio(A: np.ndarray, Y: np.ndarray, ps: np.ndarray) -> dict:
+    mu_1, mu_0 = compute_weighted_outcomes(A, Y, ps)
     if mu_0 == 0:
         warnings.warn(
             "Risk in untreated group (mu_0) is 0, returning inf for Risk Ratio.",
@@ -48,29 +46,25 @@ def compute_ipw_risk_ratio(
     return {EFFECT: rr, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
-def compute_ipw_ate(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
-) -> dict:
-    mu_1, mu_0 = compute_weighted_outcomes(A, Y, ps, stabilized=stabilized)
+def compute_ipw_ate(A: np.ndarray, Y: np.ndarray, ps: np.ndarray) -> dict:
+    mu_1, mu_0 = compute_weighted_outcomes(A, Y, ps)
     ate = mu_1 - mu_0
     return {EFFECT: ate, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
-def compute_ipw_att(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
-) -> dict:
-    mu_1, mu_0 = compute_weighted_outcomes_treated(A, Y, ps, stabilized=stabilized)
+def compute_ipw_att(A: np.ndarray, Y: np.ndarray, ps: np.ndarray) -> dict:
+    mu_1, mu_0 = compute_weighted_outcomes_treated(A, Y, ps)
     att = mu_1 - mu_0
     return {EFFECT: att, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
 def compute_ipw_risk_ratio_treated(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray
 ) -> dict:
     """
     Computes the Relative Risk for the Treated (RRT) using IPW.
     """
-    mu_1, mu_0 = compute_weighted_outcomes_treated(A, Y, ps, stabilized=stabilized)
+    mu_1, mu_0 = compute_weighted_outcomes_treated(A, Y, ps)
     if mu_0 == 0:
         warnings.warn(
             "Risk in counterfactual untreated group (mu_0) is 0, returning inf for RRT.",
@@ -86,13 +80,13 @@ def compute_ipw_risk_ratio_treated(
 
 
 def compute_weighted_outcomes(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray
 ) -> Tuple[float, float]:
     """
     Computes E[Y(1)] and E[Y(0)] for the ATE using the simple Horvitz-Thompson estimator,
     with explicit checks for empty groups.
     """
-    W = compute_ipw_weights(A, ps, weight_type="ATE", stabilized=stabilized)
+    W = compute_ipw_weights(A, ps, weight_type="ATE")
 
     # --- Calculate for Treated Group (mu_1) ---
     treated_mask: np.ndarray = A == 1
@@ -119,12 +113,12 @@ def compute_weighted_outcomes(
 
 
 def compute_weighted_outcomes_treated(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = True
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray
 ) -> Tuple[float, float]:
     """
     Computes E[Y(1)|A=1] and E[Y(0)|A=1] for the ATT using the robust Hajek (ratio) estimator.
     """
-    W = compute_ipw_weights(A, ps, weight_type="ATT", stabilized=stabilized)
+    W = compute_ipw_weights(A, ps, weight_type="ATT")
 
     # --- Factual Outcome for the Treated (mu_1) ---
     treated_mask: np.ndarray = A == 1
@@ -168,25 +162,17 @@ def compute_ipw_weights(
     A: np.ndarray,
     ps: np.ndarray,
     weight_type: Literal["ATE", "ATT"] = "ATE",
-    stabilized: bool = False,
 ) -> np.ndarray:
     """
     Compute IPW weights for ATE or ATT with optional stabilization for ATE.
     """
 
     if weight_type == "ATE":
-        if stabilized:
-            pi = A.mean()
-            weight_treated = pi / ps
-            weight_control = (1 - pi) / (1 - ps)
-        else:
-            weight_treated = 1 / ps
-            weight_control = 1 / (1 - ps)
+        weight_treated = 1 / ps
+        weight_control = 1 / (1 - ps)
         return np.where(A == 1, weight_treated, weight_control)
 
     elif weight_type == "ATT":
-        if stabilized:
-            warnings.warn("Stabilized weights are not used for ATT.", RuntimeWarning)
         weight_treated = np.ones_like(A, dtype=float)
         weight_control = ps / (1 - ps)
         return np.where(A == 1, weight_treated, weight_control)
