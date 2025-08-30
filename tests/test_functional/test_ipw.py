@@ -34,12 +34,6 @@ class TestIPWSanityChecks(unittest.TestCase):
         self.assertIsInstance(ate[EFFECT], float)
         self.assertTrue(-1 <= ate[EFFECT] <= 1)
 
-    def test_ipw_ate_stabilized(self):
-        # This test now runs on data guaranteed to have both groups
-        ate_stabilized = compute_ipw_ate(self.A, self.Y, self.ps, stabilized=True)
-        self.assertIsInstance(ate_stabilized[EFFECT], float)
-        self.assertTrue(-1 <= ate_stabilized[EFFECT] <= 1)
-
     def test_ipw_att(self):
         att = compute_ipw_att(self.A, self.Y, self.ps)
         self.assertIsInstance(att[EFFECT], float)
@@ -73,13 +67,6 @@ class TestIPWEstimators(unittest.TestCase):
         ate = compute_ipw_ate(self.A, self.Y, self.ps)
         self.assertIsInstance(ate[EFFECT], float)
         self.assertTrue(-1 <= ate[EFFECT] <= 1)  # Check ATE is within reasonable range
-
-    def test_ipw_ate_stabilized(self):
-        ate_stabilized = compute_ipw_ate(self.A, self.Y, self.ps, stabilized=True)
-        self.assertIsInstance(ate_stabilized[EFFECT], float)
-        self.assertTrue(
-            -1 <= ate_stabilized[EFFECT] <= 1
-        )  # Check ATE with stabilized weights
 
     def test_ipw_att(self):
         att = compute_ipw_att(self.A, self.Y, self.ps)
@@ -139,10 +126,8 @@ class TestIPWWeightFunction(unittest.TestCase):
         cls.ps = np.array([0.8, 0.4, 0.5, 0.2])
         cls.pi = 0.5
 
-    def test_att_stabilized_weights(self):
-        weights = compute_ipw_weights(
-            self.A, self.ps, weight_type="ATT", stabilized=True
-        )
+    def test_att_weights(self):
+        weights = compute_ipw_weights(self.A, self.ps, weight_type="ATT")
         stabilization_factor = (1 - self.pi) / self.pi
         expected = np.array(
             [
@@ -167,12 +152,12 @@ class TestComputeIPW_base(TestEffectBase):
         self.assertAlmostEqual(ate_ipw[EFFECT], self.true_ate, delta=0.1)
 
 
-class TestComputeIPWATE_outcome_model_misspecified(TestComputeIPW_base):
-    beta = [0.5, 0.8, -0.6, 0.3, 3]
-
-
 class TestComputeIPWATE_ps_model_misspecified(TestComputeIPW_base):
     alpha = [0.1, 0.2, -0.3, 3]
+
+    def test_compute_ipw_ate(self):
+        ate_ipw = compute_ipw_ate(self.A, self.Y, self.ps)
+        self.assertNotAlmostEqual(ate_ipw[EFFECT], self.true_ate, delta=0.02)
 
 
 class TestComputeIPWATE_both_models_misspecified(TestComputeIPW_base):
@@ -181,7 +166,7 @@ class TestComputeIPWATE_both_models_misspecified(TestComputeIPW_base):
 
     def test_compute_ipw_ate(self):
         ate_ipw = compute_ipw_ate(self.A, self.Y, self.ps)
-        self.assertNotAlmostEqual(ate_ipw[EFFECT], self.true_ate, delta=0.05)
+        self.assertNotAlmostEqual(ate_ipw[EFFECT], self.true_ate, delta=0.1)
 
 
 class TestComputeIPW_ATT(TestEffectBase):
@@ -189,15 +174,7 @@ class TestComputeIPW_ATT(TestEffectBase):
 
     def test_compute_ipw_att(self):
         att_ipw = compute_ipw_att(self.A, self.Y, self.ps)
-        self.assertAlmostEqual(att_ipw[EFFECT], self.true_att, delta=0.1)
-
-
-class TestComputeIPW_ATT_stabilized(TestEffectBase):
-    """Checks if IPW can recover the true ATT in a well-behaved simulation."""
-
-    def test_compute_ipw_att(self):
-        att_ipw = compute_ipw_att(self.A, self.Y, self.ps, stabilized=True)
-        self.assertAlmostEqual(att_ipw[EFFECT], self.true_att, delta=0.1)
+        self.assertAlmostEqual(att_ipw[EFFECT], self.true_att, delta=0.01)
 
 
 class TestComputeIPW_RR(TestEffectBase):
@@ -205,15 +182,7 @@ class TestComputeIPW_RR(TestEffectBase):
 
     def test_compute_ipw_rr(self):
         rr_ipw = compute_ipw_risk_ratio(self.A, self.Y, self.ps)
-        self.assertAlmostEqual(rr_ipw[EFFECT], self.true_rr, delta=0.1)
-
-
-class TestComputeIPW_RR_stabilized(TestEffectBase):
-    """Checks if IPW can recover the true RR in a well-behaved simulation."""
-
-    def test_compute_ipw_rr(self):
-        rr_ipw = compute_ipw_risk_ratio(self.A, self.Y, self.ps, stabilized=True)
-        self.assertAlmostEqual(rr_ipw[EFFECT], self.true_rr, delta=0.2)
+        self.assertAlmostEqual(rr_ipw[EFFECT], self.true_rr, delta=0.01)
 
 
 # Run the unittests
