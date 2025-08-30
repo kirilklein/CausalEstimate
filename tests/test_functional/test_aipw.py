@@ -24,15 +24,50 @@ class TestComputeAIPWATE(TestEffectBase):
 class TestAIPW_ATE_base(TestEffectBase):
     def test_compute_aipw_ate(self):
         ate_aipw = compute_aipw_ate(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
+        self.assertAlmostEqual(ate_aipw[EFFECT], self.true_ate, delta=0.02)
+
+
+class TestAIPW_ATE_base_stabilized(TestEffectBase):
+    def test_compute_aipw_ate_stabilized(self):
+        ate_aipw = compute_aipw_ate(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
         self.assertAlmostEqual(ate_aipw[EFFECT], self.true_ate, delta=0.03)
 
 
 class TestAIPW_ATE_ps_misspecified(TestAIPW_ATE_base):
     alpha = [0.1, 0.2, -0.3, 10]
 
+    def test_compute_aipw_ate(self):
+        ate_aipw = compute_aipw_ate(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
+        self.assertNotAlmostEqual(ate_aipw[EFFECT], self.true_ate, delta=0.03)
+
 
 class TestAIPW_ATE_outcome_model_misspecified(TestAIPW_ATE_base):
-    beta = [0.5, 10, 0.6, 0.3, 10]
+    beta = [
+        0.5,
+        10,
+        0.6,
+        0.3,
+        10,
+    ]  # if the ps is correct, there is no adjustment, thus outcome model does not matter in this case.
+
+    def test_compute_aipw_ate(self):
+        ate_aipw = compute_aipw_ate(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
+        self.assertAlmostEqual(ate_aipw[EFFECT], self.true_ate, delta=0.01)
+
+
+class TestAIPW_ATE_outcome_and_ps_model_misspecified(TestAIPW_ATE_base):
+    beta = [
+        0.5,
+        10,
+        0.6,
+        0.3,
+        10,
+    ]  # if the ps is correct, there is no adjustment, thus outcome model does not matter in this case.
+    alpha = [0.1, 0.2, -0.3, 10]
+
+    def test_compute_aipw_ate(self):
+        ate_aipw = compute_aipw_ate(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
+        self.assertNotAlmostEqual(ate_aipw[EFFECT], self.true_ate, delta=0.05)
 
 
 class TestAIPW_ATT_base(TestEffectBase):
@@ -42,11 +77,31 @@ class TestAIPW_ATT_base(TestEffectBase):
 
 
 class TestAIPW_ATT_outcome_model_misspecified(TestAIPW_ATT_base):
-    beta = [0.5, 0.8, -0.6, 0.3, 5]
+    beta = [
+        0.5,
+        0.8,
+        -0.6,
+        0.3,
+        5,
+    ]  # if the ps is correct, there is no adjustment, thus outcome model does not matter in this case.
+
+    def test_compute_aipw_att(self):
+        att_aipw = compute_aipw_att(self.A, self.Y, self.ps, self.Y0_hat)
+        self.assertAlmostEqual(att_aipw[EFFECT], self.true_att, delta=0.01)
 
 
 class TestAIPW_ATT_ps_misspecified(TestAIPW_ATT_base):
-    alpha = [0.1, 0.2, -0.3, 1]
+    alpha = [
+        0.1,
+        0.2,
+        -0.3,
+        10,
+        5,
+    ]  # evem though the ps is misspecified, the adjustment gives as a correct effect
+
+    def test_compute_aipw_att(self):
+        att_aipw = compute_aipw_att(self.A, self.Y, self.ps, self.Y0_hat)
+        self.assertAlmostEqual(att_aipw[EFFECT], self.true_att, delta=0.01)
 
 
 class TestAIPW_ATT_PS_misspecified_and_OutcomeModel_misspecified(TestAIPW_ATT_base):
