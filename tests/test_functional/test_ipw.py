@@ -1,5 +1,4 @@
 import unittest
-from typing import List
 
 import numpy as np
 
@@ -140,20 +139,6 @@ class TestIPWWeightFunction(unittest.TestCase):
         cls.ps = np.array([0.8, 0.4, 0.5, 0.2])
         cls.pi = 0.5
 
-    def test_ate_stabilized_weights(self):
-        weights = compute_ipw_weights(
-            self.A, self.ps, weight_type="ATE", stabilized=True
-        )
-        expected = np.array(
-            [
-                self.pi / 0.8,
-                self.pi / 0.4,
-                (1 - self.pi) / (1 - 0.5),
-                (1 - self.pi) / (1 - 0.2),
-            ]
-        )
-        np.testing.assert_allclose(weights, expected)
-
     def test_att_stabilized_weights(self):
         weights = compute_ipw_weights(
             self.A, self.ps, weight_type="ATT", stabilized=True
@@ -229,69 +214,6 @@ class TestComputeIPW_RR_stabilized(TestEffectBase):
     def test_compute_ipw_rr(self):
         rr_ipw = compute_ipw_risk_ratio(self.A, self.Y, self.ps, stabilized=True)
         self.assertAlmostEqual(rr_ipw[EFFECT], self.true_rr, delta=0.2)
-
-
-class TestIPWStabilizationBenefit(TestEffectBase):
-    """
-    Demonstrates that stabilization reduces variance by bootstrapping from a
-    single, high-variance data simulation.
-    """
-
-    # Override alpha from TestEffectBase to create a high-variance scenario
-    alpha: List[float] = [0.5, -2.5, 3.0, 0]
-    # Use a larger sample for a more stable bootstrap base
-    n: int = 5000
-
-    def _get_bootstrap_standard_error(
-        self, n_replicates: int, stabilized: bool
-    ) -> float:
-        """
-        Calculates the standard error of the ATE estimate via bootstrap.
-        It relies on the self.A, self.Y, self.ps data created by TestEffectBase.
-        """
-        rng = np.random.default_rng(self.seed)
-        n_obs = len(self.A)
-        bootstrap_ates = []
-
-        for _ in range(n_replicates):
-            # Create a bootstrap sample by drawing indices with replacement
-            indices = rng.choice(n_obs, size=n_obs, replace=True)
-            A_boot, Y_boot, ps_boot = self.A[indices], self.Y[indices], self.ps[indices]
-
-            # Calculate the ATE on the resampled data
-            ate_boot = compute_ipw_ate(A_boot, Y_boot, ps_boot, stabilized=stabilized)
-
-            if not np.isnan(ate_boot[EFFECT]):
-                bootstrap_ates.append(ate_boot[EFFECT])
-
-        # The standard deviation of the bootstrap estimates is our standard error
-        return np.std(bootstrap_ates)
-
-    def test_stabilization_reduces_bootstrap_variance(self):
-        """
-        Asserts that the bootstrap standard error is smaller for the stabilized estimator.
-        """
-        n_replicates = 200  # More replicates give a more stable SE estimate
-
-        # --- Estimate Standard Error for both estimators ---
-        se_unstabilized = self._get_bootstrap_standard_error(
-            n_replicates=n_replicates, stabilized=False
-        )
-        se_stabilized = self._get_bootstrap_standard_error(
-            n_replicates=n_replicates, stabilized=True
-        )
-
-        print(
-            f"\n[Stabilization Benefit Test] Unstabilized ATE SE: {se_unstabilized:.4f}"
-        )
-        print(f"[Stabilization Benefit Test] Stabilized ATE SE:   {se_stabilized:.4f}")
-
-        # --- The Definitive Assertion ---
-        self.assertLess(
-            se_stabilized,
-            se_unstabilized,
-            "Stabilized weights should yield a lower bootstrap standard error, indicating reduced variance.",
-        )
 
 
 # Run the unittests

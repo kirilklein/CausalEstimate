@@ -95,15 +95,22 @@ def compute_weighted_outcomes(
     W = compute_ipw_weights(A, ps, weight_type="ATE", stabilized=stabilized)
 
     # --- Calculate for Treated Group (mu_1) ---
-    if A.sum() > 0:
-        mu_1 = (W * A * Y).mean()
+    treated_mask: np.ndarray = A == 1
+
+    if treated_mask.sum() > 0:
+        numerator_1 = (W[treated_mask] * Y[treated_mask]).sum()
+        denominator_1 = W[treated_mask].sum()
+        mu_1 = numerator_1 / denominator_1 if denominator_1 != 0 else np.nan
     else:
         warnings.warn("No subjects in the treated group. mu_1 is NaN.", RuntimeWarning)
         mu_1 = np.nan
 
     # --- Calculate for Control Group (mu_0) ---
-    if (1 - A).sum() > 0:
-        mu_0 = (W * (1 - A) * Y).mean()
+    control_mask: np.ndarray = A == 0
+    if control_mask.sum() > 0:
+        numerator_0 = (W[control_mask] * Y[control_mask]).sum()
+        denominator_0 = W[control_mask].sum()
+        mu_0 = numerator_0 / denominator_0 if denominator_0 != 0 else np.nan
     else:
         warnings.warn("No subjects in the control group. mu_0 is NaN.", RuntimeWarning)
         mu_0 = np.nan
@@ -112,17 +119,18 @@ def compute_weighted_outcomes(
 
 
 def compute_weighted_outcomes_treated(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = False
+    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, stabilized: bool = True
 ) -> Tuple[float, float]:
     """
-    Computes E[Y(1)|A=1] and E[Y(0)|A=1] for the ATT, with explicit checks for empty groups.
+    Computes E[Y(1)|A=1] and E[Y(0)|A=1] for the ATT using the robust Hajek (ratio) estimator.
     """
     W = compute_ipw_weights(A, ps, weight_type="ATT", stabilized=stabilized)
 
     # --- Factual Outcome for the Treated (mu_1) ---
-    num_treated = A.sum()
+    treated_mask: np.ndarray = A == 1
+    num_treated = treated_mask.sum()
     if num_treated > 0:
-        mu_1 = Y[A == 1].mean()  # no asjustment for treated
+        mu_1 = Y[treated_mask].mean()  # No adjustment for treated
     else:
         warnings.warn(
             "No subjects in the treated group for ATT. mu_1 is NaN.", RuntimeWarning
@@ -130,10 +138,16 @@ def compute_weighted_outcomes_treated(
         mu_1 = np.nan
 
     # --- Counterfactual Outcome for the Treated (mu_0) ---
-    if num_treated > 0 and (1 - A).sum() > 0:
-        mu_0 = (W * (1 - A) * Y).sum() / num_treated
+    control_mask: np.ndarray = A == 0
+    if num_treated > 0 and control_mask.sum() > 0:
+        weights_control = W[control_mask]
+        outcomes_control = Y[control_mask]
+
+        numerator_0 = (weights_control * outcomes_control).sum()
+        denominator_0 = weights_control.sum()
+
+        mu_0 = numerator_0 / denominator_0 if denominator_0 != 0 else np.nan
     else:
-        # mu_0 is NaN if there are no treated (target population) or no controls (source population)
         if num_treated == 0:
             warnings.warn(
                 "No subjects in the treated group for ATT. mu_0 is NaN.", RuntimeWarning
@@ -157,8 +171,9 @@ def compute_ipw_weights(
     stabilized: bool = False,
 ) -> np.ndarray:
     """
-    Compute IPW weights for ATE or ATT with optional stabilization.
+    Compute IPW weights for ATE or ATT with optional stabilization for ATE.
     """
+
     if weight_type == "ATE":
         if stabilized:
             pi = A.mean()
@@ -167,17 +182,13 @@ def compute_ipw_weights(
         else:
             weight_treated = 1 / ps
             weight_control = 1 / (1 - ps)
-        return A * weight_treated + (1 - A) * weight_control
+        return np.where(A == 1, weight_treated, weight_control)
 
     elif weight_type == "ATT":
+        if stabilized:
+            warnings.warn("Stabilized weights are not used for ATT.", RuntimeWarning)
         weight_treated = np.ones_like(A, dtype=float)
         weight_control = ps / (1 - ps)
-        if stabilized:
-            pi = A.mean()
-            if pi > 0:
-                stabilization_factor = (1 - pi) / pi
-                weight_control *= stabilization_factor
-        return A * weight_treated + (1 - A) * weight_control
-
+        return np.where(A == 1, weight_treated, weight_control)
     else:
         raise ValueError("weight_type must be 'ATE' or 'ATT'")
