@@ -47,6 +47,28 @@ class TestTMLE_ATE_base(TestEffectBase):
         self.assertAlmostEqual(ate_tmle[EFFECT], self.true_ate, delta=0.02)
 
 
+class TestTMLE_ATE_base2(TestEffectBase):
+    alpha = [1, -0.2, -0.3]
+    beta = [0.1, 0.4, 0.6, -2]
+
+    def test_compute_tmle_ate(self):
+        ate_tmle = compute_tmle_ate(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertAlmostEqual(ate_tmle[EFFECT], self.true_ate, delta=0.02)
+
+
+class TestTMLE_ATE_base3(TestEffectBase):
+    alpha = [-1, 2, -0.3]
+    beta = [-1, 0.4, 0.6, -2]
+
+    def test_compute_tmle_ate(self):
+        ate_tmle = compute_tmle_ate(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertAlmostEqual(ate_tmle[EFFECT], self.true_ate, delta=0.02)
+
+
 class TestTMLE_RR(TestEffectBase):
     def test_compute_tmle_rr(self):
         rr_tmle = compute_tmle_rr(
