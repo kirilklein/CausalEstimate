@@ -18,6 +18,7 @@ class IPW(BaseEstimator):
         outcome_col="outcome",
         ps_col="ps",
         stabilized: bool = False,
+        clip_percentile: float = 1,
     ):
         """
         Inverse Probability Weighting estimator.
@@ -28,6 +29,7 @@ class IPW(BaseEstimator):
             outcome_col: Name of outcome column
             ps_col: Name of propensity score column
             stabilized: kep for backward compatibility
+            clip_percentile: percentile to clip the weights at
         """
         # Initialize base class with core parameters
         super().__init__(
@@ -36,6 +38,7 @@ class IPW(BaseEstimator):
             outcome_col=outcome_col,
             ps_col=ps_col,
         )
+        self.clip_percentile = clip_percentile
         if stabilized:
             warnings.warn("Stabilized weights are not used for IPW.", RuntimeWarning)
 
@@ -46,12 +49,16 @@ class IPW(BaseEstimator):
         )
 
         if self.effect_type in ["ATE", "ARR"]:
-            return compute_ipw_ate(A, Y, ps)
+            return compute_ipw_ate(A, Y, ps, clip_percentile=self.clip_percentile)
         elif self.effect_type == "ATT":
-            return compute_ipw_att(A, Y, ps)
+            return compute_ipw_att(A, Y, ps, clip_percentile=self.clip_percentile)
         elif self.effect_type == "RR":
-            return compute_ipw_risk_ratio(A, Y, ps)
+            return compute_ipw_risk_ratio(
+                A, Y, ps, clip_percentile=self.clip_percentile
+            )
         elif self.effect_type == "RRT":
-            return compute_ipw_risk_ratio_treated(A, Y, ps)
+            return compute_ipw_risk_ratio_treated(
+                A, Y, ps, clip_percentile=self.clip_percentile
+            )
         else:
             raise ValueError(f"Effect type '{self.effect_type}' is not supported.")
