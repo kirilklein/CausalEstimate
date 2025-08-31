@@ -182,9 +182,15 @@ def compute_ipw_weights(
         weight_treated = 1 / ps
         weight_control = 1 / (1 - ps)
         if clip_percentile < 1:
-            threshold = np.percentile(weight_treated, clip_percentile * 100)
+            treated_mask = A == 1
+            control_mask = A == 0
+            threshold = np.percentile(
+                weight_treated[treated_mask], clip_percentile * 100
+            )  # only compute threshold for treated group
             weight_treated = np.clip(weight_treated, a_min=None, a_max=threshold)
-            threshold = np.percentile(weight_control, clip_percentile * 100)
+            threshold = np.percentile(
+                weight_control[control_mask], clip_percentile * 100
+            )  # only compute threshold for control group
             weight_control = np.clip(weight_control, a_min=None, a_max=threshold)
         weights = np.where(A == 1, weight_treated, weight_control)
 
