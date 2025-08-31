@@ -162,6 +162,7 @@ def compute_ipw_weights(
     A: np.ndarray,
     ps: np.ndarray,
     weight_type: Literal["ATE", "ATT"] = "ATE",
+    clip_percentile: float = 1,
 ) -> np.ndarray:
     """
     Compute IPW weights for ATE or ATT with optional stabilization for ATE.
@@ -170,11 +171,23 @@ def compute_ipw_weights(
     if weight_type == "ATE":
         weight_treated = 1 / ps
         weight_control = 1 / (1 - ps)
-        return np.where(A == 1, weight_treated, weight_control)
+        if clip_percentile < 1:
+            threshold = np.percentile(weight_treated, clip_percentile * 100)
+            weight_treated = np.clip(weight_treated, a_min=None, a_max=threshold)
+            threshold = np.percentile(weight_control, clip_percentile * 100)
+            weight_control = np.clip(weight_control, a_min=None, a_max=threshold)
+        weights = np.where(A == 1, weight_treated, weight_control)
 
     elif weight_type == "ATT":
         weight_treated = np.ones_like(A, dtype=float)
         weight_control = ps / (1 - ps)
-        return np.where(A == 1, weight_treated, weight_control)
+        weights = np.where(A == 1, weight_treated, weight_control)
+        if clip_percentile < 1:
+            # Only clip the weights for the control group
+            control_weights = weights[A == 0]
+            if control_weights.size > 0:
+                threshold = np.percentile(control_weights, clip_percentile * 100)
+                weights[A == 0] = np.clip(control_weights, a_min=None, a_max=threshold)
     else:
         raise ValueError("weight_type must be 'ATE' or 'ATT'")
+    return weights
