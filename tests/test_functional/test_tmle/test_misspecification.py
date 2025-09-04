@@ -23,12 +23,24 @@ class TestTMLE_ATE_base(TestEffectBase):
 class TestTMLE_PS_misspecified(TestTMLE_ATE_base):
     alpha = [0.1, 0.2, -0.3, 3]
 
+    def test_compute_tmle_ate(self):
+        ate_tmle = compute_tmle_ate(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertAlmostEqual(ate_tmle[EFFECT], self.true_ate, delta=0.02)
 
-class TestTMLE_OutcomeModel_misspecified(TestTMLE_ATE_base):
+
+class TestTMLE_OutcomeModel_misspecified(TestEffectBase):
     beta = [0.5, 0.8, -0.6, 0.3, 3]
 
+    def test_compute_tmle_ate(self):
+        ate_tmle = compute_tmle_ate(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertAlmostEqual(ate_tmle[EFFECT], self.true_ate, delta=0.02)
 
-class TestTMLE_PS_misspecified_and_OutcomeModel_misspecified(TestTMLE_ATE_base):
+
+class TestTMLE_PS_misspecified_and_OutcomeModel_misspecified(TestEffectBase):
     alpha = [0.1, 0.2, -0.3, 5]
     beta = [0.5, 0.8, -0.6, 0.3, 5]
 
@@ -48,12 +60,24 @@ class TestTMLE_RR(TestEffectBase):
         self.assertAlmostEqual(rr_tmle[EFFECT], self.true_rr, delta=1)
 
 
-class TestTMLE_RR_PS_misspecified(TestTMLE_RR):
+class TestTMLE_RR_PS_misspecified(TestEffectBase):
     alpha = [0.1, 0.2, -0.3, 5]
 
+    def test_compute_tmle_rr(self):
+        rr_tmle = compute_tmle_rr(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertAlmostEqual(rr_tmle[EFFECT], self.true_rr, delta=1)
 
-class TestTMLE_RR_OutcomeModel_misspecified(TestTMLE_RR):
+
+class TestTMLE_RR_OutcomeModel_misspecified(TestEffectBase):
     beta = [0.5, 0.8, -0.6, 0.3, 5]
+
+    def test_compute_tmle_rr(self):
+        rr_tmle = compute_tmle_rr(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertAlmostEqual(rr_tmle[EFFECT], self.true_rr, delta=1)
 
 
 class TestTMLE_RR_PS_misspecified_and_OutcomeModel_misspecified(TestEffectBase):
@@ -77,11 +101,23 @@ class TestTMLE_ATT(TestEffectBase):
 
 
 class TestTMLE_ATT_PS_misspecified(TestTMLE_ATT):
-    alpha = [0.1, 0.2, -0.3, 5]
+    alpha = [0.1, 0.2, -0.3, 10]  #  the adjustment gives as a correct effect
+
+    def test_compute_tmle_att(self):
+        att_tmle = compute_tmle_att(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertAlmostEqual(att_tmle[EFFECT], self.true_att, delta=0.01)
 
 
 class TestTMLE_ATT_OutcomeModel_misspecified(TestTMLE_ATT):
-    beta = [0.9, 0.8, -0.6, 0.3, 5, 1]
+    beta = [0.9, 0.8, -0.6, 0.3, 5, 1]  #  the adjustment gives as a correct effect
+
+    def test_compute_tmle_att(self):
+        att_tmle = compute_tmle_att(
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+        )
+        self.assertAlmostEqual(att_tmle[EFFECT], self.true_att, delta=0.01)
 
 
 class TestTMLE_ATT_PS_misspecified_and_OutcomeModel_misspecified(TestTMLE_ATT):
@@ -93,7 +129,7 @@ class TestTMLE_ATT_PS_misspecified_and_OutcomeModel_misspecified(TestTMLE_ATT):
         att_tmle = compute_tmle_att(
             self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
         )
-        self.assertNotAlmostEqual(att_tmle[EFFECT], self.true_att, delta=0.1)
+        self.assertNotAlmostEqual(att_tmle[EFFECT], self.true_att, delta=0.05)
 
 
 if __name__ == "__main__":

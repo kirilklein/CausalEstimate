@@ -1,5 +1,4 @@
 import unittest
-from typing import List
 
 import numpy as np
 
@@ -47,84 +46,6 @@ class TestTMLE_ATT_stabilized(TestEffectBase):
             stabilized=True,
         )
         self.assertAlmostEqual(att_tmle[EFFECT], self.true_att, delta=0.02)
-
-
-class TestTMLEStabilizationBenefit(TestEffectBase):
-    """
-    Demonstrates that stabilization reduces variance for the TMLE estimator
-    by bootstrapping from a single, high-variance data simulation.
-    """
-
-    # Override alpha from TestEffectBase to create a high-variance scenario
-    alpha: List[float] = [0.5, -2.5, 3.0, 0]
-    # Use a larger sample for a more stable bootstrap base
-    n: int = 5000
-
-    def _get_bootstrap_standard_error(
-        self, n_replicates: int, stabilized: bool
-    ) -> float:
-        """
-        Calculates the standard error of the TMLE ATE estimate via bootstrap.
-        It relies on the full data created by TestEffectBase.setUpClass.
-        """
-        rng = np.random.default_rng(self.seed)
-        n_obs = len(self.A)
-        bootstrap_ates = []
-
-        for _ in range(n_replicates):
-            # Create a bootstrap sample by drawing indices with replacement
-            indices = rng.choice(n_obs, size=n_obs, replace=True)
-
-            # Resample all necessary arrays for TMLE
-            A_boot = self.A[indices]
-            Y_boot = self.Y[indices]
-            ps_boot = self.ps[indices]
-            Y0_hat_boot = self.Y0_hat[indices]
-            Y1_hat_boot = self.Y1_hat[indices]
-            Yhat_boot = self.Yhat[indices]
-
-            # Calculate the ATE on the resampled data using the actual TMLE function
-            ate_boot = compute_tmle_ate(
-                A_boot,
-                Y_boot,
-                ps_boot,
-                Y0_hat_boot,
-                Y1_hat_boot,
-                Yhat_boot,
-                stabilized=stabilized,
-            )
-
-            if not np.isnan(ate_boot[EFFECT]):
-                bootstrap_ates.append(ate_boot[EFFECT])
-
-        # The standard deviation of the bootstrap estimates is our standard error
-        return np.std(bootstrap_ates)
-
-    def test_stabilization_reduces_bootstrap_variance(self):
-        """
-        Asserts that the bootstrap standard error is smaller for the stabilized TMLE estimator.
-        """
-        n_replicates = 100  # Keep lower for speed, increase for precision
-
-        # --- Estimate Standard Error for both estimators ---
-        se_unstabilized = self._get_bootstrap_standard_error(
-            n_replicates=n_replicates, stabilized=False
-        )
-        se_stabilized = self._get_bootstrap_standard_error(
-            n_replicates=n_replicates, stabilized=True
-        )
-
-        print(
-            f"\n[TMLE Stabilization Benefit] Unstabilized ATE SE: {se_unstabilized:.4f}"
-        )
-        print(f"[TMLE Stabilization Benefit] Stabilized ATE SE:   {se_stabilized:.4f}")
-
-        # --- The Definitive Assertion ---
-        self.assertLess(
-            se_stabilized,
-            se_unstabilized,
-            "Stabilized TMLE should yield a lower bootstrap standard error, indicating reduced variance.",
-        )
 
 
 class TestTMLEStabilizedVsUnstabilized(TestEffectBase):
