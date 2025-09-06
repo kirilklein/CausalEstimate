@@ -173,7 +173,7 @@ def compute_ipw_weights(
     ps: np.ndarray,
     weight_type: Literal["ATE", "ATT"] = "ATE",
     clip_percentile: float = 1,
-    eps: float = 1e-8,
+    eps: float = 1e-9,
 ) -> np.ndarray:
     """
     Computes Inverse Propensity Score (IPW) weights with optional clipping.
