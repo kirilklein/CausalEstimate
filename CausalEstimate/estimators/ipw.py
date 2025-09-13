@@ -1,5 +1,4 @@
 import pandas as pd
-import warnings
 
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.ipw import (
