@@ -24,30 +24,17 @@ def compute_estimates_att(
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
     Yhat: np.ndarray,
-    stabilized: bool = False,
+    clip_percentile: float = 1,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute updated outcome estimates for ATT using a one-step TMLE targeting step.
     """
     # Estimate the fluctuation parameter epsilon using a logistic regression:
-    H = compute_clever_covariate_att(A, ps, stabilized=stabilized)
+    H = compute_clever_covariate_att(A, ps, clip_percentile=clip_percentile)
     epsilon = estimate_fluctuation_parameter(H, Y, Yhat)
 
-    p_treated = np.mean(A == 1)
-
-    # The update term for the treated group is always the same
-    update_term_1 = epsilon * (1.0 / p_treated)
-
-    # The update term for the control group depends on stabilization
-    if stabilized:
-        # Stabilized update term for controls
-        update_term_0 = -epsilon * (ps * (1 - p_treated) / (p_treated * (1 - ps)))
-    else:
-        # Unstabilized update term for controls
-        update_term_0 = -epsilon * (ps / (p_treated * (1 - ps)))
-
-    Q_star_1 = expit(logit(Y1_hat) + update_term_1)
-    Q_star_0 = expit(logit(Y0_hat) + update_term_0)
+    Q_star_1 = expit(logit(Y1_hat) + epsilon * H)
+    Q_star_0 = expit(logit(Y0_hat) + epsilon * H)
 
     return Q_star_1, Q_star_0
 
@@ -59,14 +46,14 @@ def compute_tmle_att(
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
     Yhat: np.ndarray,
-    stabilized: bool = False,
+    clip_percentile: float = 1,
 ) -> dict:
     """
     Estimate the Average Treatment Effect on the Treated (ATT) using TMLE,
-    with optional weight stabilization for the control group.
+    with optional clipping for the control group.
     """
     Q_star_1, Q_star_0 = compute_estimates_att(
-        A, Y, ps, Y0_hat, Y1_hat, Yhat, stabilized=stabilized
+        A, Y, ps, Y0_hat, Y1_hat, Yhat, clip_percentile=clip_percentile
     )
 
     # The final ATT parameter is the mean difference within the treated population

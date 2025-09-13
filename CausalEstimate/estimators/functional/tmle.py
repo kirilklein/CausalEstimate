@@ -1,13 +1,12 @@
 import warnings
-from typing import Tuple, Optional
+from typing import Tuple
 
 import numpy as np
 from scipy.special import expit, logit
 
-
 from CausalEstimate.estimators.functional.utils import (
-    compute_initial_effect,
     compute_clever_covariate_ate,
+    compute_initial_effect,
     estimate_fluctuation_parameter,
 )
 from CausalEstimate.utils.constants import (
@@ -24,20 +23,20 @@ def compute_tmle_ate(
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
     Yhat: np.ndarray,
-    stabilized: bool = False,
+    clip_percentile: float = 1,
 ) -> dict:
     """
-    Estimate the ATE using TMLE, with optional weight stabilization.
+    Estimate the ATE using TMLE, with optional weight clipping.
     """
     Q_star_1, Q_star_0 = compute_estimates(
-        A, Y, ps, Y0_hat, Y1_hat, Yhat, stabilized=stabilized
+        A, Y, ps, Y0_hat, Y1_hat, Yhat, clip_percentile=clip_percentile
     )
     ate = (Q_star_1 - Q_star_0).mean()
 
     return {
         EFFECT: ate,
-        EFFECT_treated: Q_star_1.mean(),  # Return mean of predictions
-        EFFECT_untreated: Q_star_0.mean(),  # Return mean of predictions
+        EFFECT_treated: Q_star_1.mean(),
+        EFFECT_untreated: Q_star_0.mean(),
         **compute_initial_effect(Y1_hat, Y0_hat, Q_star_1, Q_star_0),
     }
 
@@ -49,13 +48,13 @@ def compute_tmle_rr(
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
     Yhat: np.ndarray,
-    stabilized: bool = False,
+    clip_percentile: float = 1,
 ) -> dict:
     """
-    Estimate the Risk Ratio using TMLE, with optional weight stabilization.
+    Estimate the Risk Ratio using TMLE, with optional weight clipping.
     """
     Q_star_1, Q_star_0 = compute_estimates(
-        A, Y, ps, Y0_hat, Y1_hat, Yhat, stabilized=stabilized
+        A, Y, ps, Y0_hat, Y1_hat, Yhat, clip_percentile=clip_percentile
     )
     Q_star_1_m = Q_star_1.mean()
     Q_star_0_m = Q_star_0.mean()
@@ -89,16 +88,14 @@ def compute_estimates(
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
     Yhat: np.ndarray,
-    stabilized: bool = False,  # New parameter
+    clip_percentile: float = 1,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute updated outcome estimates using TMLE targeting step.
     """
-    H = compute_clever_covariate_ate(A, ps, stabilized=stabilized)
+    H = compute_clever_covariate_ate(A, ps, clip_percentile=clip_percentile)
     epsilon = estimate_fluctuation_parameter(H, Y, Yhat)
-
-    pi = A.mean() if stabilized else None
-    Q_star_1, Q_star_0 = update_estimates(ps, Y0_hat, Y1_hat, epsilon, pi=pi)
+    Q_star_1, Q_star_0 = update_estimates(ps, Y0_hat, Y1_hat, epsilon)
 
     return Q_star_1, Q_star_0
 
@@ -108,22 +105,13 @@ def update_estimates(
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
     epsilon: float,
-    pi: Optional[float] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Update the initial outcome estimates using the fluctuation parameter.
-    If pi is provided, uses stabilized clever covariates.
     """
-    if pi is not None:
-        # Stabilized clever covariates
-        H1 = pi / ps
-        H0 = -(1.0 - pi) / (1.0 - ps)
-    else:
-        # Unstabilized clever covariates
-        H1 = 1.0 / ps
-        H0 = -1.0 / (1.0 - ps)
+    H1 = 1.0 / ps
+    H0 = -1.0 / (1.0 - ps)
 
-    # Update initial estimates with targeting step
     Q_star_1 = expit(logit(Y1_hat) + epsilon * H1)
     Q_star_0 = expit(logit(Y0_hat) + epsilon * H0)
 

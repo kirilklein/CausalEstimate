@@ -17,10 +17,10 @@ from scipy.special import logit
 def compute_clever_covariate_ate(
     A: np.ndarray,
     ps: np.ndarray,
-    stabilized: bool = False,
+    clip_percentile: float = 1,
 ) -> np.ndarray:
     """
-    Compute the clever covariate H for ATE TMLE.
+    Compute the clever covariate H for ATE TMLE with optional clipping.
 
     Parameters:
     -----------
@@ -28,20 +28,38 @@ def compute_clever_covariate_ate(
         Treatment assignment (0 or 1)
     ps: np.ndarray
         Propensity scores
-    stabilized: bool, optional
-        Whether to use stabilized weights. Default is False.
+    clip_percentile: float, optional
+        Percentile to clip the weights at. Default is 1 (no clipping).
 
     Returns:
     --------
     np.ndarray: The clever covariate H
     """
-    if stabilized:
-        pi = A.mean()
-        # Stabilized clever covariate
-        H = A * pi / ps - (1 - A) * (1 - pi) / (1 - ps)
-    else:
-        # Unstabilized clever covariate
-        H = A / ps - (1 - A) / (1 - ps)
+    # Unstabilized clever covariate components
+    H1_component = 1.0 / ps
+    H0_component = 1.0 / (1 - ps)
+
+    # Apply clipping if requested (similar to IPW clipping logic)
+    if clip_percentile < 1:
+        treated_mask: np.ndarray = A == 1
+        control_mask: np.ndarray = A == 0
+
+        # Clip treated component
+        if treated_mask.sum() > 0:
+            threshold_treated = np.percentile(
+                H1_component[treated_mask], clip_percentile * 100
+            )
+            H1_component = np.clip(H1_component, a_min=None, a_max=threshold_treated)
+
+        # Clip control component
+        if control_mask.sum() > 0:
+            threshold_control = np.percentile(
+                H0_component[control_mask], clip_percentile * 100
+            )
+            H0_component = np.clip(H0_component, a_min=None, a_max=threshold_control)
+
+    # Combine components into clever covariate
+    H = A * H1_component - (1 - A) * H0_component
 
     _validate_clever_covariate(H, "ATE")
     return H
@@ -50,10 +68,10 @@ def compute_clever_covariate_ate(
 def compute_clever_covariate_att(
     A: np.ndarray,
     ps: np.ndarray,
-    stabilized: bool = False,
+    clip_percentile: float = 1,
 ) -> np.ndarray:
     """
-    Compute the clever covariate H for ATT TMLE.
+    Compute the clever covariate H for ATT TMLE with optional clipping.
 
     Parameters:
     -----------
@@ -61,8 +79,8 @@ def compute_clever_covariate_att(
         Treatment assignment (0 or 1)
     ps: np.ndarray
         Propensity scores
-    stabilized: bool, optional
-        Whether to use stabilized weights. Default is False.
+    clip_percentile: float, optional
+        Percentile to clip the weights at. Default is 1 (no clipping).
 
     Returns:
     --------
@@ -75,18 +93,28 @@ def compute_clever_covariate_att(
         )
         return np.zeros_like(A, dtype=float)
 
-    # Component for treated individuals
+    # Component for treated individuals (no clipping needed, always 1/p_treated)
     H_treated = A / p_treated
 
-    # Component for control individuals
-    if stabilized:
-        # Stabilized clever covariate for controls
-        H_control = (1 - A) * ps * (1 - p_treated) / (p_treated * (1 - ps))
-    else:
-        # Unstabilized clever covariate for controls
-        H_control = (1 - A) * ps / (p_treated * (1 - ps))
+    # Component for control individuals - this contains the weights that need clipping
+    # Using unstabilized weights: ps / (p_treated * (1 - ps))
+    weight_component = ps / (p_treated * (1 - ps))
 
+    # Apply clipping to control weights if requested (similar to ATT IPW clipping)
+    if clip_percentile < 1:
+        control_mask: np.ndarray = A == 0
+        if control_mask.sum() > 0:
+            control_weights = weight_component[control_mask]
+            threshold = np.percentile(control_weights, clip_percentile * 100)
+            weight_component = np.where(
+                control_mask,
+                np.clip(weight_component, a_min=None, a_max=threshold),
+                weight_component,
+            )
+
+    H_control = (1 - A) * weight_component
     H = H_treated - H_control
+
     _validate_clever_covariate(H, "ATT")
     return H
 
