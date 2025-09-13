@@ -30,30 +30,37 @@ class TestTMLEUtils(unittest.TestCase):
         self.Q_star_1 = self.Y1_hat + 0.05
         self.Q_star_0 = self.Y0_hat - 0.05
 
-    def test_compute_clever_covariate_ate(self):
-        """Test ATE clever covariate calculation (unstabilized and stabilized)."""
-        # Unstabilized
-        H_unstabilized = compute_clever_covariate_ate(self.A, self.ps, stabilized=False)
-        expected_unstabilized = np.array(
-            [1 / 0.8, 1 / 0.6, -1 / (1 - 0.4), -1 / (1 - 0.2)]
-        )
-        np.testing.assert_allclose(H_unstabilized, expected_unstabilized)
+    def test_compute_clever_covariate_ate_no_clipping(self):
+        """Test ATE clever covariate calculation without clipping."""
+        H = compute_clever_covariate_ate(self.A, self.ps, clip_percentile=1.0)
+        expected = np.array([1 / 0.8, 1 / 0.6, -1 / (1 - 0.4), -1 / (1 - 0.2)])
+        np.testing.assert_allclose(H, expected)
 
-        # Stabilized (pi = 0.5)
-        pi = 0.5
-        H_stabilized = compute_clever_covariate_ate(self.A, self.ps, stabilized=True)
-        expected_stabilized = np.array(
-            [pi / 0.8, pi / 0.6, -(1 - pi) / (1 - 0.4), -(1 - pi) / (1 - 0.2)]
-        )
-        np.testing.assert_allclose(H_stabilized, expected_stabilized)
+    def test_compute_clever_covariate_ate_with_clipping(self):
+        """Test ATE clever covariate calculation with clipping."""
+        # Create extreme propensity scores
+        ps_extreme = np.array([0.99, 0.01, 0.5, 0.5])
+        A_extreme = np.array([1, 0, 1, 0])
 
-    def test_compute_clever_covariate_att(self):
-        """Test ATT clever covariate calculation (unstabilized and stabilized)."""
+        # Without clipping - should have extreme values
+        H_unclipped = compute_clever_covariate_ate(
+            A_extreme, ps_extreme, clip_percentile=1.0
+        )
+
+        # With clipping - should have reduced extreme values
+        H_clipped = compute_clever_covariate_ate(
+            A_extreme, ps_extreme, clip_percentile=0.8
+        )
+
+        # Clipped version should have smaller maximum absolute value
+        self.assertLess(np.abs(H_clipped).max(), np.abs(H_unclipped).max())
+
+    def test_compute_clever_covariate_att_no_clipping(self):
+        """Test ATT clever covariate calculation without clipping."""
         p_treated = 0.5
 
-        # Unstabilized
-        H_unstabilized = compute_clever_covariate_att(self.A, self.ps, stabilized=False)
-        expected_unstabilized = np.array(
+        H = compute_clever_covariate_att(self.A, self.ps, clip_percentile=1.0)
+        expected = np.array(
             [
                 1 / p_treated,
                 1 / p_treated,
@@ -61,25 +68,43 @@ class TestTMLEUtils(unittest.TestCase):
                 -self.ps[3] / (p_treated * (1 - self.ps[3])),
             ]
         )
-        np.testing.assert_allclose(H_unstabilized, expected_unstabilized)
+        np.testing.assert_allclose(H, expected)
 
-        # Stabilized
-        H_stabilized = compute_clever_covariate_att(self.A, self.ps, stabilized=True)
-        expected_stabilized = np.array(
-            [
-                1 / p_treated,
-                1 / p_treated,
-                -self.ps[2] * (1 - p_treated) / (p_treated * (1 - self.ps[2])),
-                -self.ps[3] * (1 - p_treated) / (p_treated * (1 - self.ps[3])),
-            ]
+    def test_compute_clever_covariate_att_with_clipping(self):
+        """Test ATT clever covariate calculation with clipping."""
+        # Create extreme propensity scores
+        ps_extreme = np.array([0.99, 0.99, 0.01, 0.01])
+        A_extreme = np.array([1, 1, 0, 0])
+
+        # Without clipping - should have extreme values for controls
+        H_unclipped = compute_clever_covariate_att(
+            A_extreme, ps_extreme, clip_percentile=1.0
         )
-        np.testing.assert_allclose(H_stabilized, expected_stabilized)
+
+        # With clipping - should have reduced extreme values for controls
+        H_clipped = compute_clever_covariate_att(
+            A_extreme, ps_extreme, clip_percentile=0.8
+        )
+
+        # Treated components should be the same (A=1 positions)
+        treated_mask = A_extreme == 1
+        np.testing.assert_array_equal(
+            H_unclipped[treated_mask], H_clipped[treated_mask]
+        )
+
+        # Control components should be clipped (A=0 positions)
+        control_mask = A_extreme == 0
+        if control_mask.sum() > 0:
+            self.assertLessEqual(
+                np.abs(H_clipped[control_mask]).max(),
+                np.abs(H_unclipped[control_mask]).max(),
+            )
 
     def test_clever_covariate_att_no_treated(self):
         """Test ATT clever covariate calculation when there are no treated subjects."""
         A_no_treated = np.array([0, 0, 0, 0])
         with self.assertWarns(RuntimeWarning):
-            H = compute_clever_covariate_att(A_no_treated, self.ps)
+            H = compute_clever_covariate_att(A_no_treated, self.ps, clip_percentile=1.0)
             # Should return an array of zeros
             np.testing.assert_allclose(H, np.zeros(4))
 
@@ -89,7 +114,19 @@ class TestTMLEUtils(unittest.TestCase):
         ps_extreme = np.array([0.9999, 0.0001])
         A_extreme = np.array([0, 1])
         with self.assertWarns(RuntimeWarning):
-            compute_clever_covariate_ate(A_extreme, ps_extreme)
+            compute_clever_covariate_ate(A_extreme, ps_extreme, clip_percentile=1.0)
+
+    def test_clipping_percentile_bounds(self):
+        """Test that clipping percentile parameter is properly bounded."""
+        # Test with valid clip_percentile values
+        for clip_pct in [0.1, 0.5, 0.9, 1.0]:
+            H = compute_clever_covariate_ate(self.A, self.ps, clip_percentile=clip_pct)
+            self.assertTrue(np.all(np.isfinite(H)))
+
+        # Test ATT as well
+        for clip_pct in [0.1, 0.5, 0.9, 1.0]:
+            H = compute_clever_covariate_att(self.A, self.ps, clip_percentile=clip_pct)
+            self.assertTrue(np.all(np.isfinite(H)))
 
     def test_compute_initial_effect(self):
         """Test calculation of initial effect and adjustments."""
