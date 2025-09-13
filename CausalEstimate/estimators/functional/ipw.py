@@ -34,9 +34,15 @@ from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untrea
 
 
 def compute_ipw_risk_ratio(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, clip_percentile: float = 1
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> dict:
-    mu_1, mu_0 = compute_weighted_outcomes(A, Y, ps, clip_percentile=clip_percentile)
+    mu_1, mu_0 = compute_weighted_outcomes(
+        A, Y, ps, clip_percentile=clip_percentile, eps=eps
+    )
     if mu_0 == 0:
         warnings.warn(
             "Risk in untreated group (mu_0) is 0, returning inf for Risk Ratio.",
@@ -49,31 +55,45 @@ def compute_ipw_risk_ratio(
 
 
 def compute_ipw_ate(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, clip_percentile: float = 1
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> dict:
-    mu_1, mu_0 = compute_weighted_outcomes(A, Y, ps, clip_percentile=clip_percentile)
+    mu_1, mu_0 = compute_weighted_outcomes(
+        A, Y, ps, clip_percentile=clip_percentile, eps=eps
+    )
     ate = mu_1 - mu_0
     return {EFFECT: ate, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
 def compute_ipw_att(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, clip_percentile: float = 1
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> dict:
     mu_1, mu_0 = compute_weighted_outcomes_treated(
-        A, Y, ps, clip_percentile=clip_percentile
+        A, Y, ps, clip_percentile=clip_percentile, eps=eps
     )
     att = mu_1 - mu_0
     return {EFFECT: att, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
 def compute_ipw_risk_ratio_treated(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, clip_percentile: float = 1
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> dict:
     """
     Computes the Relative Risk for the Treated (RRT) using IPW.
     """
     mu_1, mu_0 = compute_weighted_outcomes_treated(
-        A, Y, ps, clip_percentile=clip_percentile
+        A, Y, ps, clip_percentile=clip_percentile, eps=eps
     )
     if mu_0 == 0:
         warnings.warn(
@@ -90,13 +110,19 @@ def compute_ipw_risk_ratio_treated(
 
 
 def compute_weighted_outcomes(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, clip_percentile: float = 1
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> Tuple[float, float]:
     """
     Computes E[Y(1)] and E[Y(0)] for the ATE using the simple Horvitz-Thompson estimator,
     with explicit checks for empty groups.
     """
-    W = compute_ipw_weights(A, ps, weight_type="ATE", clip_percentile=clip_percentile)
+    W = compute_ipw_weights(
+        A, ps, weight_type="ATE", clip_percentile=clip_percentile, eps=eps
+    )
 
     # --- Calculate for Treated Group (mu_1) ---
     treated_mask: np.ndarray = A == 1
@@ -123,12 +149,18 @@ def compute_weighted_outcomes(
 
 
 def compute_weighted_outcomes_treated(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, clip_percentile: float = 1
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> Tuple[float, float]:
     """
     Computes E[Y(1)|A=1] and E[Y(0)|A=1] for the ATT using the robust Hajek (ratio) estimator.
     """
-    W = compute_ipw_weights(A, ps, weight_type="ATT", clip_percentile=clip_percentile)
+    W = compute_ipw_weights(
+        A, ps, weight_type="ATT", clip_percentile=clip_percentile, eps=eps
+    )
 
     # --- Factual Outcome for the Treated (mu_1) ---
     treated_mask: np.ndarray = A == 1
@@ -173,37 +205,70 @@ def compute_ipw_weights(
     ps: np.ndarray,
     weight_type: Literal["ATE", "ATT"] = "ATE",
     clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> np.ndarray:
     """
-    Compute IPW weights for ATE or ATT with optional stabilization for ATE.
+    Computes Inverse Propensity Score (IPW) weights with optional clipping.
+
+    This function calculates weights for estimating the Average Treatment Effect (ATE)
+    or the Average Treatment Effect on the Treated (ATT).
+
+    Formulas:
+    - ATE: w = A/ps + (1-A)/(1-ps)
+    - ATT: w = A + (1-A) * ps/(1-ps)
+
+        Args:
+        A: Binary treatment assignment vector (1 for treated, 0 for control).
+        ps: Propensity score vector (estimated probability of treatment).
+        weight_type: The type of estimand, either "ATE" or "ATT".
+        clip_percentile: The upper percentile at which to clip weights to prevent
+                         extreme values. A value of 1.0 (default) applies no
+                         clipping. For example, 0.99 clips the top 1%.
+        eps: A small constant to add to denominators for numerical stability.
+
+    Returns:
+        An array of computed IPW weights.
+
+    Raises:
+        ValueError: If `weight_type` is invalid, shapes mismatch, or
+                    `clip_percentile` is out of bounds.
     """
 
-    if weight_type == "ATE":
-        weight_treated = 1 / ps
-        weight_control = 1 / (1 - ps)
-        if clip_percentile < 1:
-            treated_mask = A == 1
-            control_mask = A == 0
-            threshold = np.percentile(
-                weight_treated[treated_mask], clip_percentile * 100
-            )  # only compute threshold for treated group
-            weight_treated = np.clip(weight_treated, a_min=None, a_max=threshold)
-            threshold = np.percentile(
-                weight_control[control_mask], clip_percentile * 100
-            )  # only compute threshold for control group
-            weight_control = np.clip(weight_control, a_min=None, a_max=threshold)
-        weights = np.where(A == 1, weight_treated, weight_control)
-
-    elif weight_type == "ATT":
-        weight_treated = np.ones_like(A, dtype=float)
-        weight_control = ps / (1 - ps)
-        weights = np.where(A == 1, weight_treated, weight_control)
-        if clip_percentile < 1:
-            # Only clip the weights for the control group
-            control_weights = weights[A == 0]
-            if control_weights.size > 0:
-                threshold = np.percentile(control_weights, clip_percentile * 100)
-                weights[A == 0] = np.clip(control_weights, a_min=None, a_max=threshold)
-    else:
+    # --- 1. Input Validation ---
+    if weight_type not in ["ATE", "ATT"]:
         raise ValueError("weight_type must be 'ATE' or 'ATT'")
+    if not (0 < clip_percentile <= 1.0):
+        raise ValueError("clip_percentile must be in the interval (0, 1.0].")
+    if A.shape != ps.shape:
+        raise ValueError("A and ps must have the same shape.")
+
+    # --- 2. Core Weight Calculation ---
+    if weight_type == "ATE":
+        # Vectorized formula for ATE weights
+        weights = A / (ps + eps) + (1 - A) / (1 - ps + eps)
+    else:  # weight_type == "ATT"
+        # For ATT, treated units have a weight of 1.
+        # Vectorized formula for ATT weights.
+        weights = A + (1 - A) * ps / (1 - ps + eps)
+
+    # --- 3. Unified Weight Clipping ---
+    if clip_percentile < 1.0:
+        q = clip_percentile * 100
+
+        # This logic is now applied to both ATE and ATT.
+        # For ATT, the 'treated_mask' section is a no-op but is still executed.
+        treated_mask = A == 1
+        if np.any(treated_mask):
+            threshold_t = np.percentile(weights[treated_mask], q)
+            weights[treated_mask] = np.clip(
+                weights[treated_mask], a_min=None, a_max=threshold_t
+            )
+
+        control_mask = ~treated_mask
+        if np.any(control_mask):
+            threshold_c = np.percentile(weights[control_mask], q)
+            weights[control_mask] = np.clip(
+                weights[control_mask], a_min=None, a_max=threshold_c
+            )
+
     return weights

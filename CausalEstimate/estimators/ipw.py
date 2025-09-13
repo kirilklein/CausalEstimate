@@ -1,5 +1,4 @@
 import pandas as pd
-import warnings
 
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.ipw import (
@@ -17,8 +16,8 @@ class IPW(BaseEstimator):
         treatment_col="treatment",
         outcome_col="outcome",
         ps_col="ps",
-        stabilized: bool = False,
         clip_percentile: float = 1,
+        eps: float = 1e-9,
     ):
         """
         Inverse Probability Weighting estimator.
@@ -28,8 +27,8 @@ class IPW(BaseEstimator):
             treatment_col: Name of treatment column
             outcome_col: Name of outcome column
             ps_col: Name of propensity score column
-            stabilized: kep for backward compatibility
             clip_percentile: percentile to clip the weights at
+            eps: Small constant for numerical stability in denominators
         """
         # Initialize base class with core parameters
         super().__init__(
@@ -39,8 +38,7 @@ class IPW(BaseEstimator):
             ps_col=ps_col,
         )
         self.clip_percentile = clip_percentile
-        if stabilized:
-            warnings.warn("Stabilized weights are not used for IPW.", RuntimeWarning)
+        self.eps = eps
 
     def _compute_effect(self, df: pd.DataFrame) -> dict:
         """Calculate causal effect using IPW."""
@@ -49,16 +47,20 @@ class IPW(BaseEstimator):
         )
 
         if self.effect_type in ["ATE", "ARR"]:
-            return compute_ipw_ate(A, Y, ps, clip_percentile=self.clip_percentile)
+            return compute_ipw_ate(
+                A, Y, ps, clip_percentile=self.clip_percentile, eps=self.eps
+            )
         elif self.effect_type == "ATT":
-            return compute_ipw_att(A, Y, ps, clip_percentile=self.clip_percentile)
+            return compute_ipw_att(
+                A, Y, ps, clip_percentile=self.clip_percentile, eps=self.eps
+            )
         elif self.effect_type == "RR":
             return compute_ipw_risk_ratio(
-                A, Y, ps, clip_percentile=self.clip_percentile
+                A, Y, ps, clip_percentile=self.clip_percentile, eps=self.eps
             )
         elif self.effect_type == "RRT":
             return compute_ipw_risk_ratio_treated(
-                A, Y, ps, clip_percentile=self.clip_percentile
+                A, Y, ps, clip_percentile=self.clip_percentile, eps=self.eps
             )
         else:
             raise ValueError(f"Effect type '{self.effect_type}' is not supported.")
