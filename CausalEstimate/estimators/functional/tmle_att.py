@@ -33,8 +33,39 @@ def compute_estimates_att(
     H = compute_clever_covariate_att(A, ps, clip_percentile=clip_percentile)
     epsilon = estimate_fluctuation_parameter(H, Y, Yhat)
 
-    Q_star_1 = expit(logit(Y1_hat) + epsilon * H)
-    Q_star_0 = expit(logit(Y0_hat) + epsilon * H)
+    # --- Step 2: Define the CORRECT, separate update terms ---
+    # This is the part that was incorrect in your new code. We revert to the logic
+    # from your old implementation.
+    p_treated = np.mean(A == 1)
+    if (
+        p_treated == 0
+    ):  # Should be caught by compute_clever_covariate_att but good practice
+        return Y1_hat, Y0_hat
+
+    # The update term for the potential outcome under treatment, Q(1,W).
+    # This is a scalar value applied to everyone's Y1_hat.
+    update_term_1 = epsilon * (1.0 / p_treated)
+
+    # The update term for the potential outcome under control, Q(0,W).
+    # This is a vector of values applied to everyone's Y0_hat.
+    # We must re-calculate the weight component here.
+    # For theoretical consistency, if ps were clipped to find H, they should be clipped here too.
+
+    weight_component = ps / (p_treated * (1 - ps))
+
+    if clip_percentile < 1:
+        control_mask: np.ndarray = A == 0
+        if control_mask.sum() > 0:
+            control_weights = weight_component[control_mask]
+            threshold = np.percentile(control_weights, clip_percentile * 100)
+            # Clip the component for ALL subjects based on the threshold from controls
+            weight_component = np.clip(weight_component, a_min=None, a_max=threshold)
+
+    update_term_0 = -epsilon * weight_component
+
+    # --- Step 3: Apply the separate updates to the potential outcome models ---
+    Q_star_1 = expit(logit(Y1_hat) + update_term_1)
+    Q_star_0 = expit(logit(Y0_hat) + update_term_0)
 
     return Q_star_1, Q_star_0
 
