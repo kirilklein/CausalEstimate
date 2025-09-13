@@ -17,7 +17,6 @@ class IPW(BaseEstimator):
         treatment_col="treatment",
         outcome_col="outcome",
         ps_col="ps",
-        stabilized: bool = False,
         clip_percentile: float = 1,
     ):
         """
@@ -28,7 +27,6 @@ class IPW(BaseEstimator):
             treatment_col: Name of treatment column
             outcome_col: Name of outcome column
             ps_col: Name of propensity score column
-            stabilized: kep for backward compatibility
             clip_percentile: percentile to clip the weights at
         """
         # Initialize base class with core parameters
@@ -39,8 +37,6 @@ class IPW(BaseEstimator):
             ps_col=ps_col,
         )
         self.clip_percentile = clip_percentile
-        if stabilized:
-            warnings.warn("Stabilized weights are not used for IPW.", RuntimeWarning)
 
     def _compute_effect(self, df: pd.DataFrame) -> dict:
         """Calculate causal effect using IPW."""
