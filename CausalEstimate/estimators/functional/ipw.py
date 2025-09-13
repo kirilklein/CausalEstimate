@@ -34,9 +34,15 @@ from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untrea
 
 
 def compute_ipw_risk_ratio(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, clip_percentile: float = 1
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> dict:
-    mu_1, mu_0 = compute_weighted_outcomes(A, Y, ps, clip_percentile=clip_percentile)
+    mu_1, mu_0 = compute_weighted_outcomes(
+        A, Y, ps, clip_percentile=clip_percentile, eps=eps
+    )
     if mu_0 == 0:
         warnings.warn(
             "Risk in untreated group (mu_0) is 0, returning inf for Risk Ratio.",
@@ -49,31 +55,45 @@ def compute_ipw_risk_ratio(
 
 
 def compute_ipw_ate(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, clip_percentile: float = 1
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> dict:
-    mu_1, mu_0 = compute_weighted_outcomes(A, Y, ps, clip_percentile=clip_percentile)
+    mu_1, mu_0 = compute_weighted_outcomes(
+        A, Y, ps, clip_percentile=clip_percentile, eps=eps
+    )
     ate = mu_1 - mu_0
     return {EFFECT: ate, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
 def compute_ipw_att(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, clip_percentile: float = 1
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> dict:
     mu_1, mu_0 = compute_weighted_outcomes_treated(
-        A, Y, ps, clip_percentile=clip_percentile
+        A, Y, ps, clip_percentile=clip_percentile, eps=eps
     )
     att = mu_1 - mu_0
     return {EFFECT: att, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
 
 
 def compute_ipw_risk_ratio_treated(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, clip_percentile: float = 1
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> dict:
     """
     Computes the Relative Risk for the Treated (RRT) using IPW.
     """
     mu_1, mu_0 = compute_weighted_outcomes_treated(
-        A, Y, ps, clip_percentile=clip_percentile
+        A, Y, ps, clip_percentile=clip_percentile, eps=eps
     )
     if mu_0 == 0:
         warnings.warn(
@@ -90,13 +110,19 @@ def compute_ipw_risk_ratio_treated(
 
 
 def compute_weighted_outcomes(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, clip_percentile: float = 1
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> Tuple[float, float]:
     """
     Computes E[Y(1)] and E[Y(0)] for the ATE using the simple Horvitz-Thompson estimator,
     with explicit checks for empty groups.
     """
-    W = compute_ipw_weights(A, ps, weight_type="ATE", clip_percentile=clip_percentile)
+    W = compute_ipw_weights(
+        A, ps, weight_type="ATE", clip_percentile=clip_percentile, eps=eps
+    )
 
     # --- Calculate for Treated Group (mu_1) ---
     treated_mask: np.ndarray = A == 1
@@ -123,12 +149,18 @@ def compute_weighted_outcomes(
 
 
 def compute_weighted_outcomes_treated(
-    A: np.ndarray, Y: np.ndarray, ps: np.ndarray, clip_percentile: float = 1
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> Tuple[float, float]:
     """
     Computes E[Y(1)|A=1] and E[Y(0)|A=1] for the ATT using the robust Hajek (ratio) estimator.
     """
-    W = compute_ipw_weights(A, ps, weight_type="ATT", clip_percentile=clip_percentile)
+    W = compute_ipw_weights(
+        A, ps, weight_type="ATT", clip_percentile=clip_percentile, eps=eps
+    )
 
     # --- Factual Outcome for the Treated (mu_1) ---
     treated_mask: np.ndarray = A == 1

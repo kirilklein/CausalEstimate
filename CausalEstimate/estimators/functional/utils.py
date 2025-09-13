@@ -18,6 +18,7 @@ def compute_clever_covariate_ate(
     A: np.ndarray,
     ps: np.ndarray,
     clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> np.ndarray:
     """
     Compute the clever covariate H for ATE TMLE with optional clipping.
@@ -29,15 +30,17 @@ def compute_clever_covariate_ate(
     ps: np.ndarray
         Propensity scores
     clip_percentile: float, optional
-        Percentile to clip the weights at. Default is 1 (no clipping).
+        Upper percentile for clipping, in (0, 1]. Default 1 (no clipping).
+    eps: float, optional
+        Small constant for numerical stability in denominators. Default 1e-9.
 
     Returns:
     --------
     np.ndarray: The clever covariate H
     """
     # Unstabilized clever covariate components
-    H1_component = 1.0 / ps
-    H0_component = 1.0 / (1 - ps)
+    H1_component = 1.0 / (ps + eps)
+    H0_component = 1.0 / (1 - ps + eps)
 
     # Apply clipping if requested (similar to IPW clipping logic)
     if clip_percentile < 1:
@@ -69,6 +72,7 @@ def compute_clever_covariate_att(
     A: np.ndarray,
     ps: np.ndarray,
     clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> np.ndarray:
     """
     Compute the clever covariate H for ATT TMLE with optional clipping.
@@ -80,7 +84,9 @@ def compute_clever_covariate_att(
     ps: np.ndarray
         Propensity scores
     clip_percentile: float, optional
-        Percentile to clip the weights at. Default is 1 (no clipping).
+        Upper percentile for clipping, in (0, 1]. Default 1 (no clipping).
+    eps: float, optional
+        Small constant for numerical stability in denominators. Default 1e-9.
 
     Returns:
     --------
@@ -94,11 +100,11 @@ def compute_clever_covariate_att(
         return np.zeros_like(A, dtype=float)
 
     # Component for treated individuals (no clipping needed, always 1/p_treated)
-    H_treated = A / p_treated
+    H_treated = A / (p_treated + eps)
 
     # Component for control individuals - this contains the weights that need clipping
     # Using unstabilized weights: ps / (p_treated * (1 - ps))
-    weight_component = ps / (p_treated * (1 - ps))
+    weight_component = ps / (p_treated * (1 - ps) + eps)
 
     # Apply clipping to control weights if requested (similar to ATT IPW clipping)
     if clip_percentile < 1:

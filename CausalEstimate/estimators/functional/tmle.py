@@ -24,12 +24,13 @@ def compute_tmle_ate(
     Y1_hat: np.ndarray,
     Yhat: np.ndarray,
     clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> dict:
     """
     Estimate the ATE using TMLE, with optional weight clipping.
     """
     Q_star_1, Q_star_0 = compute_estimates(
-        A, Y, ps, Y0_hat, Y1_hat, Yhat, clip_percentile=clip_percentile
+        A, Y, ps, Y0_hat, Y1_hat, Yhat, clip_percentile=clip_percentile, eps=eps
     )
     ate = (Q_star_1 - Q_star_0).mean()
 
@@ -49,12 +50,13 @@ def compute_tmle_rr(
     Y1_hat: np.ndarray,
     Yhat: np.ndarray,
     clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> dict:
     """
     Estimate the Risk Ratio using TMLE, with optional weight clipping.
     """
     Q_star_1, Q_star_0 = compute_estimates(
-        A, Y, ps, Y0_hat, Y1_hat, Yhat, clip_percentile=clip_percentile
+        A, Y, ps, Y0_hat, Y1_hat, Yhat, clip_percentile=clip_percentile, eps=eps
     )
     Q_star_1_m = Q_star_1.mean()
     Q_star_0_m = Q_star_0.mean()
@@ -89,11 +91,12 @@ def compute_estimates(
     Y1_hat: np.ndarray,
     Yhat: np.ndarray,
     clip_percentile: float = 1,
+    eps: float = 1e-9,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute updated outcome estimates using TMLE targeting step.
     """
-    H = compute_clever_covariate_ate(A, ps, clip_percentile=clip_percentile)
+    H = compute_clever_covariate_ate(A, ps, clip_percentile=clip_percentile, eps=eps)
     epsilon = estimate_fluctuation_parameter(H, Y, Yhat)
     Q_star_1, Q_star_0 = update_estimates(ps, Y0_hat, Y1_hat, epsilon)
 
@@ -105,12 +108,15 @@ def update_estimates(
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
     epsilon: float,
+    eps: float = 1e-9,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Update the initial outcome estimates using the fluctuation parameter.
+    eps: float = 1e-9,
+        Guard against division by zero
     """
-    H1 = 1.0 / ps
-    H0 = -1.0 / (1.0 - ps)
+    H1 = 1.0 / (ps + eps)
+    H0 = -1.0 / (1.0 - ps + eps)
 
     Q_star_1 = expit(logit(Y1_hat) + epsilon * H1)
     Q_star_0 = expit(logit(Y0_hat) + epsilon * H0)
