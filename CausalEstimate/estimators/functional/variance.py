@@ -78,8 +78,8 @@ def _compute_ic_att(
     p_treated: float,
 ) -> np.ndarray:
     """Influence curve for ATT."""
-    if p_treated == 0:
-        return np.full_like(Y, np.nan)
+    if np.isclose(p_treated, 0.0, atol=1e-12):
+        return np.full(Y.shape, np.nan, dtype=float)
     ic = H * (Y - Yhat_star) + (A / p_treated) * (Q_star_1 - Q_star_0 - psi)
     return ic
 
@@ -96,8 +96,8 @@ def _compute_ic_rr(
     mu1_star = np.mean(Q_star_1)
     mu0_star = np.mean(Q_star_0)
 
-    if np.isclose(mu0_star, 0) or np.isclose(mu1_star, 0):
-        return np.full_like(Y, np.nan)
+    if np.isclose(mu0_star, 0.0, atol=eps) or np.isclose(mu1_star, 0.0, atol=eps):
+        return np.full(Y.shape, np.nan, dtype=float)
 
     # IC for mu1
     ic_mu1 = (A / (ps + eps)) * (Y - Q_star_1) + Q_star_1 - mu1_star
