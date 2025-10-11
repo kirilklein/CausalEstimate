@@ -15,6 +15,9 @@ from CausalEstimate.utils.constants import (
     INITIAL_EFFECT_untreated,
     ADJUSTMENT_treated,
     ADJUSTMENT_untreated,
+    STD_ERR,
+    CI95_LOWER,
+    CI95_UPPER,
 )
 
 
@@ -158,9 +161,9 @@ class MultiEstimator:
 
         summary: Dict[str, Any] = {
             EFFECT: mean_effect,
-            "std_err": std_err,
-            "CI95_lower": ci95_lower,
-            "CI95_upper": ci95_upper,
+            STD_ERR: std_err,
+            CI95_LOWER: ci95_lower,
+            CI95_UPPER: ci95_upper,
         }
 
         other_keys = [key for key in result_keys if key != EFFECT]

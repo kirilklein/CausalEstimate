@@ -1,7 +1,8 @@
 import unittest
-from typing import List
+from typing import Any, Dict, List
 
 import numpy as np
+import pandas as pd
 from scipy.special import expit
 
 from CausalEstimate.simulation.binary_simulation import (
@@ -21,96 +22,103 @@ from CausalEstimate.utils.constants import (
 )
 
 
+def generate_simulation_data(
+    n: int, alpha: List[float], beta: List[float], noise_level: float, seed: int
+) -> Dict[str, Any]:
+    """
+    Generates a single, fresh dataset for a simulation run.
+    This is the logic extracted from TestEffectBase.setUpClass.
+    """
+    rng = np.random.default_rng(seed)
+
+    # 1. Simulate data using the true DGP
+    data = simulate_binary_data(n, alpha=alpha, beta=beta, seed=seed)
+    X_raw = data[["X1", "X2"]].values
+    A = data[TREATMENT_COL].values
+    Y = data[OUTCOME_COL].values
+
+    # 2. Generate nuisance predictions using the assumed (misspecified) model
+    ps_model_coeffs = np.array(alpha[:3])
+    X_ps_design = np.column_stack([np.ones(n), X_raw])
+    ps_logit = X_ps_design @ ps_model_coeffs + noise_level * rng.normal(size=n)
+    ps = expit(ps_logit)
+
+    outcome_model_coeffs = np.array(beta[:4])
+    X_y1_design = np.column_stack([np.ones(n), np.ones(n), X_raw])
+    X_y0_design = np.column_stack([np.ones(n), np.zeros(n), X_raw])
+    X_y_obs_design = np.column_stack([np.ones(n), A, X_raw])
+
+    Y1_hat = expit(
+        X_y1_design @ outcome_model_coeffs + noise_level * rng.normal(size=n)
+    )
+    Y0_hat = expit(
+        X_y0_design @ outcome_model_coeffs + noise_level * rng.normal(size=n)
+    )
+    Yhat = expit(
+        X_y_obs_design @ outcome_model_coeffs + noise_level * rng.normal(size=n)
+    )
+
+    # 3. Finalize data and compute true values
+    eps = 1e-7
+
+    return {
+        "A": A,
+        "Y": Y,
+        "ps": np.clip(ps, eps, 1 - eps),
+        "Y1_hat": np.clip(Y1_hat, eps, 1 - eps),
+        "Y0_hat": np.clip(Y0_hat, eps, 1 - eps),
+        "Yhat": np.clip(Yhat, eps, 1 - eps),
+        "true_ate": compute_ATE_theoretical_from_data(data, beta=beta),
+        "true_att": compute_ATT_theoretical_from_data(data, beta=beta),
+        "true_rr": compute_RR_theoretical_from_data(data, beta=beta),
+    }
+
+
 class TestEffectBase(unittest.TestCase):
     """
-    Base class for testing causal effect estimators.
-
-    The TRUE data generating process (DGP) is controlled by the full `alpha` and
-    `beta` vectors. Child classes can override these to create different DGPs.
-
-    - alpha: [intercept, X1, X2, X1*X2 interaction]
-    - beta:  [intercept, A, X1, X2, X1*X2 interaction]
-
-    The predictions for ps, Y1_hat, and Y0_hat are generated from an *assumed model*
-    that only uses the main effects (the first 3 or 4 coefficients). This is done
-    intentionally, so that if a child class sets a non-zero interaction term in
-    `alpha` or `beta`, the model used for predictions becomes misspecified.
-    The default values are set to a correctly specified DGP.
+    Base class for single-run tests. It now uses the centralized
+    generate_simulation_data function to create its fixture.
     """
 
     n: int = 30_000
-    alpha: List[float] = [0.1, 0.2, -0.3]
-    beta: List[float] = [0.5, 0.8, -0.6, 0.3]
-    noise_level: float = 0  # logit
-    cutoff_epsilon: float = 1e-7
+    alpha: list = [0.1, 0.2, -0.3]
+    beta: list = [0.5, 0.8, -0.6, 0.3]
+    noise_level: float = 0
     seed: int = 41
 
     @classmethod
     def setUpClass(cls):
-        # Simulate realistic data for testing
-        rng = np.random.default_rng(cls.seed)
-
-        # 1. Simulate data using the full coefficient vectors (the TRUE DGP).
-        #    Child classes override cls.alpha/cls.beta to change this DGP.
-        data = simulate_binary_data(
-            cls.n, alpha=cls.alpha, beta=cls.beta, seed=cls.seed
+        """
+        Generate a single, large dataset to be used as a fixture
+        for all the simple, single-run estimator tests.
+        """
+        sim_data = generate_simulation_data(
+            n=cls.n,
+            alpha=cls.alpha,
+            beta=cls.beta,
+            noise_level=cls.noise_level,
+            seed=cls.seed,
         )
 
-        X_raw = data[["X1", "X2"]].values
-        A = data[TREATMENT_COL].values
-        Y = data[OUTCOME_COL].values
+        # Unpack the dictionary into class attributes for the tests to use
+        cls.A = sim_data["A"]
+        cls.Y = sim_data["Y"]
+        cls.ps = sim_data["ps"]
+        cls.Y1_hat = sim_data["Y1_hat"]
+        cls.Y0_hat = sim_data["Y0_hat"]
+        cls.Yhat = sim_data["Yhat"]
+        cls.true_ate = sim_data["true_ate"]
+        cls.true_att = sim_data["true_att"]
+        cls.true_rr = sim_data["true_rr"]
 
-        # 2. Generate predictions using an ASSUMED model that only considers
-        #    main effects. This is where the misspecification is introduced.
-
-        # --- Propensity Score Model ---
-        # The assumed model for PS uses only the first 3 coefficients (intercept, X1, X2).
-        # If `cls.alpha` has a non-zero 4th element, this model is MISSPECIFIED.
-        ps_model_coeffs = np.array(cls.alpha[:3])
-        X_ps_design = np.column_stack(
-            [np.ones(cls.n), X_raw]
-        )  # Design matrix for main effects
-        ps = expit(X_ps_design @ ps_model_coeffs) + cls.noise_level * rng.normal(
-            size=cls.n
+        cls.data = pd.DataFrame(
+            {
+                TREATMENT_COL: cls.A,
+                OUTCOME_COL: cls.Y,
+                PS_COL: cls.ps,
+                PROBAS_T1_COL: cls.Y1_hat,
+                PROBAS_T0_COL: cls.Y0_hat,
+                PROBAS_COL: cls.Yhat,
+                PID_COL: np.arange(len(cls.A)),
+            }
         )
-
-        outcome_model_coeffs = np.array(cls.beta[:4])
-
-        # Design matrices for main effects outcome model
-        X_y1_design = np.column_stack([np.ones(cls.n), np.ones(cls.n), X_raw])  # A=1
-        X_y0_design = np.column_stack([np.ones(cls.n), np.zeros(cls.n), X_raw])  # A=0
-        X_y_obs_design = np.column_stack([np.ones(cls.n), A, X_raw])  # A=observed
-
-        # Generate predictions for Y1_hat, Y0_hat, and Yhat
-        Y1_hat = expit(
-            X_y1_design @ outcome_model_coeffs
-        ) + cls.noise_level * rng.normal(size=cls.n)
-
-        Y0_hat = expit(
-            X_y0_design @ outcome_model_coeffs
-        ) + cls.noise_level * rng.normal(size=cls.n)
-        Yhat = expit(
-            X_y_obs_design @ outcome_model_coeffs
-        ) + cls.noise_level * rng.normal(size=cls.n)
-
-        # 3. Finalize data preparation
-        eps = cls.cutoff_epsilon
-        cls.A, cls.Y = A, Y
-        cls.ps = np.clip(ps, eps, 1 - eps)
-        cls.Y1_hat = np.clip(Y1_hat, eps, 1 - eps)
-        cls.Y0_hat = np.clip(Y0_hat, eps, 1 - eps)
-        cls.Yhat = np.clip(Yhat, eps, 1 - eps)
-
-        cls.true_ate = compute_ATE_theoretical_from_data(data, beta=cls.beta)
-        cls.true_att = compute_ATT_theoretical_from_data(data, beta=cls.beta)
-        cls.true_rr = compute_RR_theoretical_from_data(data, beta=cls.beta)
-
-        # for classes that take dataframe as input
-        cls.data = data
-        cls.data[PID_COL] = np.arange(len(data))
-        cls.data[TREATMENT_COL] = A
-        cls.data[OUTCOME_COL] = Y
-        cls.data[PS_COL] = ps
-        cls.data[PROBAS_T1_COL] = Y1_hat
-        cls.data[PROBAS_T0_COL] = Y0_hat
-        cls.data[PROBAS_COL] = Yhat
