@@ -1,4 +1,3 @@
-# CausalEstimate/estimators/tmle.py
 import pandas as pd
 
 from CausalEstimate.estimators.base import BaseEstimator

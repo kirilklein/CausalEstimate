@@ -23,3 +23,7 @@ INITIAL_EFFECT_treated = "initial_effect_1"
 INITIAL_EFFECT_untreated = "initial_effect_0"
 ADJUSTMENT_treated = "adjustment_1"
 ADJUSTMENT_untreated = "adjustment_0"
+
+STD_ERR = "std_err"
+CI95_LOWER = "CI95_lower"
+CI95_UPPER = "CI95_upper"

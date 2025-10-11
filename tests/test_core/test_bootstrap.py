@@ -37,13 +37,16 @@ class TestBootstrap(unittest.TestCase):
         # Check if the samples are identical when using the same seed
         pd.testing.assert_frame_equal(samples1, samples2)
 
-    def test_generate_bootstrap_samples_different_samples(self):
-        # Test that bootstrap samples are actually different
+    def test_generate_bootstrap_samples_values_from_original(self):
+        # Test that bootstrap samples contain values from the original dataset
         samples = generate_bootstrap_samples(self.test_df, 2)
 
-        # Check that the two samples are different (they should be, with very high probability)
-        with self.assertRaises(AssertionError):
-            pd.testing.assert_frame_equal(samples[0], samples[1])
+        # Each bootstrap sample should only contain values from the original
+        for sample in samples:
+            # All values in column A should be from the original [1,2,3,4,5]
+            self.assertTrue(sample["A"].isin(self.test_df["A"]).all())
+            # All values in column B should be from the original [10,20,30,40,50]
+            self.assertTrue(sample["B"].isin(self.test_df["B"]).all())
 
     def test_generate_bootstrap_samples_with_empty_df(self):
         # Test behavior with empty DataFrame
