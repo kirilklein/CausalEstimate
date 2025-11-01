@@ -166,7 +166,29 @@ class MultiEstimator:
             CI95_UPPER: ci95_upper,
         }
 
-        other_keys = [key for key in result_keys if key != EFFECT]
+        # Compute statistics for individual effects (effect_1 and effect_0)
+        for effect_key, effect_name in [
+            (EFFECT_treated, "effect_1"),
+            (EFFECT_untreated, "effect_0"),
+        ]:
+            effect_values = [v for v in bootstrap_results[effect_key] if v is not None]
+            if effect_values:
+                summary[effect_name] = float(np.mean(effect_values))
+                summary[f"{effect_name}_std_err"] = float(np.std(effect_values))
+                ci_lower, ci_upper = self._compute_ci(effect_values)
+                summary[f"{effect_name}_CI95_lower"] = ci_lower
+                summary[f"{effect_name}_CI95_upper"] = ci_upper
+            else:
+                summary[effect_name] = None
+                summary[f"{effect_name}_std_err"] = None
+                summary[f"{effect_name}_CI95_lower"] = None
+                summary[f"{effect_name}_CI95_upper"] = None
+
+        other_keys = [
+            key
+            for key in result_keys
+            if key not in [EFFECT, EFFECT_treated, EFFECT_untreated]
+        ]
         for key in other_keys:
             summary[key] = self._safe_mean(bootstrap_results[key])
 
