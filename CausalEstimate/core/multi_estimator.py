@@ -93,6 +93,9 @@ class MultiEstimator:
           - effect: the mean effect across bootstrap samples
           - std_err: the standard deviation of the bootstrap effects
           - CI95_lower and CI95_upper: the 95% confidence interval (using the percentile method)
+          - effect_1 and effect_0: the mean effects for treated and untreated groups
+          - effect_1_std_err, effect_1_CI95_lower, effect_1_CI95_upper: statistics for the treated group effect
+          - effect_0_std_err, effect_0_CI95_lower, effect_0_CI95_upper: statistics for the untreated group effect
           - Optionally, raw bootstrap estimates under 'bootstrap_samples' if return_bootstrap_samples is True.
         """
         if n_bootstraps < 1:
