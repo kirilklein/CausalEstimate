@@ -126,6 +126,9 @@ Here, `results` is a dictionary with keys corresponding to each estimator's clas
 - `"effect"`: The mean effect across bootstrap samples.
 - `"std_err"`: The standard deviation of the bootstrap estimates.
 - `"CI95_lower"` and `"CI95_upper"`: The 95% confidence interval computed using the percentile method.
+- `"effect_1"` and `"effect_0"`: The mean effects for treated and untreated groups, respectively.
+- `"effect_1_std_err"`, `"effect_1_CI95_lower"`, `"effect_1_CI95_upper"`: Statistics for the treated group effect.
+- `"effect_0_std_err"`, `"effect_0_CI95_lower"`, `"effect_0_CI95_upper"`: Statistics for the untreated group effect.
 - `"n_bootstraps"`: The number of bootstrap samples (e.g., 50).
 - Optionally, if `return_bootstrap_samples=True`, a `"bootstrap_samples"` key with the raw bootstrap estimates (e.g., for the overall effect, treated, and untreated effects).
 
