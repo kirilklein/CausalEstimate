@@ -38,7 +38,7 @@ class TestAIPW_ATE_ps_misspecified(TestAIPW_ATE_base):
 
     def test_compute_aipw_ate(self):
         ate_aipw = compute_aipw_ate(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
-        self.assertNotAlmostEqual(ate_aipw[EFFECT], self.true_ate, delta=0.03)
+        self.assertAlmostEqual(ate_aipw[EFFECT], self.true_ate, delta=0.03)
 
 
 class TestAIPW_ATE_outcome_model_misspecified(TestAIPW_ATE_base):

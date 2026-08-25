@@ -32,7 +32,8 @@ def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat) -> dict:
     """
     ate_ipw_dict = compute_ipw_ate(A, Y, ps)
     ate_ipw = ate_ipw_dict[EFFECT]
-    ate_augmentation = ((A - ps) * ((Y1_hat / ps) - (Y0_hat / (1 - ps)))).mean()
+    w1, w0 = A / ps, (1 - A) / (1 - ps)
+    ate_augmentation = ((w1 / w1.mean() - 1) * Y1_hat - (w0 / w0.mean() - 1) * Y0_hat).mean()
     ate = ate_ipw - ate_augmentation
     return {EFFECT: ate}
 
