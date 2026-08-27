@@ -1,7 +1,10 @@
 import unittest
 import numpy as np
 from CausalEstimate.estimators.functional.aipw import compute_aipw_ate, compute_aipw_att
-from CausalEstimate.estimators.functional.ipw import compute_ipw_ate
+from CausalEstimate.estimators.functional.ipw import (
+    compute_ipw_ate,
+    compute_ipw_weights,
+)
 from CausalEstimate.utils.constants import EFFECT
 from tests.helpers.setup import TestEffectBase
 
@@ -33,6 +36,23 @@ class TestAIPW_ATE_base(TestEffectBase):
             ate_aipw = compute_aipw_ate(self.A, self.Y, self.ps, const, const)[EFFECT]
             ate_ipw = compute_ipw_ate(self.A, self.Y, self.ps)[EFFECT]
             self.assertAlmostEqual(ate_aipw, ate_ipw, places=12, msg=f"c={c}")
+
+    def test_matches_ipw_plus_augmentation(self):
+        A, Y, ps, Y0_hat, Y1_hat = self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat
+        W = compute_ipw_weights(A, ps, weight_type="ATE")
+        w1, w0 = A * W, (1 - A) * W
+        augmentation = (
+            (w1 / w1.mean() - 1) * Y1_hat - (w0 / w0.mean() - 1) * Y0_hat
+        ).mean()
+        expected = compute_ipw_ate(A, Y, ps)[EFFECT] - augmentation
+        actual = compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat)[EFFECT]
+        self.assertAlmostEqual(actual, expected, places=12)
+
+    def test_empty_group_warns_and_returns_nan(self):
+        A = np.ones_like(self.A)
+        with self.assertWarns(RuntimeWarning):
+            ate = compute_aipw_ate(A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
+        self.assertTrue(np.isnan(ate[EFFECT]))
 
 
 class TestAIPW_ATE_base_stabilized(TestEffectBase):

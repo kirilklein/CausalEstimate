@@ -3,7 +3,6 @@ Augmented Inverse Probability of Treatment Weighting (AIPW)
 References:
 
 ATE:
-    ATE:
     Robins, James, Mariela Sued, Quanhong Lei-Gomez, and Andrea Rotnitzky.
     "Comment: Performance of double-robust estimators when 'inverse
     probability' weights are highly variable."
@@ -18,14 +17,12 @@ ATT:
     code: https://github.com/pedrohcgs/DRDID/blob/master/R/drdid_imp_panel.R
 """
 
+import warnings
 from typing import Tuple
 
 import numpy as np
 
-from CausalEstimate.estimators.functional.ipw import (
-    compute_ipw_ate,
-    compute_ipw_weights,
-)
+from CausalEstimate.estimators.functional.ipw import compute_ipw_weights
 from CausalEstimate.utils.constants import EFFECT
 
 
@@ -35,14 +32,15 @@ def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat) -> dict:
     A: treatment assignment, Y: outcome, ps: propensity score
     Y0_hat: P[Y|A=0], Y1_hat: P[Y|A=1]
     """
-    ate_ipw_dict = compute_ipw_ate(A, Y, ps)
-    ate_ipw = ate_ipw_dict[EFFECT]
     W = compute_ipw_weights(A, ps, weight_type="ATE")
     w1, w0 = A * W, (1 - A) * W
-    ate_augmentation = (
-        (w1 / w1.mean() - 1) * Y1_hat - (w0 / w0.mean() - 1) * Y0_hat
-    ).mean()
-    ate = ate_ipw - ate_augmentation
+    if (A == 1).sum() == 0:
+        warnings.warn("No subjects in the treated group. mu_1 is NaN.", RuntimeWarning)
+    if (A == 0).sum() == 0:
+        warnings.warn("No subjects in the control group. mu_0 is NaN.", RuntimeWarning)
+    mu_1 = (w1 * (Y - Y1_hat)).sum() / w1.sum() + Y1_hat.mean()
+    mu_0 = (w0 * (Y - Y0_hat)).sum() / w0.sum() + Y0_hat.mean()
+    ate = mu_1 - mu_0
     return {EFFECT: ate}
 
 
