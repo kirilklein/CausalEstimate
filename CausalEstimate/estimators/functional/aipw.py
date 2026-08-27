@@ -3,10 +3,12 @@ Augmented Inverse Probability of Treatment Weighting (AIPW)
 References:
 
 ATE:
-    Glynn, Adam N., and Kevin M. Quinn.
-    "An introduction to the augmented inverse propensity weighted estimator."
-    Political analysis 18.1 (2010): 36-56.
-    note: This also provides a variance estimator for the AIPW estimator.
+    ATE:
+    Robins, James, Mariela Sued, Quanhong Lei-Gomez, and Andrea Rotnitzky.
+    "Comment: Performance of double-robust estimators when 'inverse
+    probability' weights are highly variable."
+    Statistical Science 22.4 (2007): 544-559.
+    Eq. (1)
 
 ATT:
     Sant’Anna, Pedro HC, and Jun Zhao.
@@ -20,7 +22,10 @@ from typing import Tuple
 
 import numpy as np
 
-from CausalEstimate.estimators.functional.ipw import compute_ipw_ate
+from CausalEstimate.estimators.functional.ipw import (
+    compute_ipw_ate,
+    compute_ipw_weights,
+)
 from CausalEstimate.utils.constants import EFFECT
 
 
@@ -32,8 +37,11 @@ def compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat) -> dict:
     """
     ate_ipw_dict = compute_ipw_ate(A, Y, ps)
     ate_ipw = ate_ipw_dict[EFFECT]
-    w1, w0 = A / ps, (1 - A) / (1 - ps)
-    ate_augmentation = ((w1 / w1.mean() - 1) * Y1_hat - (w0 / w0.mean() - 1) * Y0_hat).mean()
+    W = compute_ipw_weights(A, ps, weight_type="ATE")
+    w1, w0 = A * W, (1 - A) * W
+    ate_augmentation = (
+        (w1 / w1.mean() - 1) * Y1_hat - (w0 / w0.mean() - 1) * Y0_hat
+    ).mean()
     ate = ate_ipw - ate_augmentation
     return {EFFECT: ate}
 

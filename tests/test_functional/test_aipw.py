@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 from CausalEstimate.estimators.functional.aipw import compute_aipw_ate, compute_aipw_att
+from CausalEstimate.estimators.functional.ipw import compute_ipw_ate
 from CausalEstimate.utils.constants import EFFECT
 from tests.helpers.setup import TestEffectBase
 
@@ -25,6 +26,15 @@ class TestAIPW_ATE_base(TestEffectBase):
     def test_compute_aipw_ate(self):
         ate_aipw = compute_aipw_ate(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
         self.assertAlmostEqual(ate_aipw[EFFECT], self.true_ate, delta=0.02)
+
+    def test_constant_outcome_model_reduces_to_ipw(self):
+        for c in (0.0, 0.3, 1.0):
+            const = np.full_like(self.Y, c, dtype=float)
+            ate_aipw = compute_aipw_ate(self.A, self.Y, self.ps, const, const)[EFFECT]
+            ate_ipw = compute_ipw_ate(self.A, self.Y, self.ps)[EFFECT]
+            self.assertAlmostEqual(ate_aipw, ate_ipw, places=12, msg=f"c={c}")
+
+        
 
 
 class TestAIPW_ATE_base_stabilized(TestEffectBase):
