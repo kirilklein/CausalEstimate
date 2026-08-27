@@ -32,7 +32,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "black",
+    "black==26.5.1",
     "flake8",
     # Add other development dependencies here
 ]
@@ -49,3 +49,6 @@ exclude = ["notebooks", "tests"]
 # Add your project URLs here
 [project.urls]
 "Source" = "https://github.com/kirilklein/CausalEstimate.git"
+
+[tool.black]
+target-version = ["py311"]
