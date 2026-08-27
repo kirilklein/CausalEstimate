@@ -43,8 +43,6 @@ def validate_control_availability(
     if len(treated) == 0:
         raise ValueError("No treated units have sufficient controls")
     if len(controls) < n_controls * len(treated):
-        raise ValueError(
-            f"Not enough controls to match.\nN_controls: {len(controls)}\
+        raise ValueError(f"Not enough controls to match.\nN_controls: {len(controls)}\
             N_treated: {len(treated)}\
-            Required N_controls: {n_controls*len(treated)} (n_controls x n_treated)"
-        )
+            Required N_controls: {n_controls*len(treated)} (n_controls x n_treated)")
