@@ -117,7 +117,7 @@ def compute_weighted_outcomes(
     eps: float = 1e-9,
 ) -> Tuple[float, float]:
     """
-    Computes E[Y(1)] and E[Y(0)] for the ATE using the simple Horvitz-Thompson estimator,
+    Computes E[Y(1)] and E[Y(0)] for the ATE using the Hajék estimator,
     with explicit checks for empty groups.
     """
     W = compute_ipw_weights(
