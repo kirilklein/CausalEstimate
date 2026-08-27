@@ -34,8 +34,6 @@ class TestAIPW_ATE_base(TestEffectBase):
             ate_ipw = compute_ipw_ate(self.A, self.Y, self.ps)[EFFECT]
             self.assertAlmostEqual(ate_aipw, ate_ipw, places=12, msg=f"c={c}")
 
-        
-
 
 class TestAIPW_ATE_base_stabilized(TestEffectBase):
     def test_compute_aipw_ate_stabilized(self):
