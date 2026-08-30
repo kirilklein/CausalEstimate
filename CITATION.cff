@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use CausalEstimate in your research, please cite it as below."
+title: "CausalEstimate: A Python Library for Causal Inference"
+type: software
+authors:
+  - family-names: Klein
+    given-names: Kiril
+version: 0.10.3
+license: MIT
+repository-code: "https://github.com/kirilklein/CausalEstimate"
+url: "https://github.com/kirilklein/CausalEstimate"
+keywords:
+  - causal inference
+  - treatment effects
+  - propensity score
+  - TMLE
+  - epidemiology
