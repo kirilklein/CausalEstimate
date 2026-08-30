@@ -21,7 +21,7 @@ Estimate average treatment effects from observational data with doubly robust es
 
 - **Bring your own predictions.** Fit propensity and outcome models with scikit-learn, XGBoost, a deep model, or an external system; CausalEstimate takes the resulting columns.
 - **Pandas-native.** Input is a DataFrame with named columns; output is a plain dictionary.
-- **Focused.** Average effects (ATE, ATT, risk ratios) with bootstrap inference and overlap diagnostics — no graphs, no CATE.
+- **Focused.** Average effects — ATE, ATT and risk ratios, with TMLE variants for each — plus influence-curve standard errors for TMLE, bootstrap CIs for every estimator, and overlap diagnostics. No graphs, no CATE.
 
 Reach for DoWhy/EconML when you want end-to-end pipelines, causal graphs, or heterogeneous effects.
 
