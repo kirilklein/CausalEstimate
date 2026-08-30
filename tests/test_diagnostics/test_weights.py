@@ -25,6 +25,9 @@ class TestComputeESS(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_ess(np.array([]))
 
+    def test_huge_weights_do_not_overflow(self):
+        self.assertAlmostEqual(compute_ess(np.array([1e308, 1e308])), 2.0, places=9)
+
     def test_invalid_weights_raise(self):
         with self.assertRaises(ValueError):
             compute_ess(np.zeros(5))

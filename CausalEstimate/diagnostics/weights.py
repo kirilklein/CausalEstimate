@@ -23,10 +23,10 @@ def compute_ess(weights: np.ndarray) -> float:
         raise ValueError("weights must be finite (no NaN or inf).")
     if np.any(w < 0):
         raise ValueError("weights must be nonnegative.")
-    denominator = (w**2).sum()
-    if denominator == 0:
+    if w.max() == 0:
         raise ValueError("weights must not be all zero.")
-    return float(w.sum() ** 2 / denominator)
+    w = w / w.max()  # ESS is scale-invariant; normalizing prevents overflow
+    return float(w.sum() ** 2 / (w**2).sum())
 
 
 def _weight_summary(w: np.ndarray, suffix: str) -> dict:
