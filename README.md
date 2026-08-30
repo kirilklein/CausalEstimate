@@ -44,6 +44,7 @@ Reach for DoWhy/EconML instead when you want end-to-end pipelines, causal graphs
   \* With a caliper, the matched population is strictly neither the full nor the treated population; interpret accordingly.
 
 - **Bootstrap standard error estimation** and confidence intervals
+- **Synthetic datasets** with known ground-truth effects (`CausalEstimate.datasets`) for benchmarking and examples
 - **Common-support filtering** and **matching** (greedy, optimal)
 - **Plotting utilities** for distribution checks (e.g., propensity score overlap)
 - **Diagnostics**: positivity/overlap metrics for propensity scores
@@ -73,43 +74,37 @@ pip install -e .
 You can import any estimator class (e.g., `IPW`, `AIPW`, `TMLE`) and call `compute_effect(df)` directly. Columns (treatment, outcome, propensity score) are passed to the estimator in its constructor.
 
 ```python
-import numpy as np
-import pandas as pd
+from CausalEstimate.datasets import load_binary_with_probas
 from CausalEstimate.estimators import IPW
 
-# Simulate data
-np.random.seed(42)
-n = 1000
-ps = np.random.uniform(0, 1, n)          # true propensity for treatment
-treatment = np.random.binomial(1, ps)    # actual treatment assignment
-outcome = 2 + 0.5 * treatment + np.random.normal(0, 1, n)
-
-df = pd.DataFrame({
-    "ps": ps,
-    "treatment": treatment,
-    "outcome": outcome
-})
+# Load a built-in synthetic dataset with known ground truth.
+# It comes with true propensity scores ("ps") and outcome probabilities
+# ("probas", "probas_t0", "probas_t1") — in practice these columns hold
+# your own model's predictions.
+df, params = load_binary_with_probas(n_samples=5000, random_state=42, return_params=True)
 
 # Create an IPW Estimator for ATE
 ipw_estimator = IPW(
     effect_type="ATE",
     treatment_col="treatment",
-    outcome_col="outcome",
+    outcome_col="Y",
     ps_col="ps",
     # optionally stabilized=True if you want stabilized IP weights
 )
 
 results = ipw_estimator.compute_effect(df)
-print("IPW estimated effect:", results)
+print(f"IPW estimated effect: {results['effect']:.4f}")
+print(f"True ATE: {params['true_ate']:.4f}")
 ```
 
 Output:
 
 ```python
-{'effect': 0.5518, 'effect_1': 2.5260, 'effect_0': 1.9742}
+IPW estimated effect: 0.1599
+True ATE: 0.1644
 ```
 
-`results` is a plain dictionary: `effect` is the estimated treatment effect, and `effect_1`/`effect_0` are the mean potential outcomes under treatment and control. When bootstrapping is applied (see [Multiple Estimators & Bootstrap](https://kirilklein.github.io/CausalEstimate/user-guide/multi-estimator/)), standard errors and confidence intervals are added.
+`results` is a plain dictionary: `effect` is the estimated treatment effect, and `effect_1`/`effect_0` are the mean potential outcomes under treatment and control. When bootstrapping is applied (see [Multiple Estimators & Bootstrap](https://kirilklein.github.io/CausalEstimate/user-guide/multi-estimator/)), standard errors and confidence intervals are added. `params` also contains `true_att` and `true_rr` for benchmarking other effect types.
 
 ---
 
