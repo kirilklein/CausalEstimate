@@ -56,7 +56,9 @@ class TestBinaryDataset(unittest.TestCase):
 
     def test_parameter_return(self):
         """Test parameter return functionality"""
-        data, params = load_binary(n_samples=10, return_params=True)
+        data, params = load_binary(
+            n_samples=100, random_state=self.random_state, return_params=True
+        )
 
         # Test params structure
         self.assertIsInstance(params, dict)
@@ -71,6 +73,12 @@ class TestBinaryDataset(unittest.TestCase):
         # Test parameter lists
         self.assertIsInstance(params["treatment_params"], list)
         self.assertIsInstance(params["outcome_params"], list)
+
+        # True effects
+        for key in ["true_ate", "true_att", "true_rr"]:
+            self.assertIn(key, params)
+            self.assertTrue(np.isfinite(params[key]))
+        self.assertGreater(params["true_rr"], 0)
 
 
 class TestBinaryDatasetWithProbas(unittest.TestCase):
@@ -145,6 +153,28 @@ class TestBinaryDatasetWithProbas(unittest.TestCase):
         # Check parameter lengths
         self.assertEqual(len(params["treatment_params"]), 4)  # alpha parameters
         self.assertEqual(len(params["outcome_params"]), 5)  # beta parameters
+
+        # True effects
+        for key in ["true_ate", "true_att", "true_rr"]:
+            self.assertIn(key, params)
+            self.assertTrue(np.isfinite(params[key]))
+        self.assertGreater(params["true_rr"], 0)
+
+    def test_ipw_recovers_true_ate(self):
+        """IPW on the loaded data should be close to the true ATE"""
+        from CausalEstimate.estimators import IPW
+
+        data, params = load_binary_with_probas(
+            n_samples=20000, random_state=42, return_params=True
+        )
+        ipw = IPW(
+            effect_type="ATE",
+            treatment_col=TREATMENT_COL,
+            outcome_col=OUTCOME_COL,
+            ps_col=PS_COL,
+        )
+        result = ipw.compute_effect(data)
+        self.assertAlmostEqual(result["effect"], params["true_ate"], delta=0.03)
 
     def test_reproducibility(self):
         """Test if random_state ensures reproducibility"""
