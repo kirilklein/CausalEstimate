@@ -6,9 +6,7 @@ import pandas as pd
 from scipy.special import expit
 
 from CausalEstimate.simulation.binary_simulation import (
-    compute_ATE_theoretical_from_data,
-    compute_ATT_theoretical_from_data,
-    compute_RR_theoretical_from_data,
+    compute_true_effects,
     simulate_binary_data,
 )
 from CausalEstimate.utils.constants import (
@@ -68,9 +66,7 @@ def generate_simulation_data(
         "Y1_hat": np.clip(Y1_hat, eps, 1 - eps),
         "Y0_hat": np.clip(Y0_hat, eps, 1 - eps),
         "Yhat": np.clip(Yhat, eps, 1 - eps),
-        "true_ate": compute_ATE_theoretical_from_data(data, beta=beta),
-        "true_att": compute_ATT_theoretical_from_data(data, beta=beta),
-        "true_rr": compute_RR_theoretical_from_data(data, beta=beta),
+        **compute_true_effects(data, beta),
     }
 
 
