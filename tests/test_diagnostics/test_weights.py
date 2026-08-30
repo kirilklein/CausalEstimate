@@ -25,6 +25,16 @@ class TestComputeESS(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_ess(np.array([]))
 
+    def test_invalid_weights_raise(self):
+        with self.assertRaises(ValueError):
+            compute_ess(np.zeros(5))
+        with self.assertRaises(ValueError):
+            compute_ess(np.array([1.0, np.nan]))
+        with self.assertRaises(ValueError):
+            compute_ess(np.array([1.0, np.inf]))
+        with self.assertRaises(ValueError):
+            compute_ess(np.array([1.0, -0.5]))
+
 
 class TestWeightDiagnostics(TestEffectBase):
     def test_ate_diagnostics_structure_and_bounds(self):
@@ -60,6 +70,21 @@ class TestWeightDiagnosticsSmall(unittest.TestCase):
                 PS_COL: [0.5, 0.5, 0.5, 0.5],
             }
         )
+
+    def test_exact_values_on_deterministic_example(self):
+        # A=[1,1,0,0], ps=[0.5,0.25,0.25,0.5] -> ATE weights [2, 4, 4/3, 2]
+        df = pd.DataFrame({TREATMENT_COL: [1, 1, 0, 0], PS_COL: [0.5, 0.25, 0.25, 0.5]})
+        diag = compute_weight_diagnostics(df, weight_type="ATE")
+        self.assertAlmostEqual(diag["ess_total"], 98 / 29, places=5)
+        self.assertAlmostEqual(diag["ess_treated"], 36 / 20, places=5)
+        self.assertAlmostEqual(diag["ess_control"], 100 / 52, places=5)
+        self.assertAlmostEqual(diag["mean_weight"], 7 / 3, places=5)
+        self.assertAlmostEqual(diag["max_weight"], 4.0, places=6)
+        self.assertAlmostEqual(diag["max_weight_treated"], 4.0, places=6)
+        self.assertAlmostEqual(diag["max_weight_control"], 2.0, places=6)
+        # numpy linear interpolation on sorted [4/3, 2, 2, 4]
+        self.assertAlmostEqual(diag["weight_q95"], 3.7, places=5)
+        self.assertAlmostEqual(diag["weight_q99"], 3.94, places=5)
 
     def test_constant_ps_gives_full_ess(self):
         diag = compute_weight_diagnostics(self.df, weight_type="ATE")

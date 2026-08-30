@@ -13,11 +13,20 @@ def compute_ess(weights: np.ndarray) -> float:
     Effective sample size of a weighted sample (Kish): (sum w)^2 / sum(w^2).
 
     Equals n for uniform weights and approaches 1 as a single weight dominates.
+    Defined for nonnegative weights; nonfinite, negative, or all-zero weights
+    raise ValueError.
     """
     w = np.asarray(weights, dtype=float)
     if w.size == 0:
         raise ValueError("weights must be non-empty.")
-    return float(w.sum() ** 2 / (w**2).sum())
+    if not np.all(np.isfinite(w)):
+        raise ValueError("weights must be finite (no NaN or inf).")
+    if np.any(w < 0):
+        raise ValueError("weights must be nonnegative.")
+    denominator = (w**2).sum()
+    if denominator == 0:
+        raise ValueError("weights must not be all zero.")
+    return float(w.sum() ** 2 / denominator)
 
 
 def compute_weight_diagnostics(
@@ -43,8 +52,8 @@ def compute_weight_diagnostics(
 
     Returns:
     --------
-    dict with ESS (total and per arm), ESS as a fraction of n, and weight
-    summaries (max, mean, 95th and 99th percentile), overall and per arm.
+    dict with ESS (total and per arm), ESS as a fraction of n, overall weight
+    summaries (max, mean, 95th and 99th percentile), and per-arm maxima.
     """
     validate_ps_and_treatment(df, ps_col, treatment_col)
     A = df[treatment_col].to_numpy()
