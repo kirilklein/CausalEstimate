@@ -11,43 +11,19 @@
 
 📖 **Documentation**: [kirilklein.github.io/CausalEstimate](https://kirilklein.github.io/CausalEstimate/)
 
----
-
-**CausalEstimate** is a Python library designed for **causal inference**, providing a suite of methods to estimate treatment effects from observational data. It includes doubly robust techniques such as **Targeted Maximum Likelihood Estimation (TMLE)**, alongside **propensity score**-based methods like inverse probability weighting (IPW) and matching. The library is built for **flexibility** and **ease of use**, integrating seamlessly with pandas and supporting **bootstrap**-based standard error estimation and **multiple** estimators in one pass.
+Estimate average treatment effects from observational data with doubly robust estimators (TMLE, AIPW), inverse probability weighting, and matching — using propensity scores and outcome predictions you already have in a pandas DataFrame.
 
 ---
 
 ## Why CausalEstimate?
 
-Libraries like [DoWhy](https://github.com/py-why/dowhy), [EconML](https://github.com/py-why/EconML), and [causallib](https://github.com/BiomedSciAI/causallib) are powerful, but they couple effect estimation to their own model-fitting pipelines. CausalEstimate takes the opposite approach:
+[DoWhy](https://github.com/py-why/dowhy), [EconML](https://github.com/py-why/EconML), and [causallib](https://github.com/BiomedSciAI/causallib) couple effect estimation to their own model-fitting pipelines. CausalEstimate does the opposite:
 
-- **Bring your own predictions.** You fit propensity scores and outcome models however you like — scikit-learn, XGBoost, a deep model, or scores from an external system. CausalEstimate takes the resulting columns and estimates effects.
-- **Pandas-native.** Input is a plain DataFrame with named columns; output is a plain dictionary. No wrappers, no custom data containers.
-- **Lightweight.** A small dependency footprint (numpy, pandas, scipy, scikit-learn, statsmodels) and a focused scope: average effects (ATE/ATT/RR) with doubly robust estimators, matching, and bootstrap inference.
+- **Bring your own predictions.** Fit propensity and outcome models with scikit-learn, XGBoost, a deep model, or an external system; CausalEstimate takes the resulting columns.
+- **Pandas-native.** Input is a DataFrame with named columns; output is a plain dictionary.
+- **Focused.** Average effects (ATE, ATT, risk ratios) with bootstrap inference and overlap diagnostics — no graphs, no CATE.
 
-Reach for DoWhy/EconML instead when you want end-to-end pipelines, causal graphs, or heterogeneous (CATE) estimation.
-
----
-
-## Features
-
-- **Causal inference methods** and the effect types each supports:
-
-  | Estimator | ATE | ATT | RR | RRT | ARR |
-  |-----------|:---:|:---:|:--:|:---:|:---:|
-  | IPW       | ✓   | ✓   | ✓  | ✓   | ✓   |
-  | AIPW      | ✓   | ✓   | –  | –   | ✓   |
-  | TMLE      | ✓   | ✓   | ✓  | –   | ✓   |
-  | Matching  | ✓*  | –   | –  | –   | ✓*  |
-
-  ATE: average treatment effect · ATT: ATE on the treated · RR: risk ratio · RRT: risk ratio on the treated · ARR: absolute risk reduction.
-  \* With a caliper, the matched population is strictly neither the full nor the treated population; interpret accordingly.
-
-- **Bootstrap standard error estimation** and confidence intervals
-- **Synthetic datasets** with known ground-truth effects (`CausalEstimate.datasets`) for benchmarking and examples
-- **Common-support filtering** and **matching** (greedy, optimal)
-- **Plotting utilities** for distribution checks (e.g., propensity score overlap)
-- **Diagnostics**: positivity/overlap metrics for propensity scores
+Reach for DoWhy/EconML when you want end-to-end pipelines, causal graphs, or heterogeneous effects.
 
 ---
 
@@ -57,106 +33,109 @@ Reach for DoWhy/EconML instead when you want end-to-end pipelines, causal graphs
 pip install CausalEstimate
 ```
 
-Or for local development:
-
-```bash
-git clone https://github.com/kirilklein/CausalEstimate.git
-cd CausalEstimate
-pip install -e .
-```
-
 ---
 
-## Usage
+## Quickstart
 
-### 1) Single Estimator Usage
+### Single estimator
 
-You can import any estimator class (e.g., `IPW`, `AIPW`, `TMLE`) and call `compute_effect(df)` directly. Columns (treatment, outcome, propensity score) are passed to the estimator in its constructor.
+Each estimator is configured with its column names and effect type, then called with `compute_effect(df)`.
 
 ```python
 from CausalEstimate.datasets import load_binary_with_probas
 from CausalEstimate.estimators import IPW
 
-# Load a built-in synthetic dataset with known ground truth.
-# It comes with true propensity scores ("ps") and outcome probabilities
-# ("probas", "probas_t0", "probas_t1") — in practice these columns hold
-# your own model's predictions.
+# Synthetic data with known ground truth. Columns "ps", "probas",
+# "probas_t0", "probas_t1" stand in for your own model's predictions.
 df, params = load_binary_with_probas(n_samples=5000, random_state=42, return_params=True)
 
-# Create an IPW Estimator for ATE
-ipw_estimator = IPW(
-    effect_type="ATE",
-    treatment_col="treatment",
-    outcome_col="Y",
-    ps_col="ps",
-    # optionally stabilized=True if you want stabilized IP weights
-)
+ipw = IPW(effect_type="ATE", treatment_col="treatment", outcome_col="Y", ps_col="ps")
+results = ipw.compute_effect(df)
 
-results = ipw_estimator.compute_effect(df)
 print(f"IPW estimated effect: {results['effect']:.4f}")
 print(f"True ATE: {params['true_ate']:.4f}")
 ```
 
-Output:
-
-```python
+```
 IPW estimated effect: 0.1599
 True ATE: 0.1644
 ```
 
-`results` is a plain dictionary: `effect` is the estimated treatment effect, and `effect_1`/`effect_0` are the mean potential outcomes under treatment and control. When bootstrapping is applied (see [Multiple Estimators & Bootstrap](https://kirilklein.github.io/CausalEstimate/user-guide/multi-estimator/)), standard errors and confidence intervals are added. `params` also contains `true_att` and `true_rr` for benchmarking other effect types.
+`results["effect"]` is the estimated effect; `effect_1` / `effect_0` are the mean potential outcomes under treatment and control.
+
+### Several estimators with bootstrap confidence intervals
+
+`MultiEstimator` runs any set of estimators on the same data in one pass. `n_bootstraps > 1` adds `std_err` and percentile `CI95_lower` / `CI95_upper` to every result; `apply_common_support=True` trims units outside the propensity-score overlap region first.
+
+```python
+from CausalEstimate import MultiEstimator
+from CausalEstimate.estimators import IPW, AIPW, TMLE
+
+cols = dict(treatment_col="treatment", outcome_col="Y", ps_col="ps")
+estimators = [
+    IPW(effect_type="ATE", **cols),
+    AIPW(effect_type="ATE", probas_t1_col="probas_t1", probas_t0_col="probas_t0", **cols),
+    TMLE(effect_type="ATE", probas_col="probas", probas_t1_col="probas_t1", probas_t0_col="probas_t0", **cols),
+]
+
+results = MultiEstimator(estimators).compute_effects(df, n_bootstraps=100)
+for name, r in results.items():
+    print(f"{name:5s} effect={r['effect']:.4f}  95% CI=({r['CI95_lower']:.4f}, {r['CI95_upper']:.4f})")
+```
+
+```
+IPW   effect=0.1614  95% CI=(0.1296, 0.1906)
+AIPW  effect=0.1644  95% CI=(0.1412, 0.1878)
+TMLE  effect=0.1649  95% CI=(0.1395, 0.1913)
+```
+
+Bootstrap resampling is not seeded, so your numbers will differ slightly.
+
+---
+
+## What's included
+
+| Estimator | ATE | ATT | RR | RRT | ARR |
+|-----------|:---:|:---:|:--:|:---:|:---:|
+| IPW       | ✓   | ✓   | ✓  | ✓   | ✓   |
+| AIPW      | ✓   | ✓   | –  | –   | ✓   |
+| TMLE      | ✓   | ✓   | ✓  | –   | ✓   |
+| Matching  | ✓*  | –   | –  | –   | ✓*  |
+
+ATE: average treatment effect · ATT: ATE on the treated · RR: risk ratio · RRT: risk ratio on the treated · ARR: absolute risk reduction.
+\* With a caliper the matched population is neither the full nor the treated population; interpret accordingly.
+
+- **Diagnostics** (`CausalEstimate.diagnostics`) — covariate balance (`compute_balance_table`, `check_balance`; SMD with pooled unweighted SD, as in cobalt), positivity/overlap metrics, effective sample size and weight summaries.
+- **Common-support filtering** (`CausalEstimate.filter_common_support`) — trim to the propensity-score overlap region.
+- **Matching** (`CausalEstimate.estimators.Matching`) — greedy and optimal propensity-score matching with optional caliper.
+- **Synthetic datasets** (`CausalEstimate.datasets`) — `load_binary`, `load_binary_with_probas`; return `true_ate`, `true_att`, `true_rr` for benchmarking.
+- **Plotting** (`CausalEstimate.vis`) — propensity-score and outcome-probability distributions by treatment group.
 
 ---
 
 ## Documentation
 
-Full documentation lives at **[kirilklein.github.io/CausalEstimate](https://kirilklein.github.io/CausalEstimate/)**:
-
 - [Getting Started](https://kirilklein.github.io/CausalEstimate/getting-started/) — installation and the input-data contract
 - [Estimators](https://kirilklein.github.io/CausalEstimate/user-guide/estimators/) — IPW, AIPW, TMLE, Matching
-- [Multiple Estimators & Bootstrap](https://kirilklein.github.io/CausalEstimate/user-guide/multi-estimator/) — several estimators in one pass, with confidence intervals
-- [Matching](https://kirilklein.github.io/CausalEstimate/user-guide/matching/) — optimal and greedy propensity-score matching
-- [Diagnostics](https://kirilklein.github.io/CausalEstimate/user-guide/diagnostics/) — positivity/overlap metrics, effective sample size, weight summaries
-- [Plotting](https://kirilklein.github.io/CausalEstimate/user-guide/plotting/) — propensity-score overlap checks
-- [API Reference](https://kirilklein.github.io/CausalEstimate/api/estimators/) — full signatures and docstrings
-
-Covariate balance — the standard pre/post-weighting SMD table. The denominator is the
-pooled unweighted SD, held fixed pre/post so both share a scale (Stuart 2010; cobalt's default):
-
-```python
-from CausalEstimate.diagnostics import compute_balance_table, check_balance
-
-table = compute_balance_table(df, covariate_cols=["age", "bmi"], ps_col="ps", treatment_col="treatment")
-print(table)                    # means, smd_unweighted, smd_weighted, balanced per covariate
-print(check_balance(table))     # max_smd_weighted, n_unbalanced, n_undefined, prop_unbalanced, balanced
-```
+- [Multiple Estimators & Bootstrap](https://kirilklein.github.io/CausalEstimate/user-guide/multi-estimator/)
+- [Matching](https://kirilklein.github.io/CausalEstimate/user-guide/matching/)
+- [Diagnostics](https://kirilklein.github.io/CausalEstimate/user-guide/diagnostics/)
+- [Plotting](https://kirilklein.github.io/CausalEstimate/user-guide/plotting/)
+- [API Reference](https://kirilklein.github.io/CausalEstimate/api/estimators/)
 
 ---
 
-## Development
+## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details on setting up a dev environment, running tests, and contributing to this project.
-
----
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup and test workflow. Bug reports and feature requests are welcome as [issues](https://github.com/kirilklein/CausalEstimate/issues); questions can also go to [kikl@di.ku.dk](mailto:kikl@di.ku.dk).
 
 ## License
 
-**CausalEstimate** is licensed under the MIT License. See [LICENSE](LICENSE) for more details.
-
----
-
-## Contact
-
-- **GitHub**: [kirilklein](https://github.com/kirilklein)
-- **Email**: [kikl@di.ku.dk](mailto:kikl@di.ku.dk)
-
-Please open issues or pull requests if you find any bugs or want to propose enhancements.
-
----
+MIT — see [LICENSE](LICENSE).
 
 ## Citation
 
-If you use **CausalEstimate** in your research, please cite it via the "Cite this repository" button on GitHub (backed by [CITATION.cff](CITATION.cff)), or use the following BibTeX entry:
+Use the "Cite this repository" button on GitHub (backed by [CITATION.cff](CITATION.cff)), or:
 
 ```bibtex
 @software{causalestimate,
