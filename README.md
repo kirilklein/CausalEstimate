@@ -45,6 +45,7 @@ Reach for DoWhy/EconML instead when you want end-to-end pipelines, causal graphs
 - **Bootstrap standard error estimation** and confidence intervals
 - **Common-support filtering** and **matching** (greedy, optimal)
 - **Plotting utilities** for distribution checks (e.g., propensity score overlap)
+- **Diagnostics**: positivity/overlap metrics for propensity scores
 
 ---
 
@@ -121,6 +122,34 @@ Full documentation lives at **[kirilklein.github.io/CausalEstimate](https://kiri
 - [Matching](https://kirilklein.github.io/CausalEstimate/user-guide/matching/) — optimal and greedy propensity-score matching
 - [Plotting](https://kirilklein.github.io/CausalEstimate/user-guide/plotting/) — propensity-score overlap checks
 - [API Reference](https://kirilklein.github.io/CausalEstimate/api/estimators/) — full signatures and docstrings
+
+### 5) Diagnostics
+
+Positivity/overlap diagnostics to report alongside IPW/TMLE estimates:
+
+```python
+from CausalEstimate.diagnostics import compute_positivity_metrics
+
+# Suppose df has columns "ps" and "treatment"
+metrics = compute_positivity_metrics(df, ps_col="ps", treatment_col="treatment")
+print(metrics["prop_ps_extreme"])          # share of PS outside [eps, 1 - eps]
+print(metrics["common_support_low"], metrics["common_support_high"])  # trimmed common support
+print(metrics["flag_extreme_ps"])
+```
+
+Weight diagnostics — effective sample size (Kish) and weight summaries for the
+IPW weights the estimators use:
+
+```python
+from CausalEstimate.diagnostics import compute_ess, compute_weight_diagnostics
+
+diag = compute_weight_diagnostics(df, ps_col="ps", treatment_col="treatment", weight_type="ATE")
+print(diag["ess_total"], diag["ess_fraction_total"])   # ESS and ESS / n
+print(diag["max_weight"], diag["weight_q99"])
+
+# Or on your own weights (e.g. externally computed):
+ess = compute_ess(weights)
+```
 
 ---
 

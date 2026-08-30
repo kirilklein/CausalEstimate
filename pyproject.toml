@@ -48,8 +48,8 @@ docs = [
 [tool.setuptools_scm]
 write_to = "CausalEstimate/_version.py"
 [tool.setuptools.packages.find]
-include = ["CausalEstimate"]
-exclude = ["notebooks", "tests"]
+include = ["CausalEstimate*"]
+exclude = ["notebooks", "tests*"]
 # Add your project URLs here
 [project.urls]
 "Source" = "https://github.com/kirilklein/CausalEstimate.git"
