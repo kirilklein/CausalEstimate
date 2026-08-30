@@ -123,6 +123,16 @@ ATE: average treatment effect · ATT: ATE on the treated · RR: risk ratio · RR
 - [Plotting](https://kirilklein.github.io/CausalEstimate/user-guide/plotting/)
 - [API Reference](https://kirilklein.github.io/CausalEstimate/api/estimators/)
 
+Or run every diagnostic in one call before reporting IPW/TMLE estimates:
+
+```python
+from CausalEstimate import run_diagnostics
+
+report = run_diagnostics(df, ps_col="ps", treatment_col="treatment", covariate_cols=["age", "bmi"])
+print(report["flags"])          # {"extreme_ps": bool, "unbalanced": bool}
+print(report["positivity"], report["weights"], report["balance_summary"])
+```
+
 ---
 
 ## Contributing
