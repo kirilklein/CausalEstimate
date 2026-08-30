@@ -12,15 +12,15 @@ def filter_common_support(
     """
     Filters individuals based on common support in propensity scores, removing those outside the range.
 
-    Parameters:
-    df: Input DataFrame containing columns for PID, propensity score, and treatment status.
-    pid_col: Column name for the participant ID.
-    ps_col: Column name for the propensity score.
-    treatment_col: Column name for the treatment status (1 for treated, 0 for control).
-    threshold: Optional threshold in quantile (default 0.05) to trim the tails of the distribution for better common support.
+    Args:
+        df: Input DataFrame containing columns for the propensity score and treatment status.
+        ps_col: Column name for the propensity score.
+        treatment_col: Column name for the treatment status (1 for treated, 0 for control).
+        threshold: Quantile threshold (default 0.05) to trim the tails of the
+            distribution for better common support.
 
     Returns:
-    DataFrame after removing individuals without common support.
+        DataFrame after removing individuals without common support.
     """
     common_min, common_max = get_common_support_range(
         df, treatment_col, ps_col, threshold
@@ -35,16 +35,15 @@ def get_common_support_range(
     """
     Calculate the common support range for propensity scores.
 
-    Parameters:
-    -----------
-    df : Input DataFrame with treatment and propensity score columns.
-    treatment_col : Name of the treatment status column.
-    ps_col : Name of the propensity score column.
-    threshold : Quantile threshold for trimming score distribution tails. Default is 0.05.
+    Args:
+        df: Input DataFrame with treatment and propensity score columns.
+        treatment_col: Name of the treatment status column.
+        ps_col: Name of the propensity score column.
+        threshold: Quantile threshold for trimming score distribution tails.
+            Default is 0.05.
 
     Returns:
-    --------
-    Lower and upper bounds of the common support range.
+        Lower and upper bounds of the common support range.
     """
     if not 0 <= threshold < 0.5:
         raise ValueError(f"threshold must be in [0, 0.5), got {threshold}.")
