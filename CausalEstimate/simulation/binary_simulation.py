@@ -2,10 +2,20 @@ import numpy as np
 import pandas as pd
 from scipy.special import expit as logistic
 
-from CausalEstimate.utils.constants import OUTCOME_CF_COL, OUTCOME_COL, TREATMENT_COL
+from CausalEstimate.utils.constants import (
+    OUTCOME_CF_COL,
+    OUTCOME_COL,
+    PROBAS_COL,
+    PROBAS_T0_COL,
+    PROBAS_T1_COL,
+    PS_COL,
+    TREATMENT_COL,
+)
 
 
-def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataFrame:
+def simulate_binary_data(
+    n: int, alpha: list, beta: list, seed=None, return_probas: bool = False
+) -> pd.DataFrame:
     """
     Generate a synthetic dataset with two continuous covariates, a binary treatment,
     and potential binary outcomes under both observed and counterfactual treatments.
@@ -37,6 +47,13 @@ def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataF
     seed : int or None, optional
         Random seed for reproducibility. If None (default), a random generator
         without a fixed seed is used.
+    return_probas : bool, default=False
+        If True, also include the true probability columns: `<PS_COL>`
+        (propensity score), `<PROBAS_COL>` (outcome probability under the
+        assigned treatment), `<PROBAS_T0_COL>` and `<PROBAS_T1_COL>` (outcome
+        probabilities under A=0 and A=1). The propensity score is always
+        clipped to [0.01, 0.99] before treatment is drawn, so the flag only
+        adds columns and never changes the draws.
 
     Returns
     -------
@@ -46,6 +63,7 @@ def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataF
         - `<TREATMENT_COL>`: binary treatment assignment A ∼ Bernoulli(sigmoid(alpha⋅[1, X1, X2, …]))
         - `<OUTCOME_COL>`: observed binary outcome Y ∼ Bernoulli(sigmoid(beta⋅[A, X1, X2, …]))
         - `<OUTCOME_CF_COL>`: counterfactual outcome Y_cf under the *opposite* treatment A_cf = 1−A.
+        - probability columns as described above if `return_probas=True`.
 
     Notes
     -----
@@ -78,40 +96,36 @@ def simulate_binary_data(n: int, alpha: list, beta: list, seed=None) -> pd.DataF
         + alpha[5] * X2**2
     )
 
-    p = logistic(logit_p)
+    p = np.clip(logistic(logit_p), 0.01, 0.99)
     A = rng.binomial(1, p)
     if len(beta) < 8:
         beta = np.pad(beta, (0, 8 - len(beta)), mode="constant")
-    # Simulate outcome
-    logit_q = (
+    # Outcome probabilities under control (q0) and treatment (q1)
+    base_logit = (
         beta[0]
-        + beta[1] * A
         + beta[2] * X1
         + beta[3] * X2
         + beta[4] * X1 * X2
         + beta[5] * X1**2
         + beta[6] * X2**2
-        + beta[7] * A**2
     )
-    q = logistic(logit_q)
+    q0 = logistic(base_logit)
+    q1 = logistic(base_logit + beta[1] + beta[7])
+
+    q = np.where(A == 1, q1, q0)
     Y = rng.binomial(1, q)
 
-    logit_q_cf = (
-        beta[0]
-        + beta[1] * (1 - A)
-        + beta[2] * X1
-        + beta[3] * X2
-        + beta[4] * X1 * X2
-        + beta[5] * X1**2
-        + beta[6] * X2**2
-        + beta[7] * (1 - A) ** 2
-    )
-    q_cf = logistic(logit_q_cf)
+    q_cf = np.where(A == 1, q0, q1)
     Y_cf = rng.binomial(1, q_cf)
 
     data = pd.DataFrame(
         {"X1": X1, "X2": X2, TREATMENT_COL: A, OUTCOME_COL: Y, OUTCOME_CF_COL: Y_cf}
     )
+    if return_probas:
+        data[PS_COL] = p
+        data[PROBAS_COL] = q
+        data[PROBAS_T0_COL] = q0
+        data[PROBAS_T1_COL] = q1
 
     return data
 
