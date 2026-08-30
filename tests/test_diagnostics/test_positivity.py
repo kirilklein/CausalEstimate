@@ -17,7 +17,7 @@ class TestPositivityOnSimulatedData(TestEffectBase):
             metrics["n_treated"] + metrics["n_control"], metrics["n_total"]
         )
         self.assertEqual(metrics["prop_ps_extreme"], 0.0)
-        self.assertFalse(metrics["flag_positivity_violation"])
+        self.assertFalse(metrics["flag_extreme_ps"])
         self.assertGreater(metrics["ks_statistic"], 0.0)
 
     def test_support_range_matches_filter_module(self):
@@ -43,7 +43,7 @@ class TestPositivityExactProportions(unittest.TestCase):
         self.assertEqual(metrics["prop_ps_extreme"], 2 / 8)
         self.assertEqual(metrics["prop_treated_ps_extreme"], 2 / 4)
         self.assertEqual(metrics["prop_control_ps_extreme"], 0.0)
-        self.assertTrue(metrics["flag_positivity_violation"])
+        self.assertTrue(metrics["flag_extreme_ps"])
 
     def test_wider_eps_catches_more(self):
         metrics = compute_positivity_metrics(self.df, eps=0.25)
@@ -69,12 +69,31 @@ class TestPositivityExactProportions(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_positivity_metrics(treated_only)
 
+    def test_invalid_inputs_raise(self):
+        nan_ps = self.df.assign(**{PS_COL: [0.5, np.nan] + [0.5] * 6})
+        with self.assertRaises(ValueError):
+            compute_positivity_metrics(nan_ps)
+        ps_out_of_range = self.df.assign(**{PS_COL: [1.5] + [0.5] * 7})
+        with self.assertRaises(ValueError):
+            compute_positivity_metrics(ps_out_of_range)
+        nonbinary_treatment = self.df.assign(
+            **{TREATMENT_COL: [2, 1, 1, 1, 0, 0, 0, 0]}
+        )
+        with self.assertRaises(ValueError):
+            compute_positivity_metrics(nonbinary_treatment)
+        with self.assertRaises(ValueError):
+            compute_positivity_metrics(self.df, eps=0.0)
+        with self.assertRaises(ValueError):
+            compute_positivity_metrics(self.df, common_support_threshold=0.5)
+        with self.assertRaises(ValueError):
+            compute_positivity_metrics(self.df.drop(columns=[PS_COL]))
+
     def test_result_types_are_plain_python(self):
         metrics = compute_positivity_metrics(self.df)
         self.assertIsInstance(metrics["n_total"], int)
         self.assertIsInstance(metrics["prop_ps_extreme"], float)
-        self.assertIsInstance(metrics["flag_positivity_violation"], bool)
-        self.assertNotIsInstance(metrics["flag_positivity_violation"], np.bool_)
+        self.assertIsInstance(metrics["flag_extreme_ps"], bool)
+        self.assertNotIsInstance(metrics["flag_extreme_ps"], np.bool_)
 
 
 if __name__ == "__main__":
