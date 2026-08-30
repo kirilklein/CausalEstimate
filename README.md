@@ -6,6 +6,10 @@
 [![PyPI version](https://img.shields.io/pypi/v/CausalEstimate)](https://pypi.org/project/CausalEstimate/)
 [![Python versions](https://img.shields.io/pypi/pyversions/CausalEstimate)](https://pypi.org/project/CausalEstimate/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-mkdocs%20material-blue)](https://kirilklein.github.io/CausalEstimate/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kirilklein/CausalEstimate)
+
+📖 **Documentation**: [kirilklein.github.io/CausalEstimate](https://kirilklein.github.io/CausalEstimate/)
 
 ---
 
@@ -105,151 +109,21 @@ Output:
 {'effect': 0.5518, 'effect_1': 2.5260, 'effect_0': 1.9742}
 ```
 
-`results` is a plain dictionary: `effect` is the estimated treatment effect, and `effect_1`/`effect_0` are the mean potential outcomes under treatment and control. When bootstrapping is applied (see below), standard errors and confidence intervals are added.
+`results` is a plain dictionary: `effect` is the estimated treatment effect, and `effect_1`/`effect_0` are the mean potential outcomes under treatment and control. When bootstrapping is applied (see [Multiple Estimators & Bootstrap](https://kirilklein.github.io/CausalEstimate/user-guide/multi-estimator/)), standard errors and confidence intervals are added.
 
 ---
 
-### 2) Multi Estimator Usage
+## Documentation
 
-If you want to run **multiple** estimators (e.g., IPW, TMLE, AIPW) on the **same** dataset in one pass—optionally applying bootstrap or common-support filtering—you can use the `MultiEstimator`.
+Full documentation lives at **[kirilklein.github.io/CausalEstimate](https://kirilklein.github.io/CausalEstimate/)**:
 
-```python
-from CausalEstimate.estimators import IPW, AIPW, TMLE, MultiEstimator
-
-ipw = IPW(
-    effect_type="ATE",
-    treatment_col="treatment",
-    outcome_col="outcome",
-    ps_col="ps"
-)
-aipw = AIPW(
-    effect_type="ATE",
-    treatment_col="treatment",
-    outcome_col="outcome",
-    ps_col="ps",
-    probas_t1_col="predicted_outcome_treated",
-    probas_t0_col="predicted_outcome_control"
-)
-tmle = TMLE(
-    effect_type="ATE",
-    treatment_col="treatment",
-    outcome_col="outcome",
-    ps_col="ps",
-    probas_col="predicted_outcome",
-    probas_t1_col="predicted_outcome_treated",
-    probas_t0_col="predicted_outcome_control"
-)
-
-multi_estimator = MultiEstimator([ipw, aipw, tmle])
-
-# Apply bootstrap (n_bootstraps > 1 triggers bootstrapping), common support, etc.
-results = multi_estimator.compute_effects(
-    df, 
-    n_bootstraps=50,  # If n_bootstraps > 1, bootstrapping is applied.
-    apply_common_support=True,
-    common_support_threshold=0.05,
-    return_bootstrap_samples=True  # Optionally return raw bootstrap estimates.
-)
-print(results)
-```
-
-Here, `results` is a dictionary with keys corresponding to each estimator's class name (e.g., `"IPW"`, `"AIPW"`, `"TMLE"`). For estimators that perform bootstrapping (i.e. when n_bootstraps > 1), the output dictionary includes:
-
-- `"effect"`: The mean effect across bootstrap samples.
-- `"std_err"`: The standard deviation of the bootstrap estimates.
-- `"CI95_lower"` and `"CI95_upper"`: The 95% confidence interval computed using the percentile method.
-- `"n_bootstraps"`: The number of bootstrap samples (e.g., 50).
-- Optionally, if `return_bootstrap_samples=True`, a `"bootstrap_samples"` key with the raw bootstrap estimates (e.g., for the overall effect, treated, and untreated effects).
-
-When no bootstrapping is performed (i.e. n_bootstraps is set to 1), `"n_bootstraps"` is set to 0 and the bootstrap summary keys (like `"std_err"`, `"CI95_lower"`, `"CI95_upper"`) may not be present.
-
----
-
-### 3) Matching
-
-The library supports both **optimal** and **greedy** (a.k.a. eager) matching. For example:
-
-```python
-import pandas as pd
-import numpy as np
-from CausalEstimate.matching import match_optimal, match_eager
-
-df = pd.DataFrame({
-    "PID": [101, 102, 103, 202, 203, 204],
-    "treatment": [1, 1, 1, 0, 0, 0],
-    "ps": [0.30, 0.35, 0.90, 0.31, 0.34, 0.85],
-})
-
-# Optimal matching (with caliper=0.05, 1 control per treated)
-matched_optimal = match_optimal(
-    df, n_controls=1, caliper=0.05,
-    treatment_col="treatment", ps_col="ps", pid_col="PID"
-)
-print("Optimal Matching Results:")
-print(matched_optimal)
-
-# Eager (greedy) matching
-matched_eager = match_eager(
-    df, caliper=0.05,
-    treatment_col="treatment", ps_col="ps", pid_col="PID"
-)
-print("Eager Matching Results:")
-print(matched_eager)
-```
-
-Both functions return a DataFrame of matched pairs (or sets), typically with columns like `[treated_pid, control_pid, distance]`.
-
----
-
-### 4) Plotting
-
-CausalEstimate provides basic **plotting utilities** to **visualize** distributions of propensity scores or predicted outcome probabilities across treatment vs. control.
-
-#### **Example: Propensity Score Distribution**
-
-📌 **Generated from** [this notebook](examples/plot_examples.ipynb)
-
-![Propensity Score Distribution](examples/figures/propensity_score_distribution.png)
-
-```python
-import matplotlib.pyplot as plt
-from CausalEstimate.vis.plotting import plot_propensity_score_dist, plot_outcome_proba_dist
-
-# Suppose df has columns "ps", "treatment", and "predicted_outcome"
-fig, ax = plot_propensity_score_dist(df, ps_col="ps", treatment_col="treatment")
-plt.show()
-
-fig, ax = plot_outcome_proba_dist(df, outcome_proba_col="predicted_outcome", treatment_col="treatment")
-plt.show()
-```
-
-### 5) Diagnostics
-
-Positivity/overlap diagnostics to report alongside IPW/TMLE estimates:
-
-```python
-from CausalEstimate.diagnostics import compute_positivity_metrics
-
-# Suppose df has columns "ps" and "treatment"
-metrics = compute_positivity_metrics(df, ps_col="ps", treatment_col="treatment")
-print(metrics["prop_ps_extreme"])          # share of PS outside [eps, 1 - eps]
-print(metrics["common_support_low"], metrics["common_support_high"])  # trimmed common support
-print(metrics["flag_extreme_ps"])
-```
-
-Weight diagnostics — effective sample size (Kish) and weight summaries for the
-IPW weights the estimators use:
-
-```python
-from CausalEstimate.diagnostics import compute_ess, compute_weight_diagnostics
-
-diag = compute_weight_diagnostics(df, ps_col="ps", treatment_col="treatment", weight_type="ATE")
-print(diag["ess_total"], diag["ess_fraction_total"])   # ESS and ESS / n
-print(diag["max_weight"], diag["weight_q99"])
-
-# Or on your own weights (e.g. externally computed):
-ess = compute_ess(weights)
-```
+- [Getting Started](https://kirilklein.github.io/CausalEstimate/getting-started/) — installation and the input-data contract
+- [Estimators](https://kirilklein.github.io/CausalEstimate/user-guide/estimators/) — IPW, AIPW, TMLE, Matching
+- [Multiple Estimators & Bootstrap](https://kirilklein.github.io/CausalEstimate/user-guide/multi-estimator/) — several estimators in one pass, with confidence intervals
+- [Matching](https://kirilklein.github.io/CausalEstimate/user-guide/matching/) — optimal and greedy propensity-score matching
+- [Diagnostics](https://kirilklein.github.io/CausalEstimate/user-guide/diagnostics/) — positivity/overlap metrics, effective sample size, weight summaries
+- [Plotting](https://kirilklein.github.io/CausalEstimate/user-guide/plotting/) — propensity-score overlap checks
+- [API Reference](https://kirilklein.github.io/CausalEstimate/api/estimators/) — full signatures and docstrings
 
 Covariate balance — the standard pre/post-weighting SMD table (pooled unweighted SD
 denominator, Austin & Stuart 2015):

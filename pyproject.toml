@@ -41,6 +41,10 @@ plotting = [
     "seaborn",
     "plotly",
 ]
+docs = [
+    "mkdocs-material",
+    "mkdocstrings[python]",
+]
 [tool.setuptools_scm]
 write_to = "CausalEstimate/_version.py"
 [tool.setuptools.packages.find]
@@ -49,6 +53,7 @@ exclude = ["notebooks", "tests*"]
 # Add your project URLs here
 [project.urls]
 "Source" = "https://github.com/kirilklein/CausalEstimate.git"
+"Documentation" = "https://kirilklein.github.io/CausalEstimate/"
 
 [tool.black]
 target-version = ["py311"]

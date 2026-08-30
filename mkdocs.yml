@@ -1,0 +1,57 @@
+site_name: CausalEstimate
+site_description: Lightweight, pandas-native causal effect estimation with bring-your-own propensity scores
+site_url: https://kirilklein.github.io/CausalEstimate/
+repo_url: https://github.com/kirilklein/CausalEstimate
+repo_name: kirilklein/CausalEstimate
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - tables
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - User Guide:
+      - Estimators: user-guide/estimators.md
+      - Multiple Estimators & Bootstrap: user-guide/multi-estimator.md
+      - Matching: user-guide/matching.md
+      - Diagnostics: user-guide/diagnostics.md
+      - Plotting: user-guide/plotting.md
+  - API Reference:
+      - Estimators: api/estimators.md
+      - Diagnostics: api/diagnostics.md
+      - Matching: api/matching.md
+      - Filtering: api/filtering.md
+      - Plotting: api/plotting.md
