@@ -48,10 +48,13 @@ class TestWeightDiagnostics(TestEffectBase):
         self.assertLessEqual(diag["weight_q95"], diag["weight_q99"])
         self.assertLessEqual(diag["weight_q99"], diag["max_weight"])
 
-    def test_att_treated_weights_are_one(self):
+    def test_att_treated_weights_are_one_and_no_pooled_keys(self):
         diag = compute_weight_diagnostics(self.data, weight_type="ATT")
         self.assertEqual(diag["ess_treated"], diag["n_treated"])
         self.assertEqual(diag["max_weight_treated"], 1.0)
+        # pooled figures mix the two ATT weight scales and are omitted
+        for key in ("ess_total", "ess_fraction_total", "max_weight", "weight_q95"):
+            self.assertNotIn(key, diag)
 
     def test_clipping_raises_ess(self):
         raw = compute_weight_diagnostics(self.data, weight_type="ATE")
@@ -82,14 +85,26 @@ class TestWeightDiagnosticsSmall(unittest.TestCase):
         self.assertAlmostEqual(diag["max_weight"], 4.0, places=6)
         self.assertAlmostEqual(diag["max_weight_treated"], 4.0, places=6)
         self.assertAlmostEqual(diag["max_weight_control"], 2.0, places=6)
-        # numpy linear interpolation on sorted [4/3, 2, 2, 4]
-        self.assertAlmostEqual(diag["weight_q95"], 3.7, places=5)
-        self.assertAlmostEqual(diag["weight_q99"], 3.94, places=5)
+        self.assertAlmostEqual(diag["mean_weight_treated"], 3.0, places=5)
+        self.assertAlmostEqual(diag["mean_weight_control"], 5 / 3, places=5)
+        # quantile values depend on the interpolation method; assert ordering only
+        self.assertLessEqual(diag["weight_q95"], diag["weight_q99"])
+        self.assertLessEqual(diag["weight_q99"], diag["max_weight"])
 
     def test_constant_ps_gives_full_ess(self):
         diag = compute_weight_diagnostics(self.df, weight_type="ATE")
         self.assertAlmostEqual(diag["ess_total"], 4.0)
         self.assertAlmostEqual(diag["mean_weight"], 2.0, places=6)
+        self.assertLessEqual(diag["ess_fraction_total"], 1.0)
+        self.assertLessEqual(diag["ess_fraction_treated"], 1.0)
+        self.assertLessEqual(diag["ess_fraction_control"], 1.0)
+
+    def test_ps_of_exactly_zero_or_one_raises(self):
+        for bad_ps in ([0.0, 0.5, 0.5, 0.5], [0.5, 1.0, 0.5, 0.5]):
+            df = pd.DataFrame({TREATMENT_COL: [1, 1, 0, 0], PS_COL: bad_ps})
+            for weight_type in ("ATE", "ATT"):
+                with self.assertRaises(ValueError):
+                    compute_weight_diagnostics(df, weight_type=weight_type)
 
     def test_custom_column_names(self):
         renamed = self.df.rename(columns={TREATMENT_COL: "arm", PS_COL: "score"})

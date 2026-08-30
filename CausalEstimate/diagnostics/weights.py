@@ -29,6 +29,15 @@ def compute_ess(weights: np.ndarray) -> float:
     return float(w.sum() ** 2 / denominator)
 
 
+def _weight_summary(w: np.ndarray, suffix: str) -> dict:
+    return {
+        f"max_weight_{suffix}": float(w.max()),
+        f"mean_weight_{suffix}": float(w.mean()),
+        f"weight_q95_{suffix}": float(np.percentile(w, 95)),
+        f"weight_q99_{suffix}": float(np.percentile(w, 99)),
+    }
+
+
 def compute_weight_diagnostics(
     df: pd.DataFrame,
     ps_col: str = PS_COL,
@@ -41,6 +50,8 @@ def compute_weight_diagnostics(
 
     Weights are computed with compute_ipw_weights; clip_percentile=1 (default)
     means raw, unclipped weights, matching the estimators' default.
+    Propensity scores of exactly 0 or 1 raise ValueError: their IPW weights are
+    undefined and would only reflect the numerical stabilizer.
 
     Parameters:
     -----------
@@ -52,35 +63,51 @@ def compute_weight_diagnostics(
 
     Returns:
     --------
-    dict with ESS (total and per arm), ESS as a fraction of n, overall weight
-    summaries (max, mean, 95th and 99th percentile), and per-arm maxima.
+    dict with per-arm ESS, ESS as a fraction of arm size, and per-arm weight
+    summaries (max, mean, 95th and 99th percentile). Pooled equivalents
+    (ess_total, ess_fraction_total, max_weight, mean_weight, weight_q95,
+    weight_q99) are included only for weight_type="ATE": ATT weights put the
+    two arms on different scales (treated weights are identically 1), so
+    pooled Kish ESS and pooled quantiles would be misleading there.
     """
-    validate_ps_and_treatment(df, ps_col, treatment_col)
+    n_treated, n_control = validate_ps_and_treatment(df, ps_col, treatment_col)
     A = df[treatment_col].to_numpy()
     ps = df[ps_col].to_numpy()
-    n_treated = int((A == 1).sum())
-    n_control = int((A == 0).sum())
+    if np.any((ps == 0) | (ps == 1)):
+        raise ValueError(
+            "Propensity scores of exactly 0 or 1 produce undefined IPW weights; "
+            "trim them or refit the propensity model before weight diagnostics."
+        )
 
     W = compute_ipw_weights(
         A, ps, weight_type=weight_type, clip_percentile=clip_percentile
     )
     W_treated = W[A == 1]
     W_control = W[A == 0]
+    ess_treated = compute_ess(W_treated)
+    ess_control = compute_ess(W_control)
 
-    return {
+    result = {
         "n_total": int(len(W)),
         "n_treated": n_treated,
         "n_control": n_control,
-        "ess_total": compute_ess(W),
-        "ess_treated": compute_ess(W_treated),
-        "ess_control": compute_ess(W_control),
-        "ess_fraction_total": compute_ess(W) / len(W),
-        "ess_fraction_treated": compute_ess(W_treated) / n_treated,
-        "ess_fraction_control": compute_ess(W_control) / n_control,
-        "max_weight": float(W.max()),
-        "mean_weight": float(W.mean()),
-        "weight_q95": float(np.percentile(W, 95)),
-        "weight_q99": float(np.percentile(W, 99)),
-        "max_weight_treated": float(W_treated.max()),
-        "max_weight_control": float(W_control.max()),
+        "ess_treated": ess_treated,
+        "ess_control": ess_control,
+        "ess_fraction_treated": min(ess_treated / n_treated, 1.0),
+        "ess_fraction_control": min(ess_control / n_control, 1.0),
+        **_weight_summary(W_treated, "treated"),
+        **_weight_summary(W_control, "control"),
     }
+    if weight_type == "ATE":
+        ess_total = compute_ess(W)
+        result.update(
+            {
+                "ess_total": ess_total,
+                "ess_fraction_total": min(ess_total / len(W), 1.0),
+                "max_weight": float(W.max()),
+                "mean_weight": float(W.mean()),
+                "weight_q95": float(np.percentile(W, 95)),
+                "weight_q99": float(np.percentile(W, 99)),
+            }
+        )
+    return result

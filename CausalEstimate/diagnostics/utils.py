@@ -9,10 +9,12 @@ from CausalEstimate.utils.checks import (
 
 def validate_ps_and_treatment(
     df: pd.DataFrame, ps_col: str, treatment_col: str
-) -> None:
+) -> tuple[int, int]:
     """
     Shared input validation for diagnostics: columns present, treatment binary,
     propensity scores numeric in [0, 1] (NaN rejected), both arms non-empty.
+
+    Returns (n_treated, n_control) so callers share one arm-count definition.
     """
     check_required_columns(df, [ps_col, treatment_col])
     check_binary_array(df[treatment_col].to_numpy(), "Treatment")
@@ -24,3 +26,4 @@ def validate_ps_and_treatment(
             "Both treated and control groups must be non-empty "
             f"(n_treated={n_treated}, n_control={n_control})."
         )
+    return n_treated, n_control

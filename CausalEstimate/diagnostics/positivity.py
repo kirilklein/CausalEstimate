@@ -38,11 +38,7 @@ def compute_positivity_metrics(
     """
     if not 0 < eps < 0.5:
         raise ValueError(f"eps must be in (0, 0.5), got {eps}.")
-    if not 0 <= common_support_threshold < 0.5:
-        raise ValueError(
-            f"common_support_threshold must be in [0, 0.5), got {common_support_threshold}."
-        )
-    validate_ps_and_treatment(df, ps_col, treatment_col)
+    n_treated, n_control = validate_ps_and_treatment(df, ps_col, treatment_col)
 
     treated_ps = get_treated_ps(df, treatment_col, ps_col)
     control_ps = get_untreated_ps(df, treatment_col, ps_col)
@@ -61,8 +57,8 @@ def compute_positivity_metrics(
     prop_ps_extreme = prop_extreme(ps)
     return {
         "n_total": int(len(df)),
-        "n_treated": int(len(treated_ps)),
-        "n_control": int(len(control_ps)),
+        "n_treated": n_treated,
+        "n_control": n_control,
         "prop_ps_below_eps": float((ps < eps).mean()),
         "prop_ps_above_1_minus_eps": float((ps > 1 - eps).mean()),
         "prop_ps_extreme": prop_ps_extreme,

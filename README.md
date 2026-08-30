@@ -162,6 +162,7 @@ Here, `results` is a dictionary with keys corresponding to each estimator's clas
 - Optionally, if `return_bootstrap_samples=True`, a `"bootstrap_samples"` key with the raw bootstrap estimates (e.g., for the overall effect, treated, and untreated effects).
 
 When no bootstrapping is performed (i.e. n_bootstraps is set to 1), `"n_bootstraps"` is set to 0 and the bootstrap summary keys (like `"std_err"`, `"CI95_lower"`, `"CI95_upper"`) may not be present.
+
 ---
 
 ### 3) Matching
