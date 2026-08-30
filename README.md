@@ -125,6 +125,17 @@ Full documentation lives at **[kirilklein.github.io/CausalEstimate](https://kiri
 - [Plotting](https://kirilklein.github.io/CausalEstimate/user-guide/plotting/) — propensity-score overlap checks
 - [API Reference](https://kirilklein.github.io/CausalEstimate/api/estimators/) — full signatures and docstrings
 
+Covariate balance — the standard pre/post-weighting SMD table. The denominator is the
+pooled unweighted SD, held fixed pre/post so both share a scale (Stuart 2010; cobalt's default):
+
+```python
+from CausalEstimate.diagnostics import compute_balance_table, check_balance
+
+table = compute_balance_table(df, covariate_cols=["age", "bmi"], ps_col="ps", treatment_col="treatment")
+print(table)                    # means, smd_unweighted, smd_weighted, balanced per covariate
+print(check_balance(table))     # max_smd_weighted, n_unbalanced, n_undefined, prop_unbalanced, balanced
+```
+
 ---
 
 ## Development
