@@ -158,22 +158,23 @@ def compute_balance_table(
     return pd.DataFrame(rows).set_index(COVARIATE_COL)
 
 
-def check_balance(balance_table: pd.DataFrame, threshold: float = 0.1) -> dict:
+def check_balance(balance_table: pd.DataFrame) -> dict:
     """
     Summarize a compute_balance_table result.
 
-    NaN SMDs (zero-variance covariates) are counted in n_undefined and excluded
-    from max_smd_weighted and prop_unbalanced (which is over evaluable
-    covariates only, NaN when none are evaluable). balanced is True only when
-    no covariate is unbalanced AND none is undefined.
+    The unbalanced/balanced classification is read from the table's balanced
+    column, so the summary always agrees with the threshold the table was
+    built with. NaN SMDs (zero-variance covariates) are counted in n_undefined
+    and excluded from max_smd_weighted and prop_unbalanced (which is over
+    evaluable covariates only, NaN when none are evaluable). balanced is True
+    only when no covariate is unbalanced AND none is undefined.
     """
-    _check_threshold(threshold)
     if len(balance_table) == 0:
         raise ValueError("balance_table must not be empty.")
     abs_smd = balance_table[SMD_WEIGHTED_COL].abs()
     n_undefined = int(abs_smd.isna().sum())
     evaluable = abs_smd.dropna()
-    n_unbalanced = int((evaluable >= threshold).sum())
+    n_unbalanced = int((~balance_table[BALANCED_COL] & abs_smd.notna()).sum())
     return {
         "max_smd_weighted": (
             float(evaluable.max()) if len(evaluable) else float("nan")

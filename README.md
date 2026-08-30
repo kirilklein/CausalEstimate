@@ -133,7 +133,7 @@ from CausalEstimate.diagnostics import compute_balance_table, check_balance
 
 table = compute_balance_table(df, covariate_cols=["age", "bmi"], ps_col="ps", treatment_col="treatment")
 print(table)                    # means, smd_unweighted, smd_weighted, balanced per covariate
-print(check_balance(table))     # {"max_smd_weighted", "n_unbalanced", "prop_unbalanced", "balanced"}
+print(check_balance(table))     # max_smd_weighted, n_unbalanced, n_undefined, prop_unbalanced, balanced
 ```
 
 ---

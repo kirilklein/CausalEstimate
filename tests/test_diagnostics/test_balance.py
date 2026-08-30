@@ -112,7 +112,7 @@ class TestBalanceTable(unittest.TestCase):
 
     def test_check_balance_summary(self):
         table = compute_balance_table(self.df, ["X1", "X2"], threshold=0.1)
-        summary = check_balance(table, threshold=0.1)
+        summary = check_balance(table)
         self.assertEqual(
             summary["balanced"], bool((table["smd_weighted"].abs() < 0.1).all())
         )
@@ -121,6 +121,13 @@ class TestBalanceTable(unittest.TestCase):
         )
         self.assertAlmostEqual(summary["prop_unbalanced"], summary["n_unbalanced"] / 2)
         self.assertGreaterEqual(summary["max_smd_weighted"], 0.0)
+
+    def test_check_balance_respects_table_threshold(self):
+        # summary must agree with the threshold the table was built with
+        strict = compute_balance_table(self.df, ["X1", "X2"], threshold=1e-6)
+        summary = check_balance(strict)
+        self.assertEqual(summary["n_unbalanced"], int((~strict["balanced"]).sum()))
+        self.assertFalse(summary["balanced"])
 
     def test_validation_errors(self):
         with self.assertRaises(ValueError):
@@ -133,8 +140,6 @@ class TestBalanceTable(unittest.TestCase):
             compute_balance_table(self.df, [])
         with self.assertRaises(ValueError):
             compute_balance_table(self.df, ["X1"], threshold=np.nan)
-        with self.assertRaises(ValueError):
-            check_balance(compute_balance_table(self.df, ["X1"]), threshold=-0.1)
         with self.assertRaises(ValueError):
             check_balance(pd.DataFrame({"smd_weighted": []}))
 
