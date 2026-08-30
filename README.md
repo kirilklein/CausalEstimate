@@ -7,6 +7,7 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/CausalEstimate)](https://pypi.org/project/CausalEstimate/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mkdocs%20material-blue)](https://kirilklein.github.io/CausalEstimate/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kirilklein/CausalEstimate)
 
 📖 **Documentation**: [kirilklein.github.io/CausalEstimate](https://kirilklein.github.io/CausalEstimate/)
 
@@ -120,36 +121,9 @@ Full documentation lives at **[kirilklein.github.io/CausalEstimate](https://kiri
 - [Estimators](https://kirilklein.github.io/CausalEstimate/user-guide/estimators/) — IPW, AIPW, TMLE, Matching
 - [Multiple Estimators & Bootstrap](https://kirilklein.github.io/CausalEstimate/user-guide/multi-estimator/) — several estimators in one pass, with confidence intervals
 - [Matching](https://kirilklein.github.io/CausalEstimate/user-guide/matching/) — optimal and greedy propensity-score matching
+- [Diagnostics](https://kirilklein.github.io/CausalEstimate/user-guide/diagnostics/) — positivity/overlap metrics, effective sample size, weight summaries
 - [Plotting](https://kirilklein.github.io/CausalEstimate/user-guide/plotting/) — propensity-score overlap checks
 - [API Reference](https://kirilklein.github.io/CausalEstimate/api/estimators/) — full signatures and docstrings
-
-### 5) Diagnostics
-
-Positivity/overlap diagnostics to report alongside IPW/TMLE estimates:
-
-```python
-from CausalEstimate.diagnostics import compute_positivity_metrics
-
-# Suppose df has columns "ps" and "treatment"
-metrics = compute_positivity_metrics(df, ps_col="ps", treatment_col="treatment")
-print(metrics["prop_ps_extreme"])          # share of PS outside [eps, 1 - eps]
-print(metrics["common_support_low"], metrics["common_support_high"])  # trimmed common support
-print(metrics["flag_extreme_ps"])
-```
-
-Weight diagnostics — effective sample size (Kish) and weight summaries for the
-IPW weights the estimators use:
-
-```python
-from CausalEstimate.diagnostics import compute_ess, compute_weight_diagnostics
-
-diag = compute_weight_diagnostics(df, ps_col="ps", treatment_col="treatment", weight_type="ATE")
-print(diag["ess_total"], diag["ess_fraction_total"])   # ESS and ESS / n
-print(diag["max_weight"], diag["weight_q99"])
-
-# Or on your own weights (e.g. externally computed):
-ess = compute_ess(weights)
-```
 
 ---
 

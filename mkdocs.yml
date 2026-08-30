@@ -47,9 +47,11 @@ nav:
       - Estimators: user-guide/estimators.md
       - Multiple Estimators & Bootstrap: user-guide/multi-estimator.md
       - Matching: user-guide/matching.md
+      - Diagnostics: user-guide/diagnostics.md
       - Plotting: user-guide/plotting.md
   - API Reference:
       - Estimators: api/estimators.md
+      - Diagnostics: api/diagnostics.md
       - Matching: api/matching.md
       - Filtering: api/filtering.md
       - Plotting: api/plotting.md
