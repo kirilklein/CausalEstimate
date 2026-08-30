@@ -1,0 +1,3 @@
+# Plotting
+
+::: CausalEstimate.vis.plotting
