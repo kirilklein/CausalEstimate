@@ -26,6 +26,11 @@ def run_diagnostics(
     covariate_cols is given — compute_balance_table + check_balance. See each
     function for its metrics and conventions.
 
+    Note: propensity scores of exactly 0 or 1 make the weight/balance
+    diagnostics raise ValueError, so this call fails before returning the
+    positivity metrics; call compute_positivity_metrics directly to inspect
+    such data.
+
     Args:
         df: Input DataFrame with treatment and propensity score columns.
         ps_col: Name of the propensity score column.
