@@ -48,10 +48,12 @@ def simulate_binary_data(
         Random seed for reproducibility. If None (default), a random generator
         without a fixed seed is used.
     return_probas : bool, default=False
-        If True, also include the true probability columns:
-        `<PS_COL>` (propensity score, clipped to [0.01, 0.99]), `<PROBAS_COL>`
-        (outcome probability under the assigned treatment), `<PROBAS_T0_COL>`
-        and `<PROBAS_T1_COL>` (outcome probabilities under A=0 and A=1).
+        If True, also include the true probability columns: `<PS_COL>`
+        (propensity score), `<PROBAS_COL>` (outcome probability under the
+        assigned treatment), `<PROBAS_T0_COL>` and `<PROBAS_T1_COL>` (outcome
+        probabilities under A=0 and A=1). The propensity score is always
+        clipped to [0.01, 0.99] before treatment is drawn, so the flag only
+        adds columns and never changes the draws.
 
     Returns
     -------
@@ -94,9 +96,7 @@ def simulate_binary_data(
         + alpha[5] * X2**2
     )
 
-    p = logistic(logit_p)
-    if return_probas:
-        p = np.clip(p, 0.01, 0.99)
+    p = np.clip(logistic(logit_p), 0.01, 0.99)
     A = rng.binomial(1, p)
     if len(beta) < 8:
         beta = np.pad(beta, (0, 8 - len(beta)), mode="constant")

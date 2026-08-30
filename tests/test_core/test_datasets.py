@@ -56,7 +56,9 @@ class TestBinaryDataset(unittest.TestCase):
 
     def test_parameter_return(self):
         """Test parameter return functionality"""
-        data, params = load_binary(n_samples=10, return_params=True)
+        data, params = load_binary(
+            n_samples=100, random_state=self.random_state, return_params=True
+        )
 
         # Test params structure
         self.assertIsInstance(params, dict)

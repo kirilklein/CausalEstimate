@@ -59,8 +59,8 @@ def load_binary(
 
     if return_params:
         params = {
-            "treatment_params": ALPHA,
-            "outcome_params": BETA,
+            "treatment_params": list(ALPHA),
+            "outcome_params": list(BETA),
             **_true_effects(data, BETA),
             "DESCR": """
             Synthetic binary treatment-outcome dataset.
@@ -128,8 +128,8 @@ def load_binary_with_probas(
 
     if return_params:
         params = {
-            "treatment_params": ALPHA,
-            "outcome_params": BETA,
+            "treatment_params": list(ALPHA),
+            "outcome_params": list(BETA),
             **_true_effects(data, BETA),
             "DESCR": """
             Synthetic binary treatment-outcome dataset with probabilities.
