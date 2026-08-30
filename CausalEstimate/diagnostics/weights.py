@@ -53,22 +53,20 @@ def compute_weight_diagnostics(
     Propensity scores of exactly 0 or 1 raise ValueError: their IPW weights are
     undefined and would only reflect the numerical stabilizer.
 
-    Parameters:
-    -----------
-    df : Input DataFrame with treatment and propensity score columns.
-    ps_col : Name of the propensity score column.
-    treatment_col : Name of the treatment status column (1 treated, 0 control).
-    weight_type : "ATE" or "ATT".
-    clip_percentile : Upper-tail clipping passed to compute_ipw_weights.
+    Args:
+        df: Input DataFrame with treatment and propensity score columns.
+        ps_col: Name of the propensity score column.
+        treatment_col: Name of the treatment status column (1 treated, 0 control).
+        weight_type: "ATE" or "ATT".
+        clip_percentile: Upper-tail clipping passed to compute_ipw_weights.
 
     Returns:
-    --------
-    dict with per-arm ESS, ESS as a fraction of arm size, and per-arm weight
-    summaries (max, mean, 95th and 99th percentile). Pooled equivalents
-    (ess_total, ess_fraction_total, max_weight, mean_weight, weight_q95,
-    weight_q99) are included only for weight_type="ATE": ATT weights put the
-    two arms on different scales (treated weights are identically 1), so
-    pooled Kish ESS and pooled quantiles would be misleading there.
+        dict with per-arm ESS, ESS as a fraction of arm size, and per-arm weight
+        summaries (max, mean, 95th and 99th percentile). Pooled equivalents
+        (ess_total, ess_fraction_total, max_weight, mean_weight, weight_q95,
+        weight_q99) are included only for weight_type="ATE": ATT weights put the
+        two arms on different scales (treated weights are identically 1), so
+        pooled Kish ESS and pooled quantiles would be misleading there.
     """
     n_treated, n_control = validate_ps_and_treatment(df, ps_col, treatment_col)
     A = df[treatment_col].to_numpy()
