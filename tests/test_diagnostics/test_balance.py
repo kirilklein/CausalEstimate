@@ -39,6 +39,30 @@ class TestComputeSMD(unittest.TestCase):
             result = compute_smd(x, A)
         self.assertTrue(np.isnan(result))
 
+    def test_exact_att_weighted_value(self):
+        # ATT weights: treated 1, control ps/(1-ps) -> [1/3, 1]
+        # weighted control mean 2.5, treated mean 3, pooled SD sqrt(2)
+        x = np.array([2.0, 4.0, 1.0, 3.0])
+        A = np.array([1, 1, 0, 0])
+        w = np.array([1.0, 1.0, 1 / 3, 1.0])
+        self.assertAlmostEqual(compute_smd(x, A, w), 0.5 / np.sqrt(2), places=9)
+
+    def test_invalid_inputs_raise(self):
+        x = np.array([2.0, 4.0, 1.0, 3.0])
+        A = np.array([1, 1, 0, 0])
+        with self.assertRaises(ValueError):
+            compute_smd(x, np.array([1, 0, 0]))  # mismatched shapes
+        with self.assertRaises(ValueError):
+            compute_smd(x, np.array([1, 2, 0, 0]))  # nonbinary treatment
+        with self.assertRaises(ValueError):
+            compute_smd(np.array([1.0, np.nan, 2.0, 3.0]), A)
+        with self.assertRaises(ValueError):
+            compute_smd(np.array([1.0, 2.0, 3.0]), np.array([1, 0, 0]))  # 1-obs arm
+        with self.assertRaises(ValueError):
+            compute_smd(x, A, weights=np.array([1.0, 1.0, 0.0, 0.0]))  # zero-sum arm
+        with self.assertRaises(ValueError):
+            compute_smd(x, A, weights=np.array([1.0, -1.0, 1.0, 1.0]))
+
 
 class TestBalanceTable(unittest.TestCase):
     @classmethod
@@ -105,6 +129,27 @@ class TestBalanceTable(unittest.TestCase):
         nan_df.loc[nan_df.index[0], "X1"] = np.nan
         with self.assertRaises(ValueError):
             compute_balance_table(nan_df, ["X1"])
+        with self.assertRaises(ValueError):
+            compute_balance_table(self.df, [])
+        with self.assertRaises(ValueError):
+            compute_balance_table(self.df, ["X1"], threshold=np.nan)
+        with self.assertRaises(ValueError):
+            check_balance(compute_balance_table(self.df, ["X1"]), threshold=-0.1)
+        with self.assertRaises(ValueError):
+            check_balance(pd.DataFrame({"smd_weighted": []}))
+
+    def test_undefined_smd_never_certified_balanced(self):
+        df = self.df.copy()
+        df["const"] = 1.0
+        with self.assertWarns(RuntimeWarning):
+            table = compute_balance_table(df, ["X1", "const"])
+        self.assertFalse(table.loc["const", "balanced"])
+        self.assertTrue(np.isnan(table.loc["const", "smd_weighted"]))
+        summary = check_balance(table)
+        self.assertEqual(summary["n_undefined"], 1)
+        self.assertFalse(summary["balanced"])
+        # proportions are over evaluable covariates only (here: X1)
+        self.assertAlmostEqual(summary["prop_unbalanced"], summary["n_unbalanced"] / 1)
 
 
 if __name__ == "__main__":

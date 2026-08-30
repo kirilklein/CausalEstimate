@@ -9,7 +9,11 @@ from CausalEstimate.diagnostics.utils import (
     validate_ps_and_treatment,
 )
 from CausalEstimate.estimators.functional.ipw import compute_ipw_weights
-from CausalEstimate.utils.checks import check_columns_for_nans, check_required_columns
+from CausalEstimate.utils.checks import (
+    check_binary_array,
+    check_columns_for_nans,
+    check_required_columns,
+)
 from CausalEstimate.utils.constants import (
     BALANCED_COL,
     COVARIATE_COL,
@@ -24,28 +28,66 @@ from CausalEstimate.utils.constants import (
 )
 
 
+def _check_threshold(threshold: float) -> None:
+    if not (np.isfinite(threshold) and threshold > 0):
+        raise ValueError(
+            f"threshold must be a finite positive number, got {threshold}."
+        )
+
+
 def compute_smd(
     x: np.ndarray, A: np.ndarray, weights: Optional[np.ndarray] = None
 ) -> float:
     """
     Standardized mean difference of a covariate between treated and control.
 
-    The denominator is the pooled *unweighted* SD, sqrt((s1^2 + s0^2)/2), for
-    both the unweighted and the weighted SMD, so pre- and post-weighting values
-    share a scale (Austin & Stuart 2015). Binary covariates go through the same
-    numeric formula. A zero-variance covariate has no defined SMD: a warning is
-    emitted and NaN returned.
+    Convention: the denominator is the pooled *unweighted* sample SD,
+    sqrt((s1^2 + s0^2)/2), held fixed for both the unweighted and the weighted
+    SMD so pre- and post-weighting values share a scale — the "standardize by
+    the unadjusted sample" convention recommended by Stuart (2010) and used as
+    the default in the cobalt R package. Note this deliberately differs from
+    Austin & Stuart (2015), who use weighted variances post-weighting and a
+    prevalence-based formula for binary covariates; binary covariates here go
+    through the same numeric formula (sample variance ~ p(1-p)). A
+    zero-variance covariate has no defined SMD: a warning is emitted and NaN
+    returned.
 
     Parameters:
     -----------
-    x : Covariate values.
-    A : Binary treatment assignment (1 treated, 0 control).
-    weights : Optional weights; when given, the mean difference is weighted
-              (the denominator stays unweighted).
+    x : Covariate values (finite).
+    A : Binary treatment assignment (1 treated, 0 control); each arm needs at
+        least 2 observations.
+    weights : Optional finite, nonnegative weights with positive sum per arm;
+              when given, the mean difference is weighted (the denominator
+              stays unweighted).
     """
     x = np.asarray(x, dtype=float)
     A = np.asarray(A)
+    if x.shape != A.shape:
+        raise ValueError("x and A must have the same shape.")
+    check_binary_array(A, "Treatment")
+    if not np.all(np.isfinite(x)):
+        raise ValueError("x must be finite (no NaN or inf).")
     x_treated, x_control = x[A == 1], x[A == 0]
+    if len(x_treated) < 2 or len(x_control) < 2:
+        raise ValueError(
+            "Each arm needs at least 2 observations to compute an SMD "
+            f"(n_treated={len(x_treated)}, n_control={len(x_control)})."
+        )
+    if weights is None:
+        diff = x_treated.mean() - x_control.mean()
+    else:
+        w = np.asarray(weights, dtype=float)
+        if w.shape != A.shape:
+            raise ValueError("weights and A must have the same shape.")
+        if not np.all(np.isfinite(w)) or np.any(w < 0):
+            raise ValueError("weights must be finite and nonnegative.")
+        w_treated, w_control = w[A == 1], w[A == 0]
+        if w_treated.sum() == 0 or w_control.sum() == 0:
+            raise ValueError("weights must have a positive sum in each arm.")
+        diff = np.average(x_treated, weights=w_treated) - np.average(
+            x_control, weights=w_control
+        )
     pooled_var = (x_treated.var(ddof=1) + x_control.var(ddof=1)) / 2
     if pooled_var == 0:
         warnings.warn(
@@ -53,13 +95,6 @@ def compute_smd(
             RuntimeWarning,
         )
         return float("nan")
-    if weights is None:
-        diff = x_treated.mean() - x_control.mean()
-    else:
-        w = np.asarray(weights, dtype=float)
-        diff = np.average(x_treated, weights=w[A == 1]) - np.average(
-            x_control, weights=w[A == 0]
-        )
     return float(diff / np.sqrt(pooled_var))
 
 
@@ -77,10 +112,16 @@ def compute_balance_table(
 
     One row per covariate, indexed by covariate name: unweighted and weighted
     means per arm, smd_unweighted, smd_weighted, and balanced
-    (|smd_weighted| < threshold; False where the SMD is NaN). Weights come from
-    compute_ipw_weights with the given weight_type and clip_percentile; see
-    compute_smd for the SMD convention.
+    (|smd_weighted| < threshold; False where the SMD is NaN, i.e. undefined is
+    never certified as balanced). Weights come from compute_ipw_weights with
+    the given weight_type and clip_percentile; see compute_smd for the SMD
+    convention. For weight_type="ATT" the denominator is still the pooled
+    unweighted SD of both arms — the treated-arm-SD variant is deliberately
+    not implemented yet.
     """
+    if not covariate_cols:
+        raise ValueError("covariate_cols must not be empty.")
+    _check_threshold(threshold)
     validate_ps_and_treatment(df, ps_col, treatment_col)
     check_required_columns(df, covariate_cols)
     check_columns_for_nans(df, covariate_cols)
@@ -121,14 +162,26 @@ def check_balance(balance_table: pd.DataFrame, threshold: float = 0.1) -> dict:
     """
     Summarize a compute_balance_table result.
 
-    NaN SMDs (zero-variance covariates) are excluded from the maximum and not
-    counted as unbalanced.
+    NaN SMDs (zero-variance covariates) are counted in n_undefined and excluded
+    from max_smd_weighted and prop_unbalanced (which is over evaluable
+    covariates only, NaN when none are evaluable). balanced is True only when
+    no covariate is unbalanced AND none is undefined.
     """
+    _check_threshold(threshold)
+    if len(balance_table) == 0:
+        raise ValueError("balance_table must not be empty.")
     abs_smd = balance_table[SMD_WEIGHTED_COL].abs()
-    n_unbalanced = int((abs_smd >= threshold).sum())
+    n_undefined = int(abs_smd.isna().sum())
+    evaluable = abs_smd.dropna()
+    n_unbalanced = int((evaluable >= threshold).sum())
     return {
-        "max_smd_weighted": float(abs_smd.max()),
+        "max_smd_weighted": (
+            float(evaluable.max()) if len(evaluable) else float("nan")
+        ),
         "n_unbalanced": n_unbalanced,
-        "prop_unbalanced": n_unbalanced / len(balance_table),
-        "balanced": bool(n_unbalanced == 0),
+        "n_undefined": n_undefined,
+        "prop_unbalanced": (
+            n_unbalanced / len(evaluable) if len(evaluable) else float("nan")
+        ),
+        "balanced": bool(n_unbalanced == 0 and n_undefined == 0),
     }
