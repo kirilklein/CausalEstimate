@@ -3,9 +3,7 @@ from typing import Optional, Tuple, Union
 import pandas as pd
 
 from CausalEstimate.simulation.binary_simulation import (
-    compute_ATE_theoretical_from_data,
-    compute_ATT_theoretical_from_data,
-    compute_RR_theoretical_from_data,
+    compute_true_effects,
     simulate_binary_data,
 )
 from CausalEstimate.utils.constants import OUTCOME_CF_COL
@@ -13,14 +11,6 @@ from CausalEstimate.utils.constants import OUTCOME_CF_COL
 # default parameters for a reasonable simulation scenario
 ALPHA = [0.1, 0.3, -0.2, 0.5]  # treatment model parameters
 BETA = [0.2, 0.8, 0.4, -0.3, 0.6]  # outcome model parameters
-
-
-def _true_effects(data: pd.DataFrame, beta: list) -> dict:
-    return {
-        "true_ate": compute_ATE_theoretical_from_data(data, beta),
-        "true_att": compute_ATT_theoretical_from_data(data, beta),
-        "true_rr": compute_RR_theoretical_from_data(data, beta),
-    }
 
 
 def load_binary(
@@ -61,7 +51,7 @@ def load_binary(
         params = {
             "treatment_params": list(ALPHA),
             "outcome_params": list(BETA),
-            **_true_effects(data, BETA),
+            **compute_true_effects(data, BETA),
             "DESCR": """
             Synthetic binary treatment-outcome dataset.
 
@@ -130,7 +120,7 @@ def load_binary_with_probas(
         params = {
             "treatment_params": list(ALPHA),
             "outcome_params": list(BETA),
-            **_true_effects(data, BETA),
+            **compute_true_effects(data, BETA),
             "DESCR": """
             Synthetic binary treatment-outcome dataset with probabilities.
 
