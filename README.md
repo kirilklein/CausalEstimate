@@ -136,6 +136,16 @@ print(table)                    # means, smd_unweighted, smd_weighted, balanced 
 print(check_balance(table))     # max_smd_weighted, n_unbalanced, n_undefined, prop_unbalanced, balanced
 ```
 
+Or run every diagnostic in one call before reporting IPW/TMLE estimates:
+
+```python
+from CausalEstimate import run_diagnostics
+
+report = run_diagnostics(df, ps_col="ps", treatment_col="treatment", covariate_cols=["age", "bmi"])
+print(report["flags"])          # {"extreme_ps": bool, "unbalanced": bool}
+print(report["positivity"], report["weights"], report["balance_summary"])
+```
+
 ---
 
 ## Development
