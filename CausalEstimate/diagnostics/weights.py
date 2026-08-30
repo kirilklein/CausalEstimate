@@ -3,10 +3,7 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
-from CausalEstimate.diagnostics.utils import (
-    check_ps_not_exact_zero_one,
-    validate_ps_and_treatment,
-)
+from CausalEstimate.diagnostics.utils import validate_ps_and_treatment
 from CausalEstimate.estimators.functional.ipw import compute_ipw_weights
 from CausalEstimate.utils.constants import PS_COL, TREATMENT_COL
 
@@ -74,7 +71,6 @@ def compute_weight_diagnostics(
     n_treated, n_control = validate_ps_and_treatment(df, ps_col, treatment_col)
     A = df[treatment_col].to_numpy()
     ps = df[ps_col].to_numpy()
-    check_ps_not_exact_zero_one(ps)
 
     W = compute_ipw_weights(
         A, ps, weight_type=weight_type, clip_percentile=clip_percentile

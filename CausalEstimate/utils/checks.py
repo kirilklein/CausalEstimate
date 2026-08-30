@@ -123,3 +123,14 @@ def check_probability_array(arr, name):
         raise ValueError(f"{name} must be numeric.")
     if not np.logical_and(arr >= 0, arr <= 1).all():
         raise ValueError(f"{name} must have values between 0 and 1 inclusive.")
+
+
+def check_ps_not_exact_zero_one(ps, name="Propensity Score"):
+    """Reject propensity scores of exactly 0 or 1: their IPW weights are
+    undefined and would only reflect the numerical stabilizer."""
+    arr = np.asarray(ps)
+    if np.any((arr == 0) | (arr == 1)):
+        raise ValueError(
+            f"{name} contains values of exactly 0 or 1, which produce undefined "
+            "IPW weights; trim them or refit the propensity model first."
+        )

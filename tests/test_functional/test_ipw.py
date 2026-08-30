@@ -185,6 +185,24 @@ class TestComputeIPW_RR(TestEffectBase):
         self.assertAlmostEqual(rr_ipw[EFFECT], self.true_rr, delta=0.01)
 
 
+class TestDegeneratePropensityScores(unittest.TestCase):
+    """ps of exactly 0 or 1 must raise instead of yielding stabilizer artifacts."""
+
+    def test_ps_of_exactly_zero_or_one_raises(self):
+        A = np.array([1, 1, 0, 0])
+        for bad_ps in ([0.0, 0.5, 0.5, 0.5], [0.5, 1.0, 0.5, 0.5]):
+            for weight_type in ("ATE", "ATT"):
+                with self.assertRaises(ValueError):
+                    compute_ipw_weights(A, np.array(bad_ps), weight_type=weight_type)
+
+    def test_estimator_path_raises_too(self):
+        A = np.array([1, 1, 0, 0])
+        Y = np.array([1, 0, 1, 0])
+        ps = np.array([0.0, 0.5, 0.5, 0.5])
+        with self.assertRaises(ValueError):
+            compute_ipw_ate(A, Y, ps)
+
+
 # Run the unittests
 if __name__ == "__main__":
     unittest.main()
