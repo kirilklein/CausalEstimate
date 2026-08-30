@@ -32,6 +32,7 @@ Reach for DoWhy/EconML instead when you want end-to-end pipelines, causal graphs
 - **Bootstrap standard error estimation** and confidence intervals
 - **Common-support filtering** and **matching** (greedy, optimal)
 - **Plotting utilities** for distribution checks (e.g., propensity score overlap)
+- **Diagnostics**: positivity/overlap metrics for propensity scores
 
 ---
 
@@ -204,6 +205,20 @@ plt.show()
 
 fig, ax = plot_outcome_proba_dist(df, outcome_proba_col="predicted_outcome", treatment_col="treatment")
 plt.show()
+```
+
+### 5) Diagnostics
+
+Positivity/overlap diagnostics to report alongside IPW/TMLE estimates:
+
+```python
+from CausalEstimate.diagnostics import compute_positivity_metrics
+
+# Suppose df has columns "ps" and "treatment"
+metrics = compute_positivity_metrics(df, ps_col="ps", treatment_col="treatment")
+print(metrics["prop_ps_extreme"])          # share of PS outside [eps, 1 - eps]
+print(metrics["common_support_low"], metrics["common_support_high"])
+print(metrics["flag_positivity_violation"])
 ```
 
 ---
