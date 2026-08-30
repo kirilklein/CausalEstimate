@@ -17,24 +17,23 @@ def compute_positivity_metrics(
     """
     Compute positivity/overlap diagnostics for the propensity score.
 
-    Parameters:
-    -----------
-    df : Input DataFrame with treatment and propensity score columns.
-    ps_col : Name of the propensity score column.
-    treatment_col : Name of the treatment status column (1 treated, 0 control).
-    eps : Propensity scores outside [eps, 1 - eps] are counted as extreme.
-    common_support_threshold : Quantile threshold passed to get_common_support_range.
+    Args:
+        df: Input DataFrame with treatment and propensity score columns.
+        ps_col: Name of the propensity score column.
+        treatment_col: Name of the treatment status column (1 treated, 0 control).
+        eps: Propensity scores outside [eps, 1 - eps] are counted as extreme.
+        common_support_threshold: Quantile threshold passed to
+            get_common_support_range.
 
     Returns:
-    --------
-    dict with sample sizes, shares of extreme propensity scores (overall and
-    per arm), the trimmed common support range (intersection of the arms'
-    quantile-trimmed PS ranges — observations can fall outside it even under
-    perfect overlap when common_support_threshold > 0) and shares outside it,
-    the KS test comparing the arms' propensity score distributions, and a
-    flag_extreme_ps bool (True if any propensity scores fall outside
-    [eps, 1 - eps] — evidence of a practical positivity problem, not proof of
-    a formal violation).
+        dict with sample sizes, shares of extreme propensity scores (overall and
+        per arm), the trimmed common support range (intersection of the arms'
+        quantile-trimmed PS ranges — observations can fall outside it even under
+        perfect overlap when common_support_threshold > 0) and shares outside it,
+        the KS test comparing the arms' propensity score distributions, and a
+        flag_extreme_ps bool (True if any propensity scores fall outside
+        [eps, 1 - eps] — evidence of a practical positivity problem, not proof of
+        a formal violation).
     """
     if not 0 < eps < 0.5:
         raise ValueError(f"eps must be in (0, 0.5), got {eps}.")
