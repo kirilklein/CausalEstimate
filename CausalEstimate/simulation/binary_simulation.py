@@ -98,19 +98,9 @@ def simulate_binary_data(
 
     p = np.clip(logistic(logit_p), 0.01, 0.99)
     A = rng.binomial(1, p)
-    if len(beta) < 8:
-        beta = np.pad(beta, (0, 8 - len(beta)), mode="constant")
     # Outcome probabilities under control (q0) and treatment (q1)
-    base_logit = (
-        beta[0]
-        + beta[2] * X1
-        + beta[3] * X2
-        + beta[4] * X1 * X2
-        + beta[5] * X1**2
-        + beta[6] * X2**2
-    )
-    q0 = logistic(base_logit)
-    q1 = logistic(base_logit + beta[1] + beta[7])
+    q0 = compute_outcome_probas(X1, X2, beta, 0)
+    q1 = compute_outcome_probas(X1, X2, beta, 1)
 
     q = np.where(A == 1, q1, q0)
     Y = rng.binomial(1, q)
@@ -130,21 +120,26 @@ def simulate_binary_data(
     return data
 
 
-def compute_expected_outcome(data: pd.DataFrame, beta: list, treatment: int):
-    """Compute the expected outcome for a given treatment."""
+def compute_outcome_probas(X1, X2, beta: list, treatment: int):
+    """Per-row outcome probability under the given treatment (logistic model)."""
     # extend beta to length 8 with 0s
     if len(beta) < 8:
         beta = np.pad(beta, (0, 8 - len(beta)), mode="constant")
     return logistic(
         beta[0]
         + beta[1] * treatment
-        + beta[2] * data.X1
-        + beta[3] * data.X2
-        + beta[4] * data.X1 * data.X2
-        + beta[5] * data.X1**2
-        + beta[6] * data.X2**2
+        + beta[2] * X1
+        + beta[3] * X2
+        + beta[4] * X1 * X2
+        + beta[5] * X1**2
+        + beta[6] * X2**2
         + beta[7] * treatment**2
-    ).mean()
+    )
+
+
+def compute_expected_outcome(data: pd.DataFrame, beta: list, treatment: int):
+    """Compute the expected outcome for a given treatment."""
+    return compute_outcome_probas(data.X1, data.X2, beta, treatment).mean()
 
 
 def compute_ATE_theoretical_from_data(data: pd.DataFrame, beta: list):
@@ -167,3 +162,12 @@ def compute_RR_theoretical_from_data(data: pd.DataFrame, beta: list):
     E_Y1 = compute_expected_outcome(data, beta, 1)
     E_Y0 = compute_expected_outcome(data, beta, 0)
     return E_Y1 / E_Y0
+
+
+def compute_true_effects(data: pd.DataFrame, beta: list) -> dict:
+    """True ATE, ATT, and RR computed from the drawn sample."""
+    return {
+        "true_ate": compute_ATE_theoretical_from_data(data, beta),
+        "true_att": compute_ATT_theoretical_from_data(data, beta),
+        "true_rr": compute_RR_theoretical_from_data(data, beta),
+    }
