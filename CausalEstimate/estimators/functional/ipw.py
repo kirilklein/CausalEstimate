@@ -28,6 +28,7 @@ from typing import Tuple, Literal
 
 import numpy as np
 
+from CausalEstimate.utils.checks import check_ps_not_exact_zero_one
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
 # --- Core Effect Calculation Functions ---
@@ -241,6 +242,7 @@ def compute_ipw_weights(
         raise ValueError("clip_percentile must be in the interval (0, 1.0].")
     if A.shape != ps.shape:
         raise ValueError("A and ps must have the same shape.")
+    check_ps_not_exact_zero_one(ps)
 
     # --- 2. Core Weight Calculation ---
     if weight_type == "ATE":

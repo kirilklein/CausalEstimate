@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 
 from CausalEstimate.utils.checks import (
@@ -6,18 +5,6 @@ from CausalEstimate.utils.checks import (
     check_probability_array,
     check_required_columns,
 )
-
-
-def check_ps_not_exact_zero_one(ps: np.ndarray) -> None:
-    """
-    Reject propensity scores of exactly 0 or 1: their IPW weights are undefined
-    and would only reflect the numerical stabilizer.
-    """
-    if np.any((ps == 0) | (ps == 1)):
-        raise ValueError(
-            "Propensity scores of exactly 0 or 1 produce undefined IPW weights; "
-            "trim them or refit the propensity model first."
-        )
 
 
 def validate_ps_and_treatment(
