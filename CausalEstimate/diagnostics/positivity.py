@@ -1,5 +1,6 @@
 import pandas as pd
 
+from CausalEstimate.diagnostics.utils import validate_ps_and_treatment
 from CausalEstimate.filter.propensity import get_common_support_range
 from CausalEstimate.stats.stats import compute_propensity_score_stats
 from CausalEstimate.utils.constants import PS_COL, TREATMENT_COL
@@ -27,18 +28,20 @@ def compute_positivity_metrics(
     Returns:
     --------
     dict with sample sizes, shares of extreme propensity scores (overall and
-    per arm), the common support range and shares outside it, the KS test
-    comparing the arms' propensity score distributions, and a
-    flag_positivity_violation bool (True if any extreme scores are present).
+    per arm), the trimmed common support range (intersection of the arms'
+    quantile-trimmed PS ranges — observations can fall outside it even under
+    perfect overlap when common_support_threshold > 0) and shares outside it,
+    the KS test comparing the arms' propensity score distributions, and a
+    flag_extreme_ps bool (True if any propensity scores fall outside
+    [eps, 1 - eps] — evidence of a practical positivity problem, not proof of
+    a formal violation).
     """
+    if not 0 < eps < 0.5:
+        raise ValueError(f"eps must be in (0, 0.5), got {eps}.")
+    n_treated, n_control = validate_ps_and_treatment(df, ps_col, treatment_col)
+
     treated_ps = get_treated_ps(df, treatment_col, ps_col)
     control_ps = get_untreated_ps(df, treatment_col, ps_col)
-    if len(treated_ps) == 0 or len(control_ps) == 0:
-        raise ValueError(
-            "Both treated and control groups must be non-empty "
-            f"(n_treated={len(treated_ps)}, n_control={len(control_ps)})."
-        )
-
     ps = df[ps_col]
     support_low, support_high = get_common_support_range(
         df, treatment_col, ps_col, common_support_threshold
@@ -54,8 +57,8 @@ def compute_positivity_metrics(
     prop_ps_extreme = prop_extreme(ps)
     return {
         "n_total": int(len(df)),
-        "n_treated": int(len(treated_ps)),
-        "n_control": int(len(control_ps)),
+        "n_treated": n_treated,
+        "n_control": n_control,
         "prop_ps_below_eps": float((ps < eps).mean()),
         "prop_ps_above_1_minus_eps": float((ps > 1 - eps).mean()),
         "prop_ps_extreme": prop_ps_extreme,
@@ -68,5 +71,5 @@ def compute_positivity_metrics(
         "prop_control_outside_support": prop_outside(control_ps),
         "ks_statistic": float(ks_stats["ks_statistic"]),
         "ks_p_value": float(ks_stats["p_value"]),
-        "flag_positivity_violation": bool(prop_ps_extreme > 0),
+        "flag_extreme_ps": bool(prop_ps_extreme > 0),
     }

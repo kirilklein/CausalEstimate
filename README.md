@@ -233,8 +233,22 @@ from CausalEstimate.diagnostics import compute_positivity_metrics
 # Suppose df has columns "ps" and "treatment"
 metrics = compute_positivity_metrics(df, ps_col="ps", treatment_col="treatment")
 print(metrics["prop_ps_extreme"])          # share of PS outside [eps, 1 - eps]
-print(metrics["common_support_low"], metrics["common_support_high"])
-print(metrics["flag_positivity_violation"])
+print(metrics["common_support_low"], metrics["common_support_high"])  # trimmed common support
+print(metrics["flag_extreme_ps"])
+```
+
+Weight diagnostics — effective sample size (Kish) and weight summaries for the
+IPW weights the estimators use:
+
+```python
+from CausalEstimate.diagnostics import compute_ess, compute_weight_diagnostics
+
+diag = compute_weight_diagnostics(df, ps_col="ps", treatment_col="treatment", weight_type="ATE")
+print(diag["ess_total"], diag["ess_fraction_total"])   # ESS and ESS / n
+print(diag["max_weight"], diag["weight_q99"])
+
+# Or on your own weights (e.g. externally computed):
+ess = compute_ess(weights)
 ```
 
 ---

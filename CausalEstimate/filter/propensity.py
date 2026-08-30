@@ -46,6 +46,8 @@ def get_common_support_range(
     --------
     Lower and upper bounds of the common support range.
     """
+    if not 0 <= threshold < 0.5:
+        raise ValueError(f"threshold must be in [0, 0.5), got {threshold}.")
     min_ps_treated, max_ps_treated = get_treated_ps(df, treatment_col, ps_col).quantile(
         [threshold, 1 - threshold]
     )
