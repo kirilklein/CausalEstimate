@@ -251,6 +251,17 @@ print(diag["max_weight"], diag["weight_q99"])
 ess = compute_ess(weights)
 ```
 
+Covariate balance — the standard pre/post-weighting SMD table (pooled unweighted SD
+denominator, Austin & Stuart 2015):
+
+```python
+from CausalEstimate.diagnostics import compute_balance_table, check_balance
+
+table = compute_balance_table(df, covariate_cols=["age", "bmi"], ps_col="ps", treatment_col="treatment")
+print(table)                    # means, smd_unweighted, smd_weighted, balanced per covariate
+print(check_balance(table))     # {"max_smd_weighted", "n_unbalanced", "prop_unbalanced", "balanced"}
+```
+
 ---
 
 ## Development
