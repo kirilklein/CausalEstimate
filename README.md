@@ -27,8 +27,18 @@ Reach for DoWhy/EconML instead when you want end-to-end pipelines, causal graphs
 
 ## Features
 
-- **Causal inference methods**: IPW, AIPW, TMLE, Matching, etc.
-- **Supports multiple effect types**: ATE, ATT, Risk Ratio, etc.
+- **Causal inference methods** and the effect types each supports:
+
+  | Estimator | ATE | ATT | RR | RRT | ARR |
+  |-----------|:---:|:---:|:--:|:---:|:---:|
+  | IPW       | ✓   | ✓   | ✓  | ✓   | ✓   |
+  | AIPW      | ✓   | ✓   | –  | –   | ✓   |
+  | TMLE      | ✓   | ✓   | ✓  | –   | ✓   |
+  | Matching  | ✓*  | –   | –  | –   | ✓*  |
+
+  ATE: average treatment effect · ATT: ATE on the treated · RR: risk ratio · RRT: risk ratio on the treated · ARR: absolute risk reduction.
+  \* With a caliper, the matched population is strictly neither the full nor the treated population; interpret accordingly.
+
 - **Bootstrap standard error estimation** and confidence intervals
 - **Common-support filtering** and **matching** (greedy, optimal)
 - **Plotting utilities** for distribution checks (e.g., propensity score overlap)
@@ -89,7 +99,13 @@ results = ipw_estimator.compute_effect(df)
 print("IPW estimated effect:", results)
 ```
 
-In this case, `results` is simply a dictionary with the effect estimate computed from a single sample run (n_bootstraps=1). When no bootstrapping is applied, the output includes the key `"n_bootstraps": 0`.
+Output:
+
+```python
+{'effect': 0.5518, 'effect_1': 2.5260, 'effect_0': 1.9742}
+```
+
+`results` is a plain dictionary: `effect` is the estimated treatment effect, and `effect_1`/`effect_0` are the mean potential outcomes under treatment and control. When bootstrapping is applied (see below), standard errors and confidence intervals are added.
 
 ---
 
@@ -246,7 +262,7 @@ Please open issues or pull requests if you find any bugs or want to propose enha
 
 ## Citation
 
-If you use **CausalEstimate** in your research, please cite it using the following BibTeX entry:
+If you use **CausalEstimate** in your research, please cite it via the "Cite this repository" button on GitHub (backed by [CITATION.cff](CITATION.cff)), or use the following BibTeX entry:
 
 ```bibtex
 @software{causalestimate,
