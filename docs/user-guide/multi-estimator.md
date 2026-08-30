@@ -3,7 +3,8 @@
 `MultiEstimator` runs several estimators on the **same** dataset in one pass — optionally with bootstrap standard errors and common-support filtering.
 
 ```python
-from CausalEstimate.estimators import IPW, AIPW, TMLE, MultiEstimator
+from CausalEstimate import MultiEstimator
+from CausalEstimate.estimators import IPW, AIPW, TMLE
 
 ipw = IPW(effect_type="ATE", treatment_col="treatment", outcome_col="outcome", ps_col="ps")
 aipw = AIPW(
