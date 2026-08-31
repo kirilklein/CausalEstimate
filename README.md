@@ -121,6 +121,10 @@ print(report["positivity"], report["weights"], report["balance_summary"])
 - [Plotting](https://kirilklein.github.io/CausalEstimate/user-guide/plotting/) — propensity-score and outcome-probability distributions
 - [API Reference](https://kirilklein.github.io/CausalEstimate/api/estimators/) — full signatures and docstrings
 
+Balance before/after weighting at a glance ([notebook](examples/diagnostics_example.ipynb)):
+
+![Love Plot](examples/figures/love_plot.png)
+
 ---
 
 ## Contributing

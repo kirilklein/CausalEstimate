@@ -33,4 +33,21 @@ ess = compute_ess(weights)
 
 A low ESS fraction means a few heavily weighted observations dominate the estimate — expect wide confidence intervals and sensitivity to those units. The total-sample keys (`ess_total`, `max_weight`, `weight_q95`, `weight_q99`, ...) are only included for `weight_type="ATE"`; ATT weights fix treated weights at 1, so per-group summaries are reported instead.
 
+## Covariate balance
+
+The standard pre/post-weighting SMD table. The denominator is the pooled unweighted SD, held fixed pre/post so both share a scale (Stuart 2010; cobalt's default):
+
+```python
+from CausalEstimate.diagnostics import compute_balance_table, check_balance
+from CausalEstimate.vis.plotting import plot_love
+
+table = compute_balance_table(df, covariate_cols=["age", "bmi"], ps_col="ps", treatment_col="treatment")
+print(table)                    # means, smd_unweighted, smd_weighted, balanced per covariate
+print(check_balance(table))     # max_smd_weighted, n_unbalanced, n_undefined, prop_unbalanced, balanced
+
+fig, ax = plot_love(table)      # requires the plotting extra
+```
+
+Or run every diagnostic in one call with `run_diagnostics` (exported from the top-level package) — see the [README](https://github.com/kirilklein/CausalEstimate#readme) example and the [diagnostics notebook](https://github.com/kirilklein/CausalEstimate/blob/main/examples/diagnostics_example.ipynb).
+
 See the [API Reference](../api/diagnostics.md) for full signatures, and [Plotting](plotting.md) for visual overlap checks.

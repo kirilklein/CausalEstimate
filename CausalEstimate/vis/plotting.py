@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Dict, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -5,6 +6,14 @@ import numpy as np
 import pandas as pd
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss
+
+from CausalEstimate.estimators.functional.ipw import compute_ipw_weights
+from CausalEstimate.utils.constants import (
+    PS_COL,
+    SMD_UNWEIGHTED_COL,
+    SMD_WEIGHTED_COL,
+    TREATMENT_COL,
+)
 
 
 def plot_outcome_proba_dist(
@@ -365,3 +374,126 @@ def plot_calibration_comparison(
         figsize=figsize,
         **kwargs,
     )
+
+
+def plot_weight_dist(
+    df: pd.DataFrame,
+    ps_col: str = PS_COL,
+    treatment_col: str = TREATMENT_COL,
+    weight_type: str = "ATE",
+    clip_percentile: float = 1,
+    bin_edges: np.ndarray = None,
+    normalize: bool = False,
+    xlabel: str = "IPW weight",
+    title: str = "IPW Weight Distribution",
+    fig: plt.Figure = None,
+    ax: plt.Axes = None,
+    figsize: tuple = (10, 6),
+) -> Tuple[plt.Figure, plt.Axes]:
+    """
+    Plot the distribution of IPW weights for treatment vs. control groups.
+
+    Weights are computed with compute_ipw_weights (raises on propensity scores
+    of exactly 0 or 1). Default bins span the observed weight range.
+
+    Args:
+        df: DataFrame with treatment and propensity score columns.
+        ps_col: Name of the propensity score column.
+        treatment_col: Name of the treatment status column (1 treated, 0 control).
+        weight_type: "ATE" or "ATT".
+        clip_percentile: Upper-tail clipping passed to compute_ipw_weights.
+        bin_edges: Histogram bin edges; defaults to 50 bins over the weight range.
+        normalize: Whether to normalize the histograms (density=True).
+        xlabel, title, fig, ax, figsize: As in plot_hist_by_groups.
+
+    Returns:
+        (fig, ax)
+    """
+    weights = compute_ipw_weights(
+        df[treatment_col].to_numpy(),
+        df[ps_col].to_numpy(),
+        weight_type=weight_type,
+        clip_percentile=clip_percentile,
+    )
+    if bin_edges is None:
+        w_min, w_max = weights.min(), weights.max()
+        if w_min == w_max:  # constant weights: avoid zero-width bins
+            w_min, w_max = w_min - 0.5, w_max + 0.5
+        bin_edges = np.linspace(w_min, w_max, 51)
+    plot_df = pd.DataFrame(
+        {"_weight": weights, treatment_col: df[treatment_col].to_numpy()}
+    )
+    return plot_hist_by_groups(
+        df=plot_df,
+        value_col="_weight",
+        group_col=treatment_col,
+        group_values=(0, 1),
+        group_labels=("Control", "Treatment"),
+        bin_edges=bin_edges,
+        normalize=normalize,
+        xlabel=xlabel,
+        title=title,
+        fig=fig,
+        ax=ax,
+        figsize=figsize,
+    )
+
+
+def plot_love(
+    balance_table: pd.DataFrame,
+    threshold: float = 0.1,
+    fig: plt.Figure = None,
+    ax: plt.Axes = None,
+    figsize: tuple = (8, 10),
+) -> Tuple[plt.Figure, plt.Axes]:
+    """
+    Love plot of covariate balance from a compute_balance_table result.
+
+    Shows |SMD| per covariate before (open circles) and after (filled circles)
+    IPW weighting, with a dashed line at the balance threshold. Covariates are
+    sorted by unweighted |SMD|; rows with undefined (NaN) SMDs are dropped
+    with a warning.
+
+    Args:
+        balance_table: Output of CausalEstimate.diagnostics.compute_balance_table.
+        threshold: |SMD| bound drawn as the balance reference line.
+        fig, ax, figsize: As in plot_hist_by_groups.
+
+    Returns:
+        (fig, ax)
+    """
+    table = balance_table[[SMD_UNWEIGHTED_COL, SMD_WEIGHTED_COL]].abs()
+    if table.isna().any(axis=None):
+        warnings.warn(
+            "Dropping covariates with undefined (NaN) SMD from the Love plot.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        table = table.dropna()
+    if len(table) == 0:
+        raise ValueError("No covariates with a defined SMD to plot.")
+    table = table.sort_values(SMD_UNWEIGHTED_COL)
+
+    if fig is None and ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    elif ax is None:
+        ax = fig.add_subplot(111)
+    elif fig is None:
+        raise ValueError("fig and ax cannot both be None")
+
+    y = np.arange(len(table))
+    ax.scatter(
+        table[SMD_UNWEIGHTED_COL],
+        y,
+        facecolors="none",
+        edgecolors="b",
+        label="Unweighted",
+    )
+    ax.scatter(table[SMD_WEIGHTED_COL], y, color="r", label="Weighted")
+    ax.axvline(threshold, linestyle="--", color="gray")
+    ax.set_yticks(y)
+    ax.set_yticklabels(table.index)
+    ax.set_xlabel("|Standardized mean difference|")
+    ax.set_title("Covariate Balance (Love Plot)")
+    ax.legend()
+    return fig, ax
