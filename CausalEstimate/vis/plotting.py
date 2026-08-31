@@ -90,7 +90,7 @@ def plot_hist_by_groups(
     xlabel: str = None,
     title: str = None,
     alpha: float = 0.5,
-    colors=("b", "r"),
+    colors=("#1F77B4", "#D62728"),
     fig: plt.Figure = None,
     ax: plt.Axes = None,
     figsize: tuple = (10, 6),
@@ -416,7 +416,9 @@ def plot_weight_dist(
         clip_percentile=clip_percentile,
     )
     if bin_edges is None:
-        w_min, w_max = weights.min(), weights.max()
+        # span to the 99.5th percentile so a few extreme weights don't
+        # squash the bulk of the distribution into a sliver
+        w_min, w_max = weights.min(), np.percentile(weights, 99.5)
         if w_min == w_max:  # constant weights: avoid zero-width bins
             w_min, w_max = w_min - 0.5, w_max + 0.5
         bin_edges = np.linspace(w_min, w_max, 51)
@@ -444,20 +446,21 @@ def plot_love(
     threshold: float = 0.1,
     fig: plt.Figure = None,
     ax: plt.Axes = None,
-    figsize: tuple = (8, 10),
+    figsize: tuple = None,
 ) -> Tuple[plt.Figure, plt.Axes]:
     """
     Love plot of covariate balance from a compute_balance_table result.
 
     Shows |SMD| per covariate before (open circles) and after (filled circles)
-    IPW weighting, with a dashed line at the balance threshold. Covariates are
-    sorted by unweighted |SMD|; rows with undefined (NaN) SMDs are dropped
-    with a warning.
+    IPW weighting, connected per covariate, with a dashed line at the balance
+    threshold. Covariates are sorted by unweighted |SMD| (largest at the top);
+    rows with undefined (NaN) SMDs are dropped with a warning.
 
     Args:
         balance_table: Output of CausalEstimate.diagnostics.compute_balance_table.
         threshold: |SMD| bound drawn as the balance reference line.
-        fig, ax, figsize: As in plot_hist_by_groups.
+        fig, ax: As in plot_hist_by_groups.
+        figsize: Defaults to a height scaled to the number of covariates.
 
     Returns:
         (fig, ax)
@@ -474,6 +477,8 @@ def plot_love(
         raise ValueError("No covariates with a defined SMD to plot.")
     table = table.sort_values(SMD_UNWEIGHTED_COL)
 
+    if figsize is None:
+        figsize = (7, max(2.2, 0.5 * len(table) + 1.4))
     if fig is None and ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     elif ax is None:
@@ -482,18 +487,38 @@ def plot_love(
         raise ValueError("fig and ax cannot both be None")
 
     y = np.arange(len(table))
+    for yi, (u, w) in enumerate(
+        zip(table[SMD_UNWEIGHTED_COL], table[SMD_WEIGHTED_COL])
+    ):
+        ax.plot([u, w], [yi, yi], color="0.8", linewidth=1.5, zorder=1)
     ax.scatter(
         table[SMD_UNWEIGHTED_COL],
         y,
-        facecolors="none",
-        edgecolors="b",
+        s=55,
+        facecolors="white",
+        edgecolors="#1F77B4",
+        linewidths=1.8,
         label="Unweighted",
+        zorder=2,
     )
-    ax.scatter(table[SMD_WEIGHTED_COL], y, color="r", label="Weighted")
-    ax.axvline(threshold, linestyle="--", color="gray")
+    ax.scatter(
+        table[SMD_WEIGHTED_COL],
+        y,
+        s=55,
+        color="#D62728",
+        label="Weighted",
+        zorder=2,
+    )
+    ax.axvline(threshold, linestyle="--", color="0.6", linewidth=1)
     ax.set_yticks(y)
     ax.set_yticklabels(table.index)
+    ax.set_xlim(left=0)
+    ax.set_ylim(-0.6, len(table) - 0.4)
+    ax.xaxis.grid(True, color="0.9", linewidth=0.8)
+    ax.set_axisbelow(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
     ax.set_xlabel("|Standardized mean difference|")
     ax.set_title("Covariate Balance (Love Plot)")
-    ax.legend()
+    ax.legend(frameon=False, loc="lower right")
     return fig, ax
