@@ -22,4 +22,15 @@ plt.show()
 
 Good overlap between the treated and control propensity distributions supports the positivity assumption; clear separation is a warning sign — consider [common-support filtering](multi-estimator.md#common-support-filtering) or matching.
 
-See [this notebook](https://github.com/kirilklein/CausalEstimate/blob/main/examples/plot_examples.ipynb) for rendered examples, and the [API Reference](../api/plotting.md) for full signatures.
+Two diagnostics-oriented plots complement the [Diagnostics](diagnostics.md) module: a Love plot of covariate balance and the IPW weight distribution.
+
+```python
+from CausalEstimate.diagnostics import compute_balance_table
+from CausalEstimate.vis.plotting import plot_love, plot_weight_dist
+
+table = compute_balance_table(df, covariate_cols=["age", "bmi"], ps_col="ps", treatment_col="treatment")
+fig, ax = plot_love(table)
+fig, ax = plot_weight_dist(df, ps_col="ps", treatment_col="treatment", weight_type="ATE")
+```
+
+See [this notebook](https://github.com/kirilklein/CausalEstimate/blob/main/examples/plot_examples.ipynb) and the [diagnostics notebook](https://github.com/kirilklein/CausalEstimate/blob/main/examples/diagnostics_example.ipynb) for rendered examples, and the [API Reference](../api/plotting.md) for full signatures.
