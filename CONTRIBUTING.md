@@ -4,9 +4,19 @@ Thank you for considering contributing to our project! Please follow the guideli
 
 ---
 
+## Development setup
+
+`pyproject.toml` is the source of truth for dependencies. From a clone of your fork:
+
+```bash
+pip install -e ".[dev,plotting]"
+```
+
+The `dev` extra includes pytest, Black, and Flake8. The `plotting` extra (matplotlib) is needed for the visualization tests.
+
 ## Code Style & Quality
 
-- **Formatting:** Use **Black** (`≥25.1.0`) for code formatting.
+- **Formatting:** Use **Black** (`==26.5.1`) for code formatting.
 - **Linting:** Use **Flake8** for code quality checks.
 - **Typing:** Add type hints for function parameters and return values.
 - **Structure:**  
@@ -16,11 +26,11 @@ Thank you for considering contributing to our project! Please follow the guideli
   - Implement proper exception handling.  
   - Validate inputs and provide descriptive error messages.  
 - **Testing:**  
-  - Write unit tests using `unittest` and place them in `tests/` mirroring the package structure.  
-  - Run tests locally before submitting a PR:
+  - Write unit tests (unittest-style `TestCase` is fine) and place them in `tests/` mirroring the package structure.  
+  - Run tests locally with pytest before submitting a PR:
 
   ```bash
-  python -m unittest discover -s tests
+  pytest
   ```
 
 ## Pull Request Process
@@ -40,7 +50,7 @@ Thank you for considering contributing to our project! Please follow the guideli
    - `test:` for adding tests
    - `refactor:` for code refactoring
 
-4. Push to your fork and open a Pull Request
+4. Push to your fork and open a Pull Request targeting `main`. CI (pytest, Black, Flake8) runs on pull requests.
 
 ### PR Requirements
 
