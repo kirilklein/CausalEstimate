@@ -464,6 +464,7 @@ def plot_love(
         warnings.warn(
             "Dropping covariates with undefined (NaN) SMD from the Love plot.",
             RuntimeWarning,
+            stacklevel=2,
         )
         table = table.dropna()
     table = table.sort_values(SMD_UNWEIGHTED_COL)
