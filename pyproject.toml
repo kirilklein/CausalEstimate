@@ -38,8 +38,6 @@ dev = [
 ]
 plotting = [
     "matplotlib",
-    "seaborn",
-    "plotly",
 ]
 docs = [
     "mkdocs-material",

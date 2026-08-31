@@ -14,14 +14,18 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: '3.11'
 
             - name: Setup dependencies.
               run: |
-                python -m venv .venv
-                source .venv/bin/activate
-                pip install -r requirements.txt
+                  python -m pip install --upgrade pip
+                  pip install ".[dev,plotting]"
 
             - name: Running tests
-              run: |
-                source .venv/bin/activate
-                python -m unittest
+              run: pytest
