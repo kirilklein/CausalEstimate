@@ -133,6 +133,10 @@ print(report["flags"])          # {"extreme_ps": bool, "unbalanced": bool}
 print(report["positivity"], report["weights"], report["balance_summary"])
 ```
 
+Balance before/after weighting at a glance ([notebook](examples/diagnostics_example.ipynb)):
+
+![Love Plot](examples/figures/love_plot.png)
+
 ---
 
 ## Contributing
