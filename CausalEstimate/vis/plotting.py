@@ -416,7 +416,10 @@ def plot_weight_dist(
         clip_percentile=clip_percentile,
     )
     if bin_edges is None:
-        bin_edges = np.linspace(weights.min(), weights.max(), 51)
+        w_min, w_max = weights.min(), weights.max()
+        if w_min == w_max:  # constant weights: avoid zero-width bins
+            w_min, w_max = w_min - 0.5, w_max + 0.5
+        bin_edges = np.linspace(w_min, w_max, 51)
     plot_df = pd.DataFrame(
         {"_weight": weights, treatment_col: df[treatment_col].to_numpy()}
     )
@@ -467,6 +470,8 @@ def plot_love(
             stacklevel=2,
         )
         table = table.dropna()
+    if len(table) == 0:
+        raise ValueError("No covariates with a defined SMD to plot.")
     table = table.sort_values(SMD_UNWEIGHTED_COL)
 
     if fig is None and ax is None:

@@ -60,6 +60,20 @@ class TestBalancePlots(unittest.TestCase):
         labels = {t.get_text() for t in ax.get_yticklabels()}
         self.assertEqual(labels, {"X1", "X2"})
 
+    def test_plot_weight_dist_constant_weights_normalized(self):
+        df = pd.DataFrame({TREATMENT_COL: [1, 1, 0, 0] * 5, PS_COL: [0.5] * 20})
+        fig, ax = plot_weight_dist(df, normalize=True)
+        heights = [p.get_height() for p in ax.patches]
+        self.assertTrue(np.all(np.isfinite(heights)))
+
+    def test_plot_love_all_nan_raises(self):
+        table = pd.DataFrame(
+            {"smd_unweighted": [np.nan], "smd_weighted": [np.nan]}, index=["const"]
+        )
+        with self.assertWarns(RuntimeWarning):
+            with self.assertRaises(ValueError):
+                plot_love(table)
+
     def test_plot_love_drops_nan_smd_with_warning(self):
         df = self.df.copy()
         df["const"] = 1.0
