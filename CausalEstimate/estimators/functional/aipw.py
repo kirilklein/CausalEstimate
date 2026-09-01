@@ -18,7 +18,6 @@ ATT:
 """
 
 import warnings
-from typing import Tuple
 
 import numpy as np
 
@@ -65,29 +64,3 @@ def compute_att_weights(A, ps) -> np.ndarray:
     control_factor = (1 - A) * w
     scaling_control = 1 / control_factor.sum()
     return A * scaling_treated - control_factor * scaling_control
-
-
-def compute_ipw_att_estimator(W: np.ndarray, A: np.ndarray, Y: np.ndarray) -> float:
-    """Compute the IPW ATT estimate."""
-    numerator = (W * A * Y).sum() - (W * (1 - A) * Y).sum()
-    denominator = (W * A).sum()
-    return numerator / denominator
-
-
-def compute_augmentation_term(
-    W: np.ndarray, A: np.ndarray, Y0_hat: np.ndarray, Y1_hat: np.ndarray
-) -> float:
-    """Compute the augmentation term."""
-    numerator = (W * (1 - A) * (Y0_hat - Y1_hat)).sum()
-    denominator = (W * A).sum()
-    return numerator / denominator
-
-
-def compute_predicted_means_treated(
-    Y0_hat: np.ndarray, Y1_hat: np.ndarray, A: np.ndarray
-) -> Tuple[float, float]:
-    """Compute predicted means for treated units."""
-    treated_indices = A == 1
-    mu1_hat = Y1_hat[treated_indices].mean()
-    mu0_hat = Y0_hat[treated_indices].mean()
-    return mu1_hat, mu0_hat
