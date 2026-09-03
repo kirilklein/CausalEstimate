@@ -65,4 +65,8 @@ tmle = TMLE(
 
 Estimates effects by comparing matched treated/control pairs on the propensity score. See [Matching](matching.md) for the standalone matching functions and their options.
 
+## Weight clipping
+
+`IPW`, `AIPW` and `TMLE` all accept `clip_percentile` (default `1`, no clipping) and `eps` (default `1e-9`). `clip_percentile=0.99` clips inverse-probability weights at their 99th percentile, which tames extreme propensity scores at the cost of some bias. Set the same value on every estimator in a `MultiEstimator` so their results stay comparable.
+
 See the [API Reference](../api/estimators.md) for full signatures.

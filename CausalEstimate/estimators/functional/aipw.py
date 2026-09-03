@@ -58,6 +58,11 @@ def compute_aipw_att(
     Augmented Inverse Probability Weighting (AIPW) for ATT.
     A: treatment assignment (binary), Y: outcome, ps: propensity score
     Y0_hat: predicted outcome under control
+    clip_percentile: upper percentile at which to clip weights (1 = no clipping)
+    eps: small constant added to denominators for numerical stability
+
+    Returns the effect together with mu_1 (observed treated mean) and mu_0
+    (counterfactual untreated mean for the treated).
     """
     if (A == 1).sum() == 0:
         warnings.warn("No subjects in the treated group. ATT is NaN.", RuntimeWarning)
