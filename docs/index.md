@@ -1,4 +1,7 @@
-# CausalEstimate
+<h1 align="center">
+  <img src="assets/logo.png#only-light" alt="CausalEstimate" width="520">
+  <img src="assets/logo-dark.png#only-dark" alt="CausalEstimate" width="520">
+</h1>
 
 **CausalEstimate** is a Python library for **causal inference**: it estimates treatment effects from observational data using doubly robust techniques such as **Targeted Maximum Likelihood Estimation (TMLE)**, alongside **propensity score**-based methods like inverse probability weighting (IPW) and matching.
 
