@@ -9,8 +9,8 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done (link the PR).
 ## Plots
 
 - [x] Love plot of covariate balance (#122)
-- [x] Propensity-score boxplots before/after IPW weighting (`plot_ps_boxplot`)
-- [x] Zipper plot of CI coverage across simulation replicates (`plot_zipper`)
+- [x] Propensity-score boxplots before/after IPW weighting (`plot_ps_boxplot`, #134)
+- [x] Zipper plot of CI coverage across simulation replicates (`plot_zipper`, #134)
 
 ## Diagnostics and weights
 
@@ -30,7 +30,7 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done (link the PR).
 
 ## Project
 
-- [ ] Logo at the top of the README
+- [x] Logo at the top of the README (#135)
 
 ## Out of scope
 
