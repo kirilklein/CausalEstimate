@@ -25,12 +25,12 @@ Status: `[ ]` open · `[~]` in progress · `[x]` done (link the PR).
 
 ## Sensitivity analysis
 
-- [ ] E-value for unmeasured confounding
+- [x] E-value for unmeasured confounding (`compute_evalue`)
 - [ ] Monte Carlo bias analysis for RR (trapezoidal prior)
 
 ## Project
 
-- [ ] Logo at the top of the README
+- [x] Logo at the top of the README (#135)
 
 ## Out of scope
 
