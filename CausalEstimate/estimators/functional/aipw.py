@@ -19,8 +19,6 @@ ATT:
 
 import warnings
 
-import numpy as np
-
 from CausalEstimate.estimators.functional.ipw import compute_ipw_weights
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
