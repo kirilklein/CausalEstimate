@@ -48,6 +48,21 @@ print(check_balance(table))     # max_smd_weighted, n_unbalanced, n_undefined, p
 fig, ax = plot_love(table)      # requires the plotting extra
 ```
 
+## Sensitivity to unmeasured confounding
+
+The E-value (VanderWeele & Ding 2017) is the minimum strength of association, on the risk-ratio scale, that an unmeasured confounder would need with both treatment and outcome to explain away the estimate. Larger is more robust; an E-value near 1 means weak confounding would suffice:
+
+```python
+from CausalEstimate.diagnostics import compute_evalue
+
+compute_evalue(3.9, 1.8, 8.5)                 # RR scale: {"evalue": 7.26, "evalue_ci": 3.0}
+
+# Risk differences need the untreated risk to convert to a risk ratio
+compute_evalue(0.1, 0.05, 0.15, scale="RD", baseline_risk=res["effect_0"])
+```
+
+The CI E-value uses the bound closest to the null and is 1 when the interval contains it.
+
 Or run every diagnostic in one call with `run_diagnostics` (exported from the top-level package) — see the [README](https://github.com/kirilklein/CausalEstimate#readme) example and the [diagnostics notebook](https://github.com/kirilklein/CausalEstimate/blob/main/examples/diagnostics_example.ipynb).
 
 See the [API Reference](../api/diagnostics.md) for full signatures, and [Plotting](plotting.md) for visual overlap checks.
