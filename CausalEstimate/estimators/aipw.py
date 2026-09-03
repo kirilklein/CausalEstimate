@@ -16,6 +16,8 @@ class AIPW(BaseEstimator):
         ps_col: str = "ps",
         probas_t1_col: str = "probas_t1",
         probas_t0_col: str = "probas_t0",
+        clip_percentile: float = 1,
+        eps: float = 1e-9,
     ):
         """
         Augmented Inverse Probability Weighting (AIPW) estimator.
@@ -27,6 +29,8 @@ class AIPW(BaseEstimator):
             ps_col: Name of propensity score column
             probas_t1_col: Name of predicted probabilities under treatment column
             probas_t0_col: Name of predicted probabilities under control column
+            clip_percentile: Upper percentile for clipping, in (0, 1]. Default 1 (no clipping).
+            eps: Small constant for numerical stability in denominators
         """
         # Initialize base class with core parameters
         super().__init__(
@@ -39,6 +43,8 @@ class AIPW(BaseEstimator):
         # AIPW-specific parameters
         self.probas_t1_col = probas_t1_col
         self.probas_t0_col = probas_t0_col
+        self.clip_percentile = clip_percentile
+        self.eps = eps
 
     def _compute_effect(self, df: pd.DataFrame) -> dict:
         """
@@ -78,8 +84,18 @@ class AIPW(BaseEstimator):
         check_inputs(A, Y, ps, Y1_hat=Y1_hat, Y0_hat=Y0_hat)
 
         if self.effect_type in ["ATE", "ARR"]:
-            return compute_aipw_ate(A, Y, ps, Y0_hat, Y1_hat)
+            return compute_aipw_ate(
+                A,
+                Y,
+                ps,
+                Y0_hat,
+                Y1_hat,
+                clip_percentile=self.clip_percentile,
+                eps=self.eps,
+            )
         elif self.effect_type == "ATT":
-            return compute_aipw_att(A, Y, ps, Y0_hat)
+            return compute_aipw_att(
+                A, Y, ps, Y0_hat, clip_percentile=self.clip_percentile, eps=self.eps
+            )
         else:
             raise ValueError(f"Effect type '{self.effect_type}' is not supported.")
