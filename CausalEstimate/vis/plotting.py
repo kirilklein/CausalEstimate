@@ -522,3 +522,170 @@ def plot_love(
     ax.set_title("Covariate Balance (Love Plot)")
     ax.legend(frameon=False, loc="lower right")
     return fig, ax
+
+
+def _weighted_quantile(x: np.ndarray, w: np.ndarray, q: np.ndarray) -> np.ndarray:
+    order = np.argsort(x)
+    x, w = x[order], w[order]
+    cdf = (np.cumsum(w) - 0.5 * w) / w.sum()
+    return np.interp(q, cdf, x)
+
+
+def _box_stats(x: np.ndarray, w: np.ndarray, label: str) -> dict:
+    q1, med, q3 = _weighted_quantile(x, w, np.array([0.25, 0.5, 0.75]))
+    iqr = q3 - q1
+    lo = x[x >= q1 - 1.5 * iqr].min()
+    hi = x[x <= q3 + 1.5 * iqr].max()
+    return {
+        "label": label,
+        "q1": q1,
+        "med": med,
+        "q3": q3,
+        "whislo": lo,
+        "whishi": hi,
+        "fliers": [],
+    }
+
+
+def plot_ps_boxplot(
+    df: pd.DataFrame,
+    ps_col: str = PS_COL,
+    treatment_col: str = TREATMENT_COL,
+    weight_type: str = "ATE",
+    clip_percentile: float = 1,
+    fig: plt.Figure = None,
+    ax: plt.Axes = None,
+    figsize: tuple = (8, 5),
+) -> Tuple[plt.Figure, plt.Axes]:
+    """
+    Boxplots of the propensity score by treatment group, before and after
+    IPW weighting.
+
+    The unweighted boxes show the raw overlap between arms; the weighted boxes
+    use IPW-weighted quantiles, so under good weighting the treated and control
+    boxes should nearly coincide. Whiskers extend to the most extreme point
+    within 1.5 IQR of the box; outliers are not drawn.
+
+    Args:
+        df: DataFrame with treatment and propensity score columns.
+        ps_col: Name of the propensity score column.
+        treatment_col: Name of the treatment status column (1 treated, 0 control).
+        weight_type: "ATE" or "ATT", passed to compute_ipw_weights.
+        clip_percentile: Upper-tail clipping passed to compute_ipw_weights.
+        fig, ax, figsize: As in plot_hist_by_groups.
+
+    Returns:
+        (fig, ax)
+    """
+    A = df[treatment_col].to_numpy()
+    ps = df[ps_col].to_numpy(dtype=float)
+    weights = compute_ipw_weights(
+        A, ps, weight_type=weight_type, clip_percentile=clip_percentile
+    )
+    if fig is None and ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    elif ax is None:
+        ax = fig.add_subplot(111)
+    elif fig is None:
+        raise ValueError("fig and ax cannot both be None")
+
+    ctrl, trt = A == 0, A == 1
+    ones = np.ones_like(ps)
+    stats = [
+        _box_stats(ps[ctrl], ones[ctrl], "Control"),
+        _box_stats(ps[trt], ones[trt], "Treatment"),
+        _box_stats(ps[ctrl], weights[ctrl], "Control"),
+        _box_stats(ps[trt], weights[trt], "Treatment"),
+    ]
+    positions = [0, 1, 2.5, 3.5]
+    colors = ["#1F77B4", "#D62728", "#1F77B4", "#D62728"]
+    bp = ax.bxp(
+        stats,
+        positions=positions,
+        widths=0.7,
+        patch_artist=True,
+        showfliers=False,
+        medianprops={"color": "black"},
+    )
+    for patch, color in zip(bp["boxes"], colors):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.5)
+    ax.text(0.5, 1.02, "Unweighted", ha="center", transform=ax.get_xaxis_transform())
+    ax.text(3.0, 1.02, "Weighted", ha="center", transform=ax.get_xaxis_transform())
+    ax.set_ylabel("Propensity Score")
+    ax.set_ylim(0, 1)
+    ax.yaxis.grid(True, color="0.9", linewidth=0.8)
+    ax.set_axisbelow(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.set_title("Propensity Score by Treatment Group", pad=18)
+    return fig, ax
+
+
+def plot_zipper(
+    truth: Union[float, np.ndarray],
+    lower: np.ndarray,
+    upper: np.ndarray,
+    fig: plt.Figure = None,
+    ax: plt.Axes = None,
+    figsize: tuple = (7, 6),
+) -> Tuple[plt.Figure, plt.Axes]:
+    """
+    Zipper plot of confidence-interval coverage across simulation replicates.
+
+    Each replicate's interval is drawn as a horizontal segment, sorted by its
+    midpoint, and colored by whether it covers the truth. The empirical
+    coverage is shown in the legend. Intervals are drawn relative to the
+    truth, so `truth` may be a single value or one value per replicate.
+
+    Args:
+        truth: True effect, scalar or array of length len(lower).
+        lower, upper: Interval bounds, one entry per replicate.
+        fig, ax, figsize: As in plot_hist_by_groups.
+
+    Returns:
+        (fig, ax)
+    """
+    lower = np.asarray(lower, dtype=float)
+    upper = np.asarray(upper, dtype=float)
+    truth = np.broadcast_to(np.asarray(truth, dtype=float), lower.shape)
+    if lower.shape != upper.shape or lower.ndim != 1 or lower.size == 0:
+        raise ValueError(
+            "lower and upper must be non-empty 1-D arrays of equal length."
+        )
+    if np.any(lower > upper):
+        raise ValueError("lower must not exceed upper.")
+    lo, hi = lower - truth, upper - truth
+    order = np.argsort((lo + hi) / 2)
+    lo, hi = lo[order], hi[order]
+    covers = (lo <= 0) & (hi >= 0)
+    coverage = covers.mean()
+
+    if fig is None and ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    elif ax is None:
+        ax = fig.add_subplot(111)
+    elif fig is None:
+        raise ValueError("fig and ax cannot both be None")
+
+    y = np.arange(len(lo))
+    for mask, color, label in (
+        (covers, "#1F77B4", f"Covers truth ({coverage:.1%})"),
+        (~covers, "#D62728", f"Misses truth ({1 - coverage:.1%})"),
+    ):
+        if mask.any():
+            ax.hlines(
+                y[mask], lo[mask], hi[mask], color=color, linewidth=1.2, label=label
+            )
+    ax.axvline(0, color="black", linewidth=1)
+    ax.set_ylim(-1, len(lo))
+    ax.set_yticks([])
+    ax.set_ylabel("Replicates (sorted by interval midpoint)")
+    ax.set_xlabel("Interval relative to truth")
+    ax.xaxis.grid(True, color="0.9", linewidth=0.8)
+    ax.set_axisbelow(True)
+    for side in ("top", "right", "left"):
+        ax.spines[side].set_visible(False)
+    ax.set_title("Confidence Interval Coverage (Zipper Plot)")
+    ax.legend(frameon=False, loc="upper left")
+    return fig, ax

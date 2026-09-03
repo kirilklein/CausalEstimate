@@ -118,12 +118,20 @@ print(report["positivity"], report["weights"], report["balance_summary"])
 - [Multiple Estimators & Bootstrap](https://kirilklein.github.io/CausalEstimate/user-guide/multi-estimator/) — compare estimators and add bootstrap confidence intervals
 - [Matching](https://kirilklein.github.io/CausalEstimate/user-guide/matching/) — greedy and optimal propensity-score matching
 - [Diagnostics](https://kirilklein.github.io/CausalEstimate/user-guide/diagnostics/) — overlap, weights, covariate balance, and the combined report
-- [Plotting](https://kirilklein.github.io/CausalEstimate/user-guide/plotting/) — propensity-score and outcome-probability distributions
+- [Plotting](https://kirilklein.github.io/CausalEstimate/user-guide/plotting/) — propensity-score distributions, balance and weight diagnostics, coverage checks
 - [API Reference](https://kirilklein.github.io/CausalEstimate/api/estimators/) — full signatures and docstrings
 
 Balance before/after weighting at a glance ([notebook](examples/diagnostics_example.ipynb)):
 
 ![Love Plot](examples/figures/love_plot.png)
+
+Propensity-score overlap before and after IPW weighting:
+
+![Propensity Score Boxplot](examples/figures/ps_boxplot.png)
+
+Bootstrap confidence-interval coverage on the built-in synthetic data, where the true effect is known:
+
+![Zipper Plot](examples/figures/zipper_plot.png)
 
 ---
 
