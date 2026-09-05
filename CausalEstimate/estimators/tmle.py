@@ -51,7 +51,7 @@ class TMLE(BaseEstimator):
         Targeted Maximum Likelihood Estimation (TMLE) estimator.
 
         Binary outcomes use the logistic fluctuation directly. A continuous
-        outcome (ATE/ATT/ARR only) is rescaled to [0, 1] with ``y_bounds``
+        outcome (ATE/ATT only) is rescaled to [0, 1] with ``y_bounds``
         (default: observed min/max of the outcome), targeted on that scale,
         and the results are mapped back (Gruber & van der Laan, 2010).
 
