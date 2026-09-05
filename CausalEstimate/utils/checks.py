@@ -55,7 +55,14 @@ def check_columns_for_nans(df: pd.DataFrame, cols: List[str]):
 
 
 def check_inputs(
-    A=None, Y=None, ps=None, Yhat=None, Y0_hat=None, Y1_hat=None, variable_names=None
+    A=None,
+    Y=None,
+    ps=None,
+    Yhat=None,
+    Y0_hat=None,
+    Y1_hat=None,
+    variable_names=None,
+    binary_outcome=True,
 ):
     """
     Validate inputs for estimators.
@@ -68,6 +75,8 @@ def check_inputs(
         Y0_hat (array-like, optional): Predicted outcome under control.
         Y1_hat (array-like, optional): Predicted outcome under treatment.
         variable_names (dict, optional): Mapping from variable to custom name for error messages.
+        binary_outcome (bool): If True, Y must be 0/1 and predictions must be
+            probabilities. If False, Y and predictions only need to be finite numbers.
     Raises:
         ValueError: If any of the inputs do not meet the specified conditions.
     """
@@ -82,20 +91,18 @@ def check_inputs(
     }
 
     check_binary_array(A, variable_names[TREATMENT_COL])
-    check_binary_array(Y, variable_names[OUTCOME_COL])
     check_probability_array(ps, variable_names[PS_COL])
 
-    # Check Yhat (predicted outcome)
+    check_outcome = check_binary_array if binary_outcome else check_finite_array
+    check_pred = check_probability_array if binary_outcome else check_finite_array
+
+    check_outcome(Y, variable_names[OUTCOME_COL])
     if Yhat is not None:
-        check_probability_array(Yhat, variable_names[PROBAS_COL])
-
-    # Check Y0_hat (predicted outcome under control)
+        check_pred(Yhat, variable_names[PROBAS_COL])
     if Y0_hat is not None:
-        check_probability_array(Y0_hat, variable_names[PROBAS_T0_COL])
-
-    # Check Y1_hat (predicted outcome under treatment)
+        check_pred(Y0_hat, variable_names[PROBAS_T0_COL])
     if Y1_hat is not None:
-        check_probability_array(Y1_hat, variable_names[PROBAS_T1_COL])
+        check_pred(Y1_hat, variable_names[PROBAS_T1_COL])
 
 
 def check_binary_array(arr, name):
@@ -123,6 +130,15 @@ def check_probability_array(arr, name):
         raise ValueError(f"{name} must be numeric.")
     if not np.logical_and(arr >= 0, arr <= 1).all():
         raise ValueError(f"{name} must have values between 0 and 1 inclusive.")
+
+
+def check_finite_array(arr, name):
+    """Check that all values in the array are finite numbers"""
+    arr = np.asarray(arr)
+    if not np.issubdtype(arr.dtype, np.number):
+        raise ValueError(f"{name} must be numeric.")
+    if not np.isfinite(arr).all():
+        raise ValueError(f"{name} must contain only finite values.")
 
 
 def check_ps_not_exact_zero_one(ps, name="Propensity Score"):

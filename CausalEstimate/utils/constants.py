@@ -14,6 +14,8 @@ TREATED_PID_COL = "treated_pid_col"
 CONTROL_PID_COL = "control_pid_col"
 DISTANCE_COL = "distance_col"
 
+BINARY_OUTCOME_EFFECTS = {"RR", "RRT", "ARR"}
+
 EFFECT = "effect"
 EFFECT_treated = "effect_1"
 EFFECT_untreated = "effect_0"

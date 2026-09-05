@@ -15,6 +15,8 @@ ATE: average treatment effect · ATT: ATE on the treated · RR: risk ratio · RR
 
 \* With a caliper, the matched population is strictly neither the full nor the treated population; interpret accordingly.
 
+**Continuous outcomes.** ATE and ATT work for any numeric outcome in `IPW`, `AIPW` and `TMLE`; the risk-based effect types (RR, RRT, ARR) require a binary 0/1 outcome. `TMLE` rescales a continuous outcome and its predictions to [0, 1] using the observed min/max before targeting and maps the result back; pass `y_bounds=(min, max)` to use known bounds instead.
+
 ## IPW — inverse probability weighting
 
 Weights each observation by the inverse of its (estimated) probability of receiving the treatment it actually received. Only needs a propensity score column. Pass `stabilized=True` for stabilized weights.
