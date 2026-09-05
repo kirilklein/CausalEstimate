@@ -1,5 +1,7 @@
 import unittest
 
+import numpy as np
+
 from CausalEstimate.estimators.tmle import TMLE
 from CausalEstimate.utils.constants import (
     OUTCOME_COL,
@@ -64,11 +66,12 @@ class TestTMLEContinuousOutcome(ContinuousEffectBase):
         result = result.compute_effect(self.data)
         self.assertAlmostEqual(result[EFFECT], self.true_ate, delta=0.1)
 
-    def test_y_bounds_violated_raises(self):
-        with self.assertRaises(ValueError):
-            TMLE(
-                effect_type="ATE", outcome_col=OUTCOME_COL, y_bounds=(0, 1)
-            ).compute_effect(self.data)
+    def test_invalid_y_bounds_raise(self):
+        for bounds in [(0, 1), (0, np.inf), (5, 5)]:
+            with self.subTest(bounds=bounds), self.assertRaises(ValueError):
+                TMLE(
+                    effect_type="ATE", outcome_col=OUTCOME_COL, y_bounds=bounds
+                ).compute_effect(self.data)
 
     def test_rr_rejects_continuous_outcome(self):
         with self.assertRaises(ValueError):

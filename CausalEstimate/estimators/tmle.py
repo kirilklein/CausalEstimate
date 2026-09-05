@@ -66,7 +66,8 @@ class TMLE(BaseEstimator):
             clip_percentile: Upper percentile for clipping, in (0, 1]. Default 1 (no clipping).
             eps: Small constant for numerical stability in denominators
             y_bounds: (min, max) of a continuous outcome. Predictions are
-                clipped to these bounds. Ignored for binary outcomes.
+                clipped to these bounds. Passing it forces the continuous
+                path even for a 0/1 outcome; RR/RRT/ARR ignore it.
         """
         # Initialize base class with core parameters
         super().__init__(
@@ -118,8 +119,8 @@ class TMLE(BaseEstimator):
             return self._targeted_effect(A, Y, ps, Y0_hat, Y1_hat, Yhat)
 
         lo, hi = self.y_bounds if self.y_bounds is not None else (Y.min(), Y.max())
-        if not hi > lo:
-            raise ValueError("y_bounds must satisfy min < max.")
+        if not (np.isfinite(lo) and np.isfinite(hi) and hi > lo):
+            raise ValueError("y_bounds must be finite with min < max.")
         if not ((Y >= lo) & (Y <= hi)).all():
             raise ValueError("Outcome contains values outside y_bounds.")
         scale = hi - lo
