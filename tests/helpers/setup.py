@@ -118,3 +118,51 @@ class TestEffectBase(unittest.TestCase):
                 PID_COL: np.arange(len(cls.A)),
             }
         )
+
+
+class ContinuousEffectBase(unittest.TestCase):
+    """
+    Fixture with a continuous (Gaussian) outcome, a fitted probit propensity
+    model and per-arm OLS outcome models, matching the nuisance models used by
+    statsmodels' TreatmentEffect so its ipw/aipw results serve as references.
+    """
+
+    n: int = 5_000
+    seed: int = 0
+
+    @classmethod
+    def setUpClass(cls):
+        import statsmodels.api as sm
+        from statsmodels.treatment.treatment_effects import TreatmentEffect
+
+        rng = np.random.default_rng(cls.seed)
+        n = cls.n
+        X = rng.normal(size=(n, 2))
+        ps_true = expit(0.3 * X[:, 0] - 0.4 * X[:, 1])
+        A = rng.binomial(1, ps_true)
+        mu0 = 10 + 1.5 * X[:, 0] - 1.0 * X[:, 1]
+        mu1 = mu0 + 2.0 + 0.5 * X[:, 0]
+        Y = np.where(A == 1, mu1, mu0) + rng.normal(size=n)
+
+        cls.true_ate = (mu1 - mu0).mean()
+        cls.true_att = (mu1 - mu0)[A == 1].mean()
+
+        Xc = sm.add_constant(X)
+        cls.sm_te = TreatmentEffect(
+            sm.OLS(Y, Xc), A, results_select=sm.Probit(A, Xc).fit(disp=0)
+        )
+        ps = cls.sm_te.results_select.predict()
+        Y1_hat = sm.OLS(Y[A == 1], Xc[A == 1]).fit().predict(Xc)
+        Y0_hat = sm.OLS(Y[A == 0], Xc[A == 0]).fit().predict(Xc)
+
+        cls.data = pd.DataFrame(
+            {
+                TREATMENT_COL: A,
+                OUTCOME_COL: Y,
+                PS_COL: ps,
+                PROBAS_T1_COL: Y1_hat,
+                PROBAS_T0_COL: Y0_hat,
+                PROBAS_COL: np.where(A == 1, Y1_hat, Y0_hat),
+                PID_COL: np.arange(n),
+            }
+        )

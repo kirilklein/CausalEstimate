@@ -5,6 +5,7 @@ import pandas as pd
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.aipw import compute_aipw_ate, compute_aipw_att
 from CausalEstimate.utils.checks import check_inputs, check_required_columns
+from CausalEstimate.utils.constants import BINARY_OUTCOME_EFFECTS
 
 
 class AIPW(BaseEstimator):
@@ -81,7 +82,14 @@ class AIPW(BaseEstimator):
             ],
         )
 
-        check_inputs(A, Y, ps, Y1_hat=Y1_hat, Y0_hat=Y0_hat)
+        check_inputs(
+            A,
+            Y,
+            ps,
+            Y1_hat=Y1_hat,
+            Y0_hat=Y0_hat,
+            binary_outcome=self.effect_type in BINARY_OUTCOME_EFFECTS,
+        )
 
         if self.effect_type in ["ATE", "ARR"]:
             return compute_aipw_ate(

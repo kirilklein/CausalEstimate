@@ -6,6 +6,8 @@ from typing import List, Literal
 import numpy as np
 import pandas as pd
 
+from CausalEstimate.utils.constants import BINARY_OUTCOME_EFFECTS
+
 
 class BaseEstimator(ABC):
     PS_EXTREME_THRESHOLD = 1e-2  # Configurable threshold for extreme PS warning
@@ -100,11 +102,7 @@ class BaseEstimator(ABC):
         self._validate_group_sizes(treatment)
         self._validate_missing_values(df)
 
-        if self.effect_type in {
-            "RR",
-            "RRT",
-            "ARR",
-        }:  # should be binary for ratio-based estimands
+        if self.effect_type in BINARY_OUTCOME_EFFECTS:
             self._validate_binary_outcome(outcome)
 
     def _validate_df_type(self, df: pd.DataFrame) -> None:
