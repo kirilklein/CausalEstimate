@@ -1,4 +1,9 @@
-# Plotting
+---
+title: Causal inference diagnostic plots in Python
+description: Visualize propensity-score overlap, covariate balance, and IPW weight distributions with CausalEstimate plotting utilities.
+---
+
+# Causal inference diagnostic plots
 
 Plotting utilities help you check distributions of propensity scores and predicted outcome probabilities across treatment and control groups — the first sanity check before trusting any estimate.
 

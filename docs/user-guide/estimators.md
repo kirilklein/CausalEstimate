@@ -1,6 +1,11 @@
-# Estimators
+---
+title: Causal inference estimators in Python
+description: Compare IPW, AIPW, TMLE, and propensity-score matching in CausalEstimate, including required model predictions and continuous-outcome support.
+---
 
-All estimators share the same pattern: configure columns and effect type in the constructor, then call `compute_effect(df)`.
+# Causal inference estimators
+
+CausalEstimate provides IPW, AIPW, TMLE, and propensity-score matching for observational data. All estimators share the same pattern: configure columns and effect type in the constructor, then call `compute_effect(df)`.
 
 ## Supported effect types
 

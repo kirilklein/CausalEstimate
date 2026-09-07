@@ -1,3 +1,8 @@
+---
+title: Causal effect estimator API
+description: Python API reference for the IPW, AIPW, TMLE, Matching, and MultiEstimator classes in CausalEstimate.
+---
+
 # Estimators
 
 ::: CausalEstimate.estimators.ipw.IPW

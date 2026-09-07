@@ -1,4 +1,9 @@
-# Multiple Estimators & Bootstrap
+---
+title: Multiple causal estimators and bootstrap inference
+description: Run IPW, AIPW, and TMLE on the same data, apply common-support filtering, and compute bootstrap standard errors and confidence intervals.
+---
+
+# Multiple causal estimators and bootstrap inference
 
 `MultiEstimator` runs several estimators on the **same** dataset in one pass — optionally with bootstrap standard errors and common-support filtering.
 

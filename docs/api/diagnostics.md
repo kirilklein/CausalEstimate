@@ -1,3 +1,8 @@
+---
+title: Causal diagnostics API
+description: Python API reference for propensity-score positivity, IPW weight, effective sample size, and covariate-balance diagnostics.
+---
+
 # Diagnostics
 
 ::: CausalEstimate.diagnostics.positivity.compute_positivity_metrics

@@ -1,4 +1,9 @@
-# Diagnostics
+---
+title: Propensity score and IPW diagnostics in Python
+description: Check positivity, propensity-score overlap, effective sample size, IPW weights, and covariate balance before interpreting causal estimates.
+---
+
+# Propensity score and weight diagnostics
 
 Positivity and weight diagnostics to report alongside IPW/TMLE estimates. Weighted estimates are only trustworthy when propensity scores stay away from 0 and 1 and no small set of observations dominates the weights — these functions quantify exactly that.
 

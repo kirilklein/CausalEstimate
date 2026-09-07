@@ -1,5 +1,5 @@
 site_name: CausalEstimate
-site_description: Lightweight, pandas-native causal effect estimation with bring-your-own propensity scores
+site_description: Python tools for pandas-native causal effect estimation with IPW, AIPW, TMLE, matching, and diagnostics
 site_url: https://kirilklein.github.io/CausalEstimate/
 repo_url: https://github.com/kirilklein/CausalEstimate
 repo_name: kirilklein/CausalEstimate

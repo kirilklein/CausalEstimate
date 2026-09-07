@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "CausalEstimate"
 dynamic = ["version"]
-description = "A library for estimates of causal effects."
+description = "Pandas-native causal effect estimation with IPW, AIPW, TMLE, matching, and diagnostics."
 readme = { file = "README.md", content-type = "text/markdown" }  # Combine file and content-type
 authors = [
     { name = "Kiril Klein", email = "kikl@di.ku.dk" },

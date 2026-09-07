@@ -1,4 +1,9 @@
-# Matching
+---
+title: Propensity score matching in Python
+description: Perform optimal or greedy propensity-score matching with calipers, inspect matched sets, and interpret the resulting matched sample.
+---
+
+# Propensity score matching
 
 CausalEstimate supports both **optimal** and **greedy** (a.k.a. eager) propensity-score matching.
 

@@ -1,3 +1,8 @@
+---
+title: Causal inference in Python
+description: Estimate causal effects from pandas data with IPW, AIPW, TMLE, matching, diagnostics, and your own propensity and outcome predictions.
+---
+
 <h1 align="center">
   <img src="assets/logo.png#only-light" alt="CausalEstimate" width="520">
   <img src="assets/logo-dark.png#only-dark" alt="CausalEstimate" width="520">
@@ -39,4 +44,7 @@ print(ipw.compute_effect(df))
 - [Getting Started](getting-started.md) — installation and the input-data contract
 - [Estimators](user-guide/estimators.md) — IPW, AIPW, TMLE, Matching, and which effect types each supports
 - [Multiple Estimators & Bootstrap](user-guide/multi-estimator.md) — run several estimators in one pass with confidence intervals
+- [Diagnostics](user-guide/diagnostics.md) — check propensity-score overlap, weights, and covariate balance
+- [Matching](user-guide/matching.md) — optimal and greedy propensity-score matching
+- [Plotting](user-guide/plotting.md) — visualize overlap, balance, and IPW weight distributions
 - [API Reference](api/estimators.md) — full signatures and docstrings

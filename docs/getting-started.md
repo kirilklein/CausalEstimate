@@ -1,4 +1,11 @@
-# Getting Started
+---
+title: Getting started with CausalEstimate in Python
+description: Install CausalEstimate and estimate treatment effects from a pandas DataFrame using your own propensity scores and outcome predictions.
+---
+
+# Getting started with CausalEstimate
+
+Install the Python package, prepare a pandas DataFrame, and compute a first causal effect estimate from your own propensity scores.
 
 ## Installation
 
