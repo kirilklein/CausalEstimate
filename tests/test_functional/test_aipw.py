@@ -5,10 +5,8 @@ import pandas as pd
 
 from CausalEstimate.estimators.aipw import AIPW
 from CausalEstimate.estimators.functional.aipw import compute_aipw_ate, compute_aipw_att
-from CausalEstimate.estimators.functional.ipw import (
-    compute_ipw_ate,
-    compute_ipw_weights,
-)
+from CausalEstimate.estimators.functional.ipw import compute_ipw_ate
+from CausalEstimate.estimators.functional.utils import compute_ipw_weights
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 from tests.helpers.setup import TestEffectBase
 

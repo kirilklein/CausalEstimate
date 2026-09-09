@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from CausalEstimate.diagnostics.utils import validate_ps_and_treatment
-from CausalEstimate.estimators.functional.ipw import compute_ipw_weights
+from CausalEstimate.estimators.functional.utils import compute_ipw_weights
 from CausalEstimate.utils.constants import PS_COL, TREATMENT_COL
 
 

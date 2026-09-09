@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss
 
-from CausalEstimate.estimators.functional.ipw import compute_ipw_weights
+from CausalEstimate.estimators.functional.utils import compute_ipw_weights
 from CausalEstimate.utils.constants import (
     PS_COL,
     SMD_UNWEIGHTED_COL,

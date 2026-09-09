@@ -7,6 +7,7 @@ from CausalEstimate.estimators.functional.utils import (
     compute_initial_effect,
     estimate_fluctuation_parameter,
     _compute_epsilon_one_step,
+    compute_ipw_weights,
 )
 from CausalEstimate.utils.constants import (
     INITIAL_EFFECT,
@@ -184,6 +185,31 @@ class TestTMLEUtils(unittest.TestCase):
 
         self.assertIn("Falling back to the one-step estimate", str(cm.warning))
         self.assertAlmostEqual(epsilon, expected_one_step)
+
+
+class TestIPWWeightFunction(unittest.TestCase):
+    """
+    Directly tests the `compute_ipw_weights` function to ensure logic is correct.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.A = np.array([1, 1, 0, 0])
+        cls.ps = np.array([0.8, 0.4, 0.5, 0.2])
+        cls.pi = 0.5
+
+    def test_att_weights(self):
+        weights = compute_ipw_weights(self.A, self.ps, weight_type="ATT")
+        stabilization_factor = (1 - self.pi) / self.pi
+        expected = np.array(
+            [
+                1.0,
+                1.0,
+                (0.5 / 0.5) * stabilization_factor,
+                (0.2 / 0.8) * stabilization_factor,
+            ]
+        )
+        np.testing.assert_allclose(weights, expected)
 
 
 if __name__ == "__main__":

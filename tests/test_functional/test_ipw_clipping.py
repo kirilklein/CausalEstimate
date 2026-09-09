@@ -1,9 +1,9 @@
 import unittest
 from CausalEstimate.estimators.functional.ipw import (
-    compute_ipw_weights,
     compute_ipw_ate,
     compute_ipw_att,
 )
+from CausalEstimate.estimators.functional.utils import compute_ipw_weights
 import numpy as np
 from CausalEstimate.utils.constants import EFFECT
 

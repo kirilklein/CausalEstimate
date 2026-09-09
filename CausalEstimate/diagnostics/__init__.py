@@ -7,7 +7,7 @@ from CausalEstimate.diagnostics.positivity import compute_positivity_metrics
 from CausalEstimate.diagnostics.report import run_diagnostics
 from CausalEstimate.diagnostics.sensitivity import compute_evalue
 from CausalEstimate.diagnostics.weights import compute_ess, compute_weight_diagnostics
-from CausalEstimate.estimators.functional.ipw import compute_ipw_weights
+from CausalEstimate.estimators.functional.utils import compute_ipw_weights
 
 __all__ = [
     "compute_positivity_metrics",

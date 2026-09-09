@@ -7,8 +7,8 @@ from CausalEstimate.estimators.functional.ipw import (
     compute_ipw_att,
     compute_ipw_risk_ratio,
     compute_ipw_risk_ratio_treated,
-    compute_ipw_weights,
 )
+from CausalEstimate.estimators.functional.utils import compute_ipw_weights
 from CausalEstimate.utils.constants import EFFECT, EFFECT_untreated
 from tests.helpers.setup import TestEffectBase
 
@@ -113,31 +113,6 @@ class TestIPWEstimators(unittest.TestCase):
 
         ate = compute_ipw_ate(A, Y, ps)
         self.assertIsInstance(ate[EFFECT], float)
-
-
-class TestIPWWeightFunction(unittest.TestCase):
-    """
-    Directly tests the `compute_ipw_weights` function to ensure logic is correct.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        cls.A = np.array([1, 1, 0, 0])
-        cls.ps = np.array([0.8, 0.4, 0.5, 0.2])
-        cls.pi = 0.5
-
-    def test_att_weights(self):
-        weights = compute_ipw_weights(self.A, self.ps, weight_type="ATT")
-        stabilization_factor = (1 - self.pi) / self.pi
-        expected = np.array(
-            [
-                1.0,
-                1.0,
-                (0.5 / 0.5) * stabilization_factor,
-                (0.2 / 0.8) * stabilization_factor,
-            ]
-        )
-        np.testing.assert_allclose(weights, expected)
 
 
 # =============================================================================

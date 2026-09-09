@@ -11,6 +11,6 @@ description: Python API reference for propensity-score positivity, IPW weight, e
 
 ::: CausalEstimate.diagnostics.weights.compute_ess
 
-::: CausalEstimate.estimators.functional.ipw.compute_ipw_weights
+::: CausalEstimate.estimators.functional.utils.compute_ipw_weights
 
 ::: CausalEstimate.diagnostics.sensitivity.compute_evalue

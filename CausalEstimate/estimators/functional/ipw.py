@@ -24,11 +24,11 @@ https://pubmed.ncbi.nlm.nih.gov/16790829/
 """
 
 import warnings
-from typing import Tuple, Literal
+from typing import Tuple
 
 import numpy as np
 
-from CausalEstimate.utils.checks import check_ps_not_exact_zero_one
+from CausalEstimate.estimators.functional.utils import compute_ipw_weights
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
 # --- Core Effect Calculation Functions ---
@@ -196,81 +196,3 @@ def compute_weighted_outcomes_treated(
         mu_0 = np.nan
 
     return mu_1, mu_0
-
-
-# --- Centralized Weight Calculation Functions ---
-
-
-def compute_ipw_weights(
-    A: np.ndarray,
-    ps: np.ndarray,
-    weight_type: Literal["ATE", "ATT"] = "ATE",
-    clip_percentile: float = 1,
-    eps: float = 1e-9,
-) -> np.ndarray:
-    """
-    Computes Inverse Propensity Score (IPW) weights with optional clipping.
-
-    This function calculates weights for estimating the Average Treatment Effect (ATE)
-    or the Average Treatment Effect on the Treated (ATT).
-
-    Formulas:
-    - ATE: w = A/ps + (1-A)/(1-ps)
-    - ATT: w = A + (1-A) * ps/(1-ps)
-
-        Args:
-        A: Binary treatment assignment vector (1 for treated, 0 for control).
-        ps: Propensity score vector (estimated probability of treatment).
-        weight_type: The type of estimand, either "ATE" or "ATT".
-        clip_percentile: The upper percentile at which to clip weights to prevent
-                         extreme values. A value of 1.0 (default) applies no
-                         clipping. For example, 0.99 clips the top 1%.
-        eps: A small constant to add to denominators for numerical stability.
-
-    Returns:
-        An array of computed IPW weights.
-
-    Raises:
-        ValueError: If `weight_type` is invalid, shapes mismatch, or
-                    `clip_percentile` is out of bounds.
-    """
-
-    # --- 1. Input Validation ---
-    if weight_type not in ["ATE", "ATT"]:
-        raise ValueError("weight_type must be 'ATE' or 'ATT'")
-    if not (0 < clip_percentile <= 1.0):
-        raise ValueError("clip_percentile must be in the interval (0, 1.0].")
-    if A.shape != ps.shape:
-        raise ValueError("A and ps must have the same shape.")
-    check_ps_not_exact_zero_one(ps)
-
-    # --- 2. Core Weight Calculation ---
-    if weight_type == "ATE":
-        # Vectorized formula for ATE weights
-        weights = A / (ps + eps) + (1 - A) / (1 - ps + eps)
-    else:  # weight_type == "ATT"
-        # For ATT, treated units have a weight of 1.
-        # Vectorized formula for ATT weights.
-        weights = A + (1 - A) * ps / (1 - ps + eps)
-
-    # --- 3. Unified Weight Clipping ---
-    if clip_percentile < 1.0:
-        q = clip_percentile * 100
-
-        # This logic is now applied to both ATE and ATT.
-        # For ATT, the 'treated_mask' section is a no-op but is still executed.
-        treated_mask = A == 1
-        if np.any(treated_mask):
-            threshold_t = np.percentile(weights[treated_mask], q)
-            weights[treated_mask] = np.clip(
-                weights[treated_mask], a_min=None, a_max=threshold_t
-            )
-
-        control_mask = ~treated_mask
-        if np.any(control_mask):
-            threshold_c = np.percentile(weights[control_mask], q)
-            weights[control_mask] = np.clip(
-                weights[control_mask], a_min=None, a_max=threshold_c
-            )
-
-    return weights
