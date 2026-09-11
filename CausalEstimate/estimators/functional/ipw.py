@@ -116,14 +116,20 @@ def compute_weighted_outcomes(
     ps: np.ndarray,
     clip_percentile: float = 1,
     eps: float = 1e-9,
+    W: np.ndarray = None,
 ) -> Tuple[float, float]:
     """
     Computes E[Y(1)] and E[Y(0)] for the ATE using the Hajék estimator,
     with explicit checks for empty groups.
+
+    W: optional precomputed weights, recomputed from ps when omitted. Callers
+    that also need the weights for variance estimation should pass them in, so
+    the estimate and the SE use exactly the same (clipped) weights.
     """
-    W = compute_ipw_weights(
-        A, ps, weight_type="ATE", clip_percentile=clip_percentile, eps=eps
-    )
+    if W is None:
+        W = compute_ipw_weights(
+            A, ps, weight_type="ATE", clip_percentile=clip_percentile, eps=eps
+        )
 
     # --- Calculate for Treated Group (mu_1) ---
     treated_mask: np.ndarray = A == 1
@@ -155,13 +161,19 @@ def compute_weighted_outcomes_treated(
     ps: np.ndarray,
     clip_percentile: float = 1,
     eps: float = 1e-9,
+    W: np.ndarray = None,
 ) -> Tuple[float, float]:
     """
     Computes E[Y(1)|A=1] and E[Y(0)|A=1] for the ATT using the robust Hajek (ratio) estimator.
+
+    W: optional precomputed weights, recomputed from ps when omitted. Callers
+    that also need the weights for variance estimation should pass them in, so
+    the estimate and the SE use exactly the same (clipped) weights.
     """
-    W = compute_ipw_weights(
-        A, ps, weight_type="ATT", clip_percentile=clip_percentile, eps=eps
-    )
+    if W is None:
+        W = compute_ipw_weights(
+            A, ps, weight_type="ATT", clip_percentile=clip_percentile, eps=eps
+        )
 
     # --- Factual Outcome for the Treated (mu_1) ---
     treated_mask: np.ndarray = A == 1
