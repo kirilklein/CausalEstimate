@@ -13,7 +13,7 @@ from CausalEstimate.estimators.functional.utils import (
     check_score_equations,
     estimate_arm_fluctuation,
     target_outcome_models,
-    _one_step_fluctuation
+    _one_step_fluctuation,
 )
 from CausalEstimate.utils.constants import (
     INITIAL_EFFECT,
@@ -297,9 +297,7 @@ class TestEstimateArmFluctuation(unittest.TestCase):
                 epsilon = estimate_arm_fluctuation(self.Y, self.Q, self.w, "treated")
 
         def score(shift):
-            return abs(
-                float(np.sum(self.w * (self.Y - expit(logit(self.Q) + shift))))
-            )
+            return abs(float(np.sum(self.w * (self.Y - expit(logit(self.Q) + shift)))))
 
         self.assertLess(score(epsilon), score(0.0))
 

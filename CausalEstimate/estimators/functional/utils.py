@@ -323,7 +323,8 @@ def target_outcome_models(
     max_shift: float = 30.0,
 ) -> TargetingResult:
     """
-    Run the full targeting step for any of the four estimands.
+    Run the full targeting step for any of the three supported estimands:
+    ATE, ATT, and RR.
 
     This is the single entry point every TMLE estimator should use. The
     estimands differ only in their weights (see `compute_arm_weights`) and in

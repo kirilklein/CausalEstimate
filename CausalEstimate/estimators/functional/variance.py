@@ -20,11 +20,8 @@ def compute_ci(
     Standard error and 95% confidence interval for the TMLE estimators, from
     the influence curve.
 
-    Difference effects (ATE, ATT) use the single combined clever covariate H,
-    matching their one-parameter fluctuation. The risk ratio needs the
-    arm-wise w1 and w0 from the two-parameter targeting step, which cannot be
-    reconstructed from the propensity scores here because clipping is applied
-    inside that step (issue #98).
+    Difference effects combine the arm weights as H = w1 − w0;
+    RR uses the arm weights separately.
 
     w1 and w0 are the non-negative, off-arm-zero weights carried by
     `TargetingResult`; pass them through unchanged. Each arm mean's influence
