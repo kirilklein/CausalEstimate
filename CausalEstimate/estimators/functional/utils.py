@@ -11,6 +11,7 @@ from CausalEstimate.utils.constants import (
 )
 from CausalEstimate.utils.checks import check_ps_not_exact_zero_one
 from statsmodels.genmod.families import Binomial
+from statsmodels.tools import sm_exceptions
 from statsmodels.genmod.generalized_linear_model import GLM
 from scipy.special import expit, logit
 
@@ -243,21 +244,70 @@ def estimate_arm_fluctuation(
         return float(-max_shift)
 
     intercept = np.ones((Y.size, 1))
-    fit = GLM(Y, intercept, family=Binomial(), offset=offset, freq_weights=w).fit(
-        tol=1e-12, maxiter=100
-    )
-    epsilon = float(np.asarray(fit.params)[0])
+    try:
+        fit = GLM(Y, intercept, family=Binomial(), offset=offset, freq_weights=w).fit(
+            tol=1e-12, maxiter=100
+        )
+        epsilon = float(np.asarray(fit.params)[0])
+    except (np.linalg.LinAlgError, sm_exceptions.PerfectSeparationError):
+        epsilon = np.nan
 
-    if not fit.converged or not np.isfinite(epsilon):
+    # Judge the fit by its own score equation rather than by `fit.converged`.
+    # statsmodels compares the *absolute* deviance change to `tol`, and
+    # freq_weights scale the deviance, so an arm carrying large IPW weights
+    # reports converged=False at tol=1e-12 even when epsilon is exact to
+    # machine precision. The score is what we actually need solved.
+    solved = np.isfinite(epsilon) and abs(score(epsilon)) <= 1e-8 * max(
+        float(np.sum(w)), 1.0
+    )
+
+    if not solved:
         warnings.warn(
-            f"The GLM fluctuation for the {label} arm did not converge; "
-            "falling back to epsilon = 0, i.e. the untargeted fit for this "
-            "arm.",
+            f"The GLM fluctuation for the {label} arm did not solve its score "
+            "equation; falling back to the one-step estimate.",
+            RuntimeWarning,
+        )
+        return _one_step_fluctuation(Y, offset, w, label, max_shift)
+
+    return epsilon
+
+
+def _one_step_fluctuation(
+    Y: np.ndarray,
+    offset: np.ndarray,
+    w: np.ndarray,
+    label: str,
+    max_shift: float,
+) -> float:
+    """
+    Non-iterative fallback for epsilon, used when the GLM fit fails.
+
+    This is the first Newton-Raphson step on the weighted score equation
+    s(epsilon) = sum(w * (Y - expit(offset + epsilon))), started from
+    epsilon = 0:
+
+        epsilon_1-step = s(0) / I(0)
+
+    with observed information I(0) = sum(w * Q * (1 - Q)), Q = expit(offset).
+    The covariate is the intercept, so the weights enter both terms linearly.
+
+    The result is clamped to +/- max_shift for the same reason the GLM path is:
+    a near-zero information can otherwise send the step off to a shift that
+    overflows expit.
+    """
+    Q = expit(offset)
+    score = float(np.sum(w * (Y - Q)))
+    information = float(np.sum(w * Q * (1 - Q)))
+
+    if not np.isfinite(score) or not np.isfinite(information) or information == 0:
+        warnings.warn(
+            f"Non-finite score or zero information in the one-step estimate "
+            f"for the {label} arm; falling back to epsilon = 0, i.e. the "
+            "untargeted fit for this arm.",
             RuntimeWarning,
         )
         return 0.0
-
-    return epsilon
+    return float(np.clip(score / information, -max_shift, max_shift))
 
 
 def target_outcome_models(

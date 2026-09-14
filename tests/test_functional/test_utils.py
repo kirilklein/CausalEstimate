@@ -1,7 +1,10 @@
 import unittest
+import warnings
+from unittest import mock
 
 import numpy as np
 from scipy.special import expit, logit
+from statsmodels.genmod.generalized_linear_model import GLM
 
 from CausalEstimate.estimators.functional.utils import (
     compute_arm_weights,
@@ -10,6 +13,7 @@ from CausalEstimate.estimators.functional.utils import (
     check_score_equations,
     estimate_arm_fluctuation,
     target_outcome_models,
+    _one_step_fluctuation
 )
 from CausalEstimate.utils.constants import (
     INITIAL_EFFECT,
@@ -251,6 +255,78 @@ class TestEstimateArmFluctuation(unittest.TestCase):
         Q_boundary = np.array([0.0, 1.0, 0.5, 0.0, 1.0, 0.5])
         epsilon = estimate_arm_fluctuation(self.Y, Q_boundary, self.w, "treated")
         self.assertTrue(np.isfinite(epsilon))
+
+    def test_large_weights_keep_the_exact_glm_fit(self):
+        """
+        A well-behaved arm carrying large IPW weights must not fall back.
+
+        statsmodels compares the absolute deviance change to `tol`, and
+        freq_weights scale the deviance, so this fit reports
+        `converged=False` at tol=1e-12 even though epsilon is exact. Judging
+        the fit by `fit.converged` would discard it and return the cruder
+        one-step on exactly the low-propensity data TMLE is for.
+        """
+        Y = np.array([1.0, 0.0, 1.0, 0.0])
+        Q = np.full(4, 0.5)
+        w = np.array([1e3, 1e6, 1e6, 1e6])
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            epsilon = estimate_arm_fluctuation(Y, Q, w, "treated")
+
+        score = float(np.sum(w * (Y - expit(logit(Q) + epsilon))))
+        self.assertLess(abs(score), 1e-8 * np.sum(w))
+
+        one_step = _one_step_fluctuation(Y, logit(Q), w, "treated", 30.0)
+        self.assertNotAlmostEqual(epsilon, one_step, places=3)
+
+    def test_failed_glm_falls_back_to_the_one_step_estimate(self):
+        """A GLM that cannot be fitted hands over to the Newton one-step."""
+        with mock.patch.object(GLM, "fit", side_effect=np.linalg.LinAlgError):
+            with self.assertWarnsRegex(RuntimeWarning, "one-step estimate"):
+                epsilon = estimate_arm_fluctuation(self.Y, self.Q, self.w, "treated")
+
+        score = float(np.sum(self.w * (self.Y - self.Q)))
+        information = float(np.sum(self.w * self.Q * (1 - self.Q)))
+        self.assertAlmostEqual(epsilon, score / information, places=12)
+
+    def test_one_step_estimate_moves_the_score_toward_zero(self):
+        """The fallback is a real step, not just a finite number."""
+        with mock.patch.object(GLM, "fit", side_effect=np.linalg.LinAlgError):
+            with self.assertWarns(RuntimeWarning):
+                epsilon = estimate_arm_fluctuation(self.Y, self.Q, self.w, "treated")
+
+        def score(shift):
+            return abs(
+                float(np.sum(self.w * (self.Y - expit(logit(self.Q) + shift))))
+            )
+
+        self.assertLess(score(epsilon), score(0.0))
+
+    def test_one_step_estimate_is_clamped_to_max_shift(self):
+        """Near-zero information cannot send the step off to an overflowing shift."""
+        Q_boundary = np.full(6, 1e-12)
+        with mock.patch.object(GLM, "fit", side_effect=np.linalg.LinAlgError):
+            with self.assertWarns(RuntimeWarning):
+                epsilon = estimate_arm_fluctuation(
+                    self.Y, Q_boundary, self.w, "treated", max_shift=30.0
+                )
+        self.assertLessEqual(abs(epsilon), 30.0)
+
+    def test_one_step_estimate_without_information_returns_zero(self):
+        """
+        Zero information has no step to take, so the arm is left untargeted.
+
+        Tested on the helper directly: the separation guard in
+        `estimate_arm_fluctuation` clamps before the GLM is ever reached on a
+        degenerate arm, so this is a defensive branch rather than a reachable
+        one.
+        """
+        with self.assertWarnsRegex(RuntimeWarning, "zero information"):
+            epsilon = _one_step_fluctuation(
+                self.Y, np.zeros(6), np.zeros(6), "treated", 30.0
+            )
+        self.assertEqual(epsilon, 0.0)
 
 
 class TestTargetOutcomeModels(unittest.TestCase):
