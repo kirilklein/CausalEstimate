@@ -3,7 +3,12 @@
 import pandas as pd
 
 from CausalEstimate.estimators.base import BaseEstimator
-from CausalEstimate.estimators.functional.aipw import compute_aipw_ate, compute_aipw_att
+from CausalEstimate.estimators.functional.aipw import (
+    compute_aipw_ate,
+    compute_aipw_att,
+    compute_aipw_rr,
+    compute_aipw_rrt,
+)
 from CausalEstimate.utils.checks import check_inputs, check_required_columns
 from CausalEstimate.utils.constants import BINARY_OUTCOME_EFFECTS
 
@@ -103,6 +108,20 @@ class AIPW(BaseEstimator):
             )
         elif self.effect_type == "ATT":
             return compute_aipw_att(
+                A, Y, ps, Y0_hat, clip_percentile=self.clip_percentile, eps=self.eps
+            )
+        elif self.effect_type == "RR":
+            return compute_aipw_rr(
+                A,
+                Y,
+                ps,
+                Y0_hat,
+                Y1_hat,
+                clip_percentile=self.clip_percentile,
+                eps=self.eps,
+            )
+        elif self.effect_type == "RRT":
+            return compute_aipw_rrt(
                 A, Y, ps, Y0_hat, clip_percentile=self.clip_percentile, eps=self.eps
             )
         else:

@@ -98,7 +98,7 @@ def compute_ci_aipw(
     (and with the un-normalised) form; under misspecification it does not, and
     the ratio curve is the one that matches the estimate actually reported.
 
-    Q_1 is unused for ATT, where mu_1 is the observed treated mean.
+    Q_1 is unused for ATT and RRT, where mu_1 is the observed treated mean.
 
     The nuisance models are treated as fixed; the bootstrap remains the option
     that accounts for their estimation. Any clipping applied to W is also
@@ -110,10 +110,10 @@ def compute_ci_aipw(
 
     w1, w0 = A * W, (1 - A) * W
 
-    if effect_type in ["ATE", "ARR"]:
+    if effect_type in ["ATE", "ARR", "RR"]:
         ic_mu1 = _compute_ic_mu(Y, w1, Q_1, mu_1, eps=eps)
         ic_mu0 = _compute_ic_mu(Y, w0, Q_0, mu_0, eps=eps)
-    elif effect_type == "ATT":
+    elif effect_type in ["ATT", "RRT"]:
         p_treated = np.mean(A)
         if np.isclose(p_treated, 0.0, atol=eps):
             return {STD_ERR: np.nan, CI95_LOWER: np.nan, CI95_UPPER: np.nan}
@@ -127,7 +127,10 @@ def compute_ci_aipw(
             f"CI calculation for effect type '{effect_type}' is not supported."
         )
 
-    ic = ic_mu1 - ic_mu0
+    if effect_type in RATIO_EFFECTS:
+        ic = _compute_ic_log_ratio(ic_mu1, ic_mu0, mu_1, mu_0, eps)
+    else:
+        ic = ic_mu1 - ic_mu0
 
     return _summarise_ic(effect_type, psi, ic)
 
@@ -227,7 +230,7 @@ def _compute_ic_mu(
         IC_i = w_i (Y_i - Q_i - r) / d + c_i (Q_i - Qbar)
 
     with d = mean(w) when normalize else 1, and c = 1 for unconditional means
-    or A/P(A=1) for treated-restricted ones (ATT).
+    or A/P(A=1) for treated-restricted ones (ATT/RRT).
 
     w is that arm's own non-negative weight, zero off-arm.
 
