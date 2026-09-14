@@ -20,6 +20,7 @@ ATT:
 import warnings
 
 from CausalEstimate.estimators.functional.utils import compute_ipw_weights
+from CausalEstimate.estimators.functional.variance import compute_ci_aipw
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
 
@@ -48,7 +49,19 @@ def compute_aipw_ate(
     mu_1 = (w1 * (Y - Y1_hat)).sum() / w1.sum() + Y1_hat.mean()
     mu_0 = (w0 * (Y - Y0_hat)).sum() / w0.sum() + Y0_hat.mean()
     ate = mu_1 - mu_0
-    return {EFFECT: ate, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
+    ci_results = compute_ci_aipw(
+        effect_type="ATE",
+        psi=ate,
+        Y=Y,
+        A=A,
+        W=W,
+        Q_1=Y1_hat,
+        Q_0=Y0_hat,
+        mu_1=mu_1,
+        mu_0=mu_0,
+        eps=eps,
+    )
+    return {EFFECT: ate, EFFECT_treated: mu_1, EFFECT_untreated: mu_0, **ci_results}
 
 
 def compute_aipw_att(
@@ -76,4 +89,16 @@ def compute_aipw_att(
     mu_1 = Y[treated].mean()
     mu_0 = Y0_hat[treated].mean() + (w0 * (Y - Y0_hat)).sum() / w0.sum()
     att = mu_1 - mu_0
-    return {EFFECT: att, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
+    ci_results = compute_ci_aipw(
+        effect_type="ATT",
+        psi=att,
+        Y=Y,
+        A=A,
+        W=W,
+        Q_1=None,  # unused for ATT: mu_1 is the observed treated mean
+        Q_0=Y0_hat,
+        mu_1=mu_1,
+        mu_0=mu_0,
+        eps=eps,
+    )
+    return {EFFECT: att, EFFECT_treated: mu_1, EFFECT_untreated: mu_0, **ci_results}

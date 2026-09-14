@@ -29,6 +29,7 @@ from typing import Tuple
 import numpy as np
 
 from CausalEstimate.estimators.functional.utils import compute_ipw_weights
+from CausalEstimate.estimators.functional.variance import compute_ci_ipw
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
 # --- Core Effect Calculation Functions ---
@@ -41,9 +42,10 @@ def compute_ipw_risk_ratio(
     clip_percentile: float = 1,
     eps: float = 1e-9,
 ) -> dict:
-    mu_1, mu_0 = compute_weighted_outcomes(
-        A, Y, ps, clip_percentile=clip_percentile, eps=eps
+    W = compute_ipw_weights(
+        A, ps, weight_type="ATE", clip_percentile=clip_percentile, eps=eps
     )
+    mu_1, mu_0 = compute_weighted_outcomes(A, Y, ps, W=W)
     if mu_0 == 0:
         warnings.warn(
             "Risk in untreated group (mu_0) is 0, returning inf for Risk Ratio.",
@@ -52,7 +54,8 @@ def compute_ipw_risk_ratio(
         rr = np.inf
     else:
         rr = mu_1 / mu_0
-    return {EFFECT: rr, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
+    ci_results = compute_ci_ipw("RR", rr, Y, A, W, mu_1, mu_0, eps=eps)
+    return {EFFECT: rr, EFFECT_treated: mu_1, EFFECT_untreated: mu_0, **ci_results}
 
 
 def compute_ipw_ate(
@@ -62,11 +65,13 @@ def compute_ipw_ate(
     clip_percentile: float = 1,
     eps: float = 1e-9,
 ) -> dict:
-    mu_1, mu_0 = compute_weighted_outcomes(
-        A, Y, ps, clip_percentile=clip_percentile, eps=eps
+    W = compute_ipw_weights(
+        A, ps, weight_type="ATE", clip_percentile=clip_percentile, eps=eps
     )
+    mu_1, mu_0 = compute_weighted_outcomes(A, Y, ps, W=W)
     ate = mu_1 - mu_0
-    return {EFFECT: ate, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
+    ci_results = compute_ci_ipw("ATE", ate, Y, A, W, mu_1, mu_0, eps=eps)
+    return {EFFECT: ate, EFFECT_treated: mu_1, EFFECT_untreated: mu_0, **ci_results}
 
 
 def compute_ipw_att(
@@ -76,11 +81,13 @@ def compute_ipw_att(
     clip_percentile: float = 1,
     eps: float = 1e-9,
 ) -> dict:
-    mu_1, mu_0 = compute_weighted_outcomes_treated(
-        A, Y, ps, clip_percentile=clip_percentile, eps=eps
+    W = compute_ipw_weights(
+        A, ps, weight_type="ATT", clip_percentile=clip_percentile, eps=eps
     )
+    mu_1, mu_0 = compute_weighted_outcomes_treated(A, Y, ps, W=W)
     att = mu_1 - mu_0
-    return {EFFECT: att, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
+    ci_results = compute_ci_ipw("ATT", att, Y, A, W, mu_1, mu_0, eps=eps)
+    return {EFFECT: att, EFFECT_treated: mu_1, EFFECT_untreated: mu_0, **ci_results}
 
 
 def compute_ipw_risk_ratio_treated(
@@ -93,9 +100,10 @@ def compute_ipw_risk_ratio_treated(
     """
     Computes the Relative Risk for the Treated (RRT) using IPW.
     """
-    mu_1, mu_0 = compute_weighted_outcomes_treated(
-        A, Y, ps, clip_percentile=clip_percentile, eps=eps
+    W = compute_ipw_weights(
+        A, ps, weight_type="ATT", clip_percentile=clip_percentile, eps=eps
     )
+    mu_1, mu_0 = compute_weighted_outcomes_treated(A, Y, ps, W=W)
     if mu_0 == 0:
         warnings.warn(
             "Risk in counterfactual untreated group (mu_0) is 0, returning inf for RRT.",
@@ -104,7 +112,8 @@ def compute_ipw_risk_ratio_treated(
         rrt = np.inf
     else:
         rrt = mu_1 / mu_0
-    return {EFFECT: rrt, EFFECT_treated: mu_1, EFFECT_untreated: mu_0}
+    ci_results = compute_ci_ipw("RRT", rrt, Y, A, W, mu_1, mu_0, eps=eps)
+    return {EFFECT: rrt, EFFECT_treated: mu_1, EFFECT_untreated: mu_0, **ci_results}
 
 
 # --- Weighted Mean Estimators (Refactored) ---
