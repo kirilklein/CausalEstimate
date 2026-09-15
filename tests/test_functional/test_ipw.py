@@ -7,9 +7,11 @@ from CausalEstimate.estimators.functional.ipw import (
     compute_ipw_att,
     compute_ipw_risk_ratio,
     compute_ipw_risk_ratio_treated,
+    compute_weighted_outcomes,
+    compute_weighted_outcomes_treated,
 )
 from CausalEstimate.estimators.functional.utils import compute_ipw_weights
-from CausalEstimate.utils.constants import EFFECT, EFFECT_untreated
+from CausalEstimate.utils.constants import EFFECT, EFFECT_untreated, STD_ERR
 from tests.helpers.setup import TestEffectBase
 
 
@@ -179,5 +181,64 @@ class TestDegeneratePropensityScores(unittest.TestCase):
 
 
 # Run the unittests
+if __name__ == "__main__":
+    unittest.main()
+
+
+class TestPrecomputedWeightsPassthrough(unittest.TestCase):
+    """
+    The weighted-outcome helpers accept a precomputed W so the point estimate
+    and its standard error share exactly the same (clipped) weights.
+    """
+
+    def setUp(self):
+        rng = np.random.default_rng(4)
+        n = 2000
+        self.ps = rng.uniform(0.1, 0.9, n)
+        self.A = rng.binomial(1, self.ps)
+        self.Y = rng.binomial(1, 0.4, n).astype(float)
+
+    def test_passing_the_same_weights_is_a_no_op(self):
+        for wt, fn in [
+            ("ATE", compute_weighted_outcomes),
+            ("ATT", compute_weighted_outcomes_treated),
+        ]:
+            with self.subTest(weight_type=wt):
+                W = compute_ipw_weights(self.A, self.ps, weight_type=wt)
+                self.assertEqual(
+                    fn(self.A, self.Y, self.ps),
+                    fn(self.A, self.Y, self.ps, W=W),
+                )
+
+    def test_supplied_weights_are_actually_used(self):
+        """A clipped W passed in must move the estimate."""
+        for wt, fn in [
+            ("ATE", compute_weighted_outcomes),
+            ("ATT", compute_weighted_outcomes_treated),
+        ]:
+            with self.subTest(weight_type=wt):
+                clipped = compute_ipw_weights(
+                    self.A, self.ps, weight_type=wt, clip_percentile=0.8
+                )
+                self.assertNotEqual(
+                    fn(self.A, self.Y, self.ps),
+                    fn(self.A, self.Y, self.ps, W=clipped),
+                )
+
+    def test_estimators_report_a_ci_consistent_with_their_weights(self):
+        """Clipping must move the SE, not just the estimate."""
+        for fn in (
+            compute_ipw_ate,
+            compute_ipw_att,
+            compute_ipw_risk_ratio,
+            compute_ipw_risk_ratio_treated,
+        ):
+            with self.subTest(fn=fn.__name__):
+                plain = fn(self.A, self.Y, self.ps)
+                clipped = fn(self.A, self.Y, self.ps, clip_percentile=0.8)
+                self.assertTrue(np.isfinite(plain[STD_ERR]))
+                self.assertNotAlmostEqual(plain[STD_ERR], clipped[STD_ERR], places=9)
+
+
 if __name__ == "__main__":
     unittest.main()
