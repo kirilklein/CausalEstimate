@@ -10,7 +10,13 @@ from CausalEstimate.estimators.functional.tmle import (
 from CausalEstimate.estimators.functional.tmle_att import (
     compute_tmle_att,
 )
-from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
+from CausalEstimate.utils.constants import (
+    EFFECT,
+    EFFECT_treated,
+    EFFECT_untreated,
+    INITIAL_EFFECT,
+)
+from CausalEstimate.estimators.functional.utils import compute_ipw_weights
 from tests.helpers.setup import TestEffectBase
 
 
@@ -33,7 +39,7 @@ class TestTMLEEdgeCases(TestEffectBase):
             # Should generate warnings about extreme values
             self.assertTrue(len(w) > 0)
             self.assertTrue(
-                any("Extremely large values" in str(warning.message) for warning in w)
+                any("targeting weights above" in str(warning.message) for warning in w)
             )
 
         # Result should still be finite
@@ -114,24 +120,59 @@ class TestTMLEEdgeCases(TestEffectBase):
 class TestTMLERiskRatioSpecialCases(TestEffectBase):
     """Test specific edge cases for Risk Ratio estimation"""
 
-    def test_zero_control_outcome_risk_ratio(self):
-        """Test RR when control group has zero expected outcome"""
-        # Create scenario where Y0_hat is very close to 0
+    def test_zero_control_outcome_gives_infinite_initial_rr(self):
+        """A control outcome model of ~0 makes the untargeted ratio undefined."""
         Y0_hat_zero = np.full_like(self.Y0_hat, 1e-10)
         Y1_hat_nonzero = np.full_like(self.Y1_hat, 0.5)
-        Yhat_mixed = self.A * Y1_hat_nonzero + (1 - self.A) * Y0_hat_zero
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            rr_result = compute_tmle_rr(
-                self.A, self.Y, self.ps, Y0_hat_zero, Y1_hat_nonzero, Yhat_mixed
+        with self.assertWarnsRegex(RuntimeWarning, "denominator is 0 or nearly 0"):
+            result = compute_tmle_rr(
+                self.A, self.Y, self.ps, Y0_hat_zero, Y1_hat_nonzero
             )
-            # Should warn about zero denominator and return inf
-            self.assertTrue(
-                any("Mean of Q_star_0 is 0" in str(warning.message) for warning in w)
-            )
+            self.assertEqual(result[INITIAL_EFFECT], np.inf)
 
-            self.assertEqual(rr_result[EFFECT], np.inf)
+    def test_targeting_repairs_zero_control_outcome_model(self):
+        """With a correct g model, Q*_0 recovers the observed control rate."""
+        Y0_hat_zero = np.full_like(self.Y0_hat, 1e-10)
+        Y1_hat_nonzero = np.full_like(self.Y1_hat, 0.5)
+        W = compute_ipw_weights(self.A, self.ps)
+        result = compute_tmle_rr(self.A, self.Y, self.ps, Y0_hat_zero, Y1_hat_nonzero)
+        self.assertTrue(np.isfinite(result[EFFECT]))
+        self.assertAlmostEqual(
+            result[EFFECT_untreated],
+            np.average(self.Y[self.A == 0], weights=W[self.A == 0]),
+            places=4,
+        )
+
+    def test_constant_nuisances_recover_the_crude_risk_ratio(self):
+        """
+        With a constant propensity score and a constant outcome model there is
+        nothing to adjust for, so the targeted RR must equal the crude ratio of
+        observed arm rates exactly. This is the regression test for the RR
+        targeting step: a single fluctuation of the difference gets each arm
+        mean slightly wrong and so misses the crude ratio.
+        """
+        n = len(self.A)
+        ps_constant = np.full(n, float(self.A.mean()))
+        Y1_constant = np.full(n, 0.4)
+        Y0_constant = np.full(n, 0.4)
+
+        result = compute_tmle_rr(self.A, self.Y, ps_constant, Y0_constant, Y1_constant)
+
+        treated_rate = float(self.Y[self.A == 1].mean())
+        control_rate = float(self.Y[self.A == 0].mean())
+        self.assertAlmostEqual(result[EFFECT_treated], treated_rate, places=10)
+        self.assertAlmostEqual(result[EFFECT_untreated], control_rate, places=10)
+        self.assertAlmostEqual(result[EFFECT], treated_rate / control_rate, places=10)
+
+    def test_no_control_events_gives_infinite_rr(self):
+        """Only when the data has no control events is the RR genuinely inf."""
+        Y = self.Y.copy()
+        Y[self.A == 0] = 0.0
+        Y0_hat_zero = np.full_like(self.Y0_hat, 1e-10)
+        Y1_hat_nonzero = np.full_like(self.Y1_hat, 0.5)
+        with self.assertWarnsRegex(RuntimeWarning, "separated arm"):
+            result = compute_tmle_rr(self.A, Y, self.ps, Y0_hat_zero, Y1_hat_nonzero)
+        self.assertEqual(result[EFFECT], np.inf)
 
 
 class TestTMLENumericalStability(TestEffectBase):

@@ -1,10 +1,7 @@
 import unittest
 import numpy as np
 
-from CausalEstimate.estimators.functional.utils import (
-    compute_clever_covariate_ate,
-    compute_clever_covariate_att,
-)
+from CausalEstimate.estimators.functional.utils import compute_arm_weights
 from CausalEstimate.estimators.functional.tmle import (
     compute_tmle_ate,
     compute_tmle_rr,
@@ -18,7 +15,8 @@ from CausalEstimate.utils.constants import EFFECT
 class TestTMLEClipping(unittest.TestCase):
     """
     Tests for the clip_percentile functionality in TMLE estimators.
-    This tests the clipping of clever covariates to handle extreme propensity scores.
+    This tests the clipping of the targeting weights to handle extreme
+    propensity scores.
     """
 
     def setUp(self):
@@ -51,59 +49,41 @@ class TestTMLEClipping(unittest.TestCase):
         self.Y0_hat = np.clip(np.random.uniform(0.1, 0.5, size=n), 0.01, 0.99)
         self.Yhat = np.where(self.A == 1, self.Y1_hat, self.Y0_hat)
 
-    def test_ate_clever_covariate_clipping_reduces_extreme_values(self):
-        """Test that clipping reduces extreme values in ATE clever covariates."""
-        # Compute clever covariate without clipping
-        H_unclipped = compute_clever_covariate_ate(
-            self.A, self.ps_extreme, clip_percentile=1.0
+    def test_ate_clipping_reduces_extreme_weights(self):
+        """Clipping pulls in the upper tail of the ATE targeting weights."""
+        w1_unclipped, w0_unclipped = compute_arm_weights(
+            self.A, self.ps_extreme, "ATE", clip_percentile=1.0
+        )
+        w1_clipped, w0_clipped = compute_arm_weights(
+            self.A, self.ps_extreme, "ATE", clip_percentile=0.9
         )
 
-        # Compute clever covariate with clipping at 90th percentile
-        H_clipped = compute_clever_covariate_ate(
-            self.A, self.ps_extreme, clip_percentile=0.9
-        )
+        H_unclipped = w1_unclipped - w0_unclipped
+        H_clipped = w1_clipped - w0_clipped
 
-        # Check that maximum absolute value is reduced after clipping
+        # The largest weight is pulled in.
         self.assertLess(np.abs(H_clipped).max(), np.abs(H_unclipped).max())
+        self.assertLess(np.abs(H_clipped).max(), 1000)
 
-        # Check that extreme values are bounded
-        self.assertLess(
-            np.abs(H_clipped).max(), 1000
-        )  # Should be much smaller than unclipped
-
-        # Verify clipping was applied by checking that the 95th percentile is reduced
+        # The whole upper tail moves, not just the single largest weight.
         self.assertLess(
             np.percentile(np.abs(H_clipped), 95), np.percentile(np.abs(H_unclipped), 95)
         )
 
-    def test_att_clever_covariate_clipping_only_affects_controls(self):
-        """Test that clipping for ATT only affects control group clever covariates."""
-        # Compute clever covariate without clipping
-        H_unclipped = compute_clever_covariate_att(
-            self.A, self.ps_extreme, clip_percentile=1.0
+    def test_att_clipping_only_affects_controls(self):
+        """
+        The ATT treated weight is the constant 1/p_treated, so only the
+        control arm has a tail for clipping to act on.
+        """
+        w1_unclipped, w0_unclipped = compute_arm_weights(
+            self.A, self.ps_extreme, "ATT", clip_percentile=1.0
+        )
+        w1_clipped, w0_clipped = compute_arm_weights(
+            self.A, self.ps_extreme, "ATT", clip_percentile=0.8
         )
 
-        # Compute clever covariate with clipping at 80th percentile
-        H_clipped = compute_clever_covariate_att(
-            self.A, self.ps_extreme, clip_percentile=0.8
-        )
-
-        treated_mask = self.A == 1
-        control_mask = self.A == 0
-
-        # Treated components should be identical (no clipping applied)
-        if treated_mask.sum() > 0:
-            np.testing.assert_array_equal(
-                H_unclipped[treated_mask], H_clipped[treated_mask]
-            )
-
-        # Control components should be different (clipping applied)
-        if control_mask.sum() > 0:
-            # The maximum absolute value for controls should be reduced
-            self.assertLessEqual(
-                np.abs(H_clipped[control_mask]).max(),
-                np.abs(H_unclipped[control_mask]).max(),
-            )
+        np.testing.assert_array_equal(w1_unclipped, w1_clipped)
+        self.assertLessEqual(w0_clipped.max(), w0_unclipped.max())
 
     def test_clip_percentile_effect_on_ate_estimation(self):
         """Test that clipping affects ATE estimates by reducing influence of extreme weights."""
@@ -201,72 +181,46 @@ class TestTMLEClipping(unittest.TestCase):
         self.assertTrue(rr_clipped[EFFECT] > 0)
 
     def test_no_clipping_when_percentile_is_one(self):
-        """Test that no clipping occurs when clip_percentile=1.0."""
-        H_no_clip_1 = compute_clever_covariate_ate(
-            self.A, self.ps_extreme, clip_percentile=1.0
-        )
-        H_no_clip_2 = compute_clever_covariate_ate(
-            self.A, self.ps_extreme, clip_percentile=1.0
-        )
+        """
+        At clip_percentile=1 the weights are the textbook covariate, which is
+        the contract the ATE/ATT variance step depends on.
+        """
+        w1, w0 = compute_arm_weights(self.A, self.ps_extreme, "ATE", 1.0)
 
-        # Should be identical
-        np.testing.assert_array_equal(H_no_clip_1, H_no_clip_2)
-
-        # Should equal the theoretical unclipped values
         expected_H = self.A / self.ps_extreme - (1 - self.A) / (1 - self.ps_extreme)
-        np.testing.assert_array_almost_equal(H_no_clip_1, expected_H)
+        np.testing.assert_array_almost_equal(w1 - w0, expected_H)
 
-    def test_extreme_clipping_percentiles(self):
-        """Test behavior with very low clip percentiles."""
-        # Test with very aggressive clipping (50th percentile)
-        H_aggressive = compute_clever_covariate_ate(
-            self.A, self.ps_extreme, clip_percentile=0.5
-        )
+    def test_lower_clip_percentile_clips_harder(self):
+        """A lower quantile is strictly more aggressive, and stays finite."""
+        w1_mid, w0_mid = compute_arm_weights(self.A, self.ps_extreme, "ATE", 0.5)
+        w1_low, w0_low = compute_arm_weights(self.A, self.ps_extreme, "ATE", 0.1)
 
-        # Should be heavily clipped but still finite
-        self.assertTrue(np.all(np.isfinite(H_aggressive)))
-        self.assertLess(np.abs(H_aggressive).max(), 100)
+        H_mid = w1_mid - w0_mid
+        H_low = w1_low - w0_low
 
-        # Test with very conservative clipping (10th percentile)
-        H_conservative = compute_clever_covariate_ate(
-            self.A, self.ps_extreme, clip_percentile=0.1
-        )
-
-        # Should be even more heavily clipped
-        self.assertLess(np.abs(H_conservative).max(), np.abs(H_aggressive).max())
+        self.assertTrue(np.all(np.isfinite(H_mid)))
+        self.assertLess(np.abs(H_mid).max(), 100)
+        self.assertLess(np.abs(H_low).max(), np.abs(H_mid).max())
 
     def test_clipping_with_edge_case_propensity_scores(self):
-        """Test clipping behavior with edge case propensity scores."""
-        # Create very extreme propensity scores
+        """
+        Propensity scores at the boundary must not crash or leak non-finite
+        weights, and the result keeps the shape of the input.
+        """
         ps_edge = np.array([0.001, 0.999, 0.5, 0.5])
         A_edge = np.array([1, 0, 1, 0])
 
-        # This should not crash and should produce finite results
-        H_clipped = compute_clever_covariate_ate(A_edge, ps_edge, clip_percentile=0.8)
-
-        self.assertTrue(np.all(np.isfinite(H_clipped)))
-        # After clipping, values should be much more reasonable
-        self.assertLess(np.abs(H_clipped).max(), 1000)
-
-    def test_clipping_preserves_clever_covariate_properties(self):
-        """Test that clipping preserves important properties of clever covariates."""
-        H_clipped = compute_clever_covariate_ate(
-            self.A, self.ps_extreme, clip_percentile=0.9
-        )
-
-        # Should still be finite
-        self.assertTrue(np.all(np.isfinite(H_clipped)))
-
-        # Should have the same length as input
-        self.assertEqual(len(H_clipped), len(self.A))
-
-        # For ATT, test similar properties
-        H_att_clipped = compute_clever_covariate_att(
-            self.A, self.ps_extreme, clip_percentile=0.9
-        )
-
-        self.assertTrue(np.all(np.isfinite(H_att_clipped)))
-        self.assertEqual(len(H_att_clipped), len(self.A))
+        for effect_type in ("ATE", "ATT"):
+            with self.subTest(effect_type=effect_type):
+                w1, w0 = compute_arm_weights(A_edge, ps_edge, effect_type, 0.8)
+                w1_raw, w0_raw = compute_arm_weights(A_edge, ps_edge, effect_type, 1.0)
+                H = w1 - w0
+                self.assertEqual(len(H), len(A_edge))
+                self.assertTrue(np.all(np.isfinite(H)))
+                # The absolute size of the surviving weight is estimand
+                # specific, so assert the property that is not: clipping
+                # brought the worst weight down.
+                self.assertLess(np.abs(H).max(), np.abs(w1_raw - w0_raw).max())
 
 
 if __name__ == "__main__":

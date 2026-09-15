@@ -10,12 +10,23 @@ def compute_ci(
     Q_star_0: np.ndarray,
     Y: np.ndarray,
     A: np.ndarray,
-    ps: np.ndarray,
     Yhat_star: np.ndarray,
     H: np.ndarray = None,
+    w1: np.ndarray = None,
+    w0: np.ndarray = None,
+    eps: float = 1e-9,
 ) -> dict:
     """
-    Compute the standard deviation and 95% confidence interval using the influence curve.
+    Standard error and 95% confidence interval for the TMLE estimators, from
+    the influence curve.
+
+    Difference effects combine the arm weights as H = w1 − w0;
+    RR uses the arm weights separately.
+
+    w1 and w0 are the non-negative, off-arm-zero weights carried by
+    `TargetingResult`; pass them through unchanged. Each arm mean's influence
+    curve uses that arm's own weight with a POSITIVE sign -- it is only the
+    difference covariate H = w1 - w0 that carries the control-arm minus sign.
     """
     n = len(Y)
     if n == 0:
@@ -28,30 +39,22 @@ def compute_ci(
         p_treated = np.mean(A)
         ic = _compute_ic_att(psi, Q_star_1, Q_star_0, Y, A, Yhat_star, H, p_treated)
     elif effect_type == "RR":
-        ic = _compute_ic_rr(Q_star_1, Q_star_0, Y, A, ps)
+        if w1 is None or w0 is None:
+            raise ValueError(
+                "effect_type 'RR' requires the arm-wise targeting weights w1 "
+                "and w0 from the targeting step."
+            )
+        mu_1 = Q_star_1.mean()
+        mu_0 = Q_star_0.mean()
+        ic_mu1 = _compute_ic_mu(Y, w1, Q_star_1, mu_1)
+        ic_mu0 = _compute_ic_mu(Y, w0, Q_star_0, mu_0)
+        ic = _compute_ic_log_ratio(ic_mu1, ic_mu0, mu_1, mu_0, eps)
     else:
         raise ValueError(
             f"CI calculation for effect type '{effect_type}' is not supported."
         )
 
-    if np.any(np.isnan(ic)):
-        return {STD_ERR: np.nan, CI95_LOWER: np.nan, CI95_UPPER: np.nan}
-
-    # Compute variance and standard error
-    var_ic = np.var(ic, ddof=1)  # Use ddof=1 for sample variance
-    std_err = np.sqrt(var_ic / n)
-
-    # Compute confidence interval
-    if effect_type == "RR":
-        # For RR, CIs are calculated on the log scale and then exponentiated
-        log_psi = np.log(psi)
-        ci_lower = np.exp(log_psi - 1.96 * std_err)
-        ci_upper = np.exp(log_psi + 1.96 * std_err)
-    else:  # ATE, ATT, ARR
-        ci_lower = psi - 1.96 * std_err
-        ci_upper = psi + 1.96 * std_err
-
-    return {STD_ERR: std_err, CI95_LOWER: ci_lower, CI95_UPPER: ci_upper}
+    return _summarise_ic(effect_type, psi, ic)
 
 
 def _compute_ic_ate(
@@ -84,25 +87,71 @@ def _compute_ic_att(
     return ic
 
 
-def _compute_ic_rr(
-    Q_star_1: np.ndarray,
-    Q_star_0: np.ndarray,
+def _compute_ic_mu(
     Y: np.ndarray,
-    A: np.ndarray,
-    ps: np.ndarray,
+    w: np.ndarray,
+    Q: np.ndarray,
+    mu: float,
+) -> np.ndarray:
+    """
+    Influence curve for a single targeted arm mean,
+
+        IC_i = w_i (Y_i - Q_i) + (Q_i - mu)
+
+    w is that arm's own non-negative weight, zero off-arm, so no masking by A
+    is needed here and the residual term keeps a positive sign.
+
+    The weighted residual is not divided by mean(w): the targeting step has
+    already solved this arm's score equation, so the term is centred already.
+
+    Mean-zero by construction, which is the cheapest available regression test.
+    """
+    if np.isnan(mu):
+        return np.full(Y.shape, np.nan, dtype=float)
+    return w * (Y - Q) + (Q - mu)
+
+
+def _compute_ic_log_ratio(
+    ic_mu1: np.ndarray,
+    ic_mu0: np.ndarray,
+    mu_1: float,
+    mu_0: float,
     eps: float = 1e-9,
 ) -> np.ndarray:
-    """Influence curve for log(Risk Ratio)."""
-    mu1_star = np.mean(Q_star_1)
-    mu0_star = np.mean(Q_star_0)
+    """
+    Delta-method influence curve for log(mu_1 / mu_0).
 
-    if np.isclose(mu0_star, 0.0, atol=eps) or np.isclose(mu1_star, 0.0, atol=eps):
-        return np.full(Y.shape, np.nan, dtype=float)
+    Non-positive arm means give NaN: the log scale is undefined there, and a
+    negative weighted mean (possible with extreme weights) would otherwise
+    propagate silently.
+    """
+    if np.isnan(mu_1) or np.isnan(mu_0):
+        return np.full(ic_mu1.shape, np.nan, dtype=float)
+    if mu_1 <= eps or mu_0 <= eps:
+        return np.full(ic_mu1.shape, np.nan, dtype=float)
+    return ic_mu1 / mu_1 - ic_mu0 / mu_0
 
-    # IC for mu1
-    ic_mu1 = (A / (ps + eps)) * (Y - Q_star_1) + Q_star_1 - mu1_star
-    # IC for mu0
-    ic_mu0 = ((1 - A) / (1 - ps + eps)) * (Y - Q_star_0) + Q_star_0 - mu0_star
 
-    ic_log_rr = (1 / mu1_star) * ic_mu1 - (1 / mu0_star) * ic_mu0
-    return ic_log_rr
+def _summarise_ic(effect_type: str, psi: float, ic: np.ndarray) -> dict:
+    """Standard error and 95% CI from a mean-zero influence curve."""
+    if np.isnan(psi) or np.any(np.isnan(ic)):
+        return {STD_ERR: np.nan, CI95_LOWER: np.nan, CI95_UPPER: np.nan}
+
+    n = len(ic)
+    var_ic = np.var(ic, ddof=1)  # Use ddof=1 for sample variance
+    std_err_ic = np.sqrt(var_ic / n)
+
+    if effect_type == "RR":
+        # The IC is on the log scale, so the SE is too and the CI is
+        # exponentiated. Keeps CI95 == exp(log(psi) +/- 1.96 * STD_ERR).
+        log_psi = np.log(psi)
+        return {
+            STD_ERR: std_err_ic,
+            CI95_LOWER: np.exp(log_psi - 1.96 * std_err_ic),
+            CI95_UPPER: np.exp(log_psi + 1.96 * std_err_ic),
+        }
+    return {
+        STD_ERR: std_err_ic,
+        CI95_LOWER: psi - 1.96 * std_err_ic,
+        CI95_UPPER: psi + 1.96 * std_err_ic,
+    }

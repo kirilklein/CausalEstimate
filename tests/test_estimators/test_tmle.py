@@ -34,6 +34,35 @@ class TestTMLE(TestEffectBase):
         ate_tmle = tmle.compute_effect(self.data)
         self.assertAlmostEqual(ate_tmle[EFFECT], self.true_ate, delta=0.01)
 
+    def test_compute_tmle_rr(self):
+        """
+        The Risk Ratio goes through the same per-arm targeting step as the ATE,
+        so it must recover the truth just as tightly. A single fluctuation
+        targeting the difference leaves each arm mean biased, and those biases
+        do not cancel in a ratio.
+        """
+        tmle = TMLE(
+            effect_type="RR",
+            treatment_col=TREATMENT_COL,
+            outcome_col=OUTCOME_COL,
+            ps_col=PS_COL,
+            probas_col=PROBAS_COL,
+            probas_t1_col=PROBAS_T1_COL,
+            probas_t0_col=PROBAS_T0_COL,
+        )
+        rr_tmle = tmle.compute_effect(self.data)
+
+        self.assertAlmostEqual(rr_tmle[EFFECT], self.true_rr, delta=0.02)
+        # The reported ratio is exactly the ratio of the two targeted arm means.
+        self.assertAlmostEqual(
+            rr_tmle[EFFECT], rr_tmle[EFFECT_treated] / rr_tmle[EFFECT_untreated]
+        )
+        # The CI is built on the log scale, so it stays positive and brackets
+        # the estimate multiplicatively rather than symmetrically.
+        self.assertGreater(rr_tmle[CI95_LOWER], 0)
+        self.assertLess(rr_tmle[CI95_LOWER], rr_tmle[EFFECT])
+        self.assertGreater(rr_tmle[CI95_UPPER], rr_tmle[EFFECT])
+
 
 class TestTMLEContinuousOutcome(ContinuousEffectBase):
     def test_ate_recovers_truth(self):
