@@ -204,6 +204,8 @@ class TestComputeCIValidation(unittest.TestCase):
         self.d = _sim(n=400, seed=3)
 
     def test_rr_requires_the_arm_weights(self):
+        A = self.d["A"]
+        Yhat_star = self.d["Y1_hat"] * A + (1 - A) * self.d["Y0_hat"]
         with self.assertRaises(ValueError):
             compute_ci(
                 effect_type="RR",
@@ -212,7 +214,7 @@ class TestComputeCIValidation(unittest.TestCase):
                 Q_star_0=self.d["Y0_hat"],
                 Y=self.d["Y"],
                 A=self.d["A"],
-                Yhat_star=self.d["Yhat"],
+                Yhat_star=Yhat_star,
             )
 
     def test_unsupported_effect_type_raises(self):
@@ -301,7 +303,7 @@ class TestAnalyticSEMatchesBootstrap(unittest.TestCase):
     def _bootstrap_se(self, fn, is_ratio):
         rng = np.random.default_rng(99)
         n = len(self.d["Y"])
-        keys = ("A", "Y", "ps", "Y0_hat", "Y1_hat", "Yhat")
+        keys = ("A", "Y", "ps", "Y0_hat", "Y1_hat")
         estimates = []
         for _ in range(self.n_boot):
             idx = rng.integers(0, n, n)
