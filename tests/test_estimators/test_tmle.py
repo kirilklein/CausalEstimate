@@ -5,7 +5,6 @@ import numpy as np
 from CausalEstimate.estimators.tmle import TMLE
 from CausalEstimate.utils.constants import (
     OUTCOME_COL,
-    PROBAS_COL,
     PROBAS_T0_COL,
     PROBAS_T1_COL,
     PS_COL,
@@ -27,7 +26,6 @@ class TestTMLE(TestEffectBase):
             treatment_col=TREATMENT_COL,
             outcome_col=OUTCOME_COL,
             ps_col=PS_COL,
-            probas_col=PROBAS_COL,
             probas_t1_col=PROBAS_T1_COL,
             probas_t0_col=PROBAS_T0_COL,
         )
@@ -46,7 +44,6 @@ class TestTMLE(TestEffectBase):
             treatment_col=TREATMENT_COL,
             outcome_col=OUTCOME_COL,
             ps_col=PS_COL,
-            probas_col=PROBAS_COL,
             probas_t1_col=PROBAS_T1_COL,
             probas_t0_col=PROBAS_T0_COL,
         )

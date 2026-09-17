@@ -10,8 +10,6 @@ The ATT estimator lives in a separate module and uses the same function
 with effect_type="ATT".
 """
 
-from typing import Optional
-
 import numpy as np
 
 from CausalEstimate.estimators.functional.utils import (
@@ -34,16 +32,14 @@ def compute_tmle_ate(
     ps: np.ndarray,
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
-    Yhat: Optional[np.ndarray] = None,
     clip_percentile: float = 1,
     eps: float = 1e-9,
 ) -> dict:
     """
     Estimate the ATE using TMLE, with optional per-arm weight clipping.
 
-    `Yhat` is accepted and ignored, for backwards compatibility only: each
-    arm is now fluctuated from its own predictions, so the prediction at the
-    observed treatment is derived rather than supplied.
+    Each arm is fluctuated from its own predictions, so the prediction
+    at the observed treatment is derived rather than supplied.
     """
 
     result = target_outcome_models(
@@ -88,7 +84,6 @@ def compute_tmle_rr(
     ps: np.ndarray,
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
-    Yhat: Optional[np.ndarray] = None,
     clip_percentile: float = 1,
     eps: float = 1e-9,
 ) -> dict:

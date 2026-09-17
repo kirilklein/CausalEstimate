@@ -34,7 +34,7 @@ class TestTMLEEdgeCases(TestEffectBase):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             ate_result = compute_tmle_ate(
-                self.A, self.Y, ps_extreme, self.Y0_hat, self.Y1_hat, self.Yhat
+                self.A, self.Y, ps_extreme, self.Y0_hat, self.Y1_hat
             )
             # Should generate warnings about extreme values
             self.assertTrue(len(w) > 0)
@@ -49,7 +49,7 @@ class TestTMLEEdgeCases(TestEffectBase):
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
             att_result = compute_tmle_att(
-                self.A, self.Y, ps_extreme, self.Y0_hat, self.Y1_hat, self.Yhat
+                self.A, self.Y, ps_extreme, self.Y0_hat, self.Y1_hat
             )
             self.assertTrue(np.isfinite(att_result[EFFECT]))
 
@@ -69,7 +69,6 @@ class TestTMLEEdgeCases(TestEffectBase):
                 ps_all_treated,
                 self.Y0_hat,
                 self.Y1_hat,
-                self.Yhat,
             )
             # Should handle gracefully
             self.assertTrue(np.isfinite(ate_all_treated[EFFECT]))
@@ -86,7 +85,6 @@ class TestTMLEEdgeCases(TestEffectBase):
                 ps_all_control,
                 self.Y0_hat,
                 self.Y1_hat,
-                self.Yhat,
             )
             self.assertTrue(np.isfinite(ate_all_control[EFFECT]))
 
@@ -95,22 +93,20 @@ class TestTMLEEdgeCases(TestEffectBase):
         # Create boundary outcome predictions
         Y0_hat_boundary = np.copy(self.Y0_hat)
         Y1_hat_boundary = np.copy(self.Y1_hat)
-        Yhat_boundary = np.copy(self.Yhat)
 
         # Set some predictions to boundaries (but not exactly due to clipping)
         Y0_hat_boundary[:50] = 1e-6  # Near 0
         Y1_hat_boundary[:50] = 1 - 1e-6  # Near 1
-        Yhat_boundary[:50] = 1e-6
 
         # Should handle without numerical issues
         ate_boundary = compute_tmle_ate(
-            self.A, self.Y, self.ps, Y0_hat_boundary, Y1_hat_boundary, Yhat_boundary
+            self.A, self.Y, self.ps, Y0_hat_boundary, Y1_hat_boundary
         )
         self.assertTrue(np.isfinite(ate_boundary[EFFECT]))
 
         # Test RR with boundary values
         rr_boundary = compute_tmle_rr(
-            self.A, self.Y, self.ps, Y0_hat_boundary, Y1_hat_boundary, Yhat_boundary
+            self.A, self.Y, self.ps, Y0_hat_boundary, Y1_hat_boundary
         )
         self.assertTrue(
             np.isfinite(rr_boundary[EFFECT]) or rr_boundary[EFFECT] == np.inf
@@ -188,14 +184,13 @@ class TestTMLENumericalStability(TestEffectBase):
         ps_small = self.ps[indices]
         Y0_hat_small = self.Y0_hat[indices]
         Y1_hat_small = self.Y1_hat[indices]
-        Yhat_small = self.Yhat[indices]
 
         # Should not crash with small samples
         ate_small = compute_tmle_ate(
-            A_small, Y_small, ps_small, Y0_hat_small, Y1_hat_small, Yhat_small
+            A_small, Y_small, ps_small, Y0_hat_small, Y1_hat_small
         )
         att_small = compute_tmle_att(
-            A_small, Y_small, ps_small, Y0_hat_small, Y1_hat_small, Yhat_small
+            A_small, Y_small, ps_small, Y0_hat_small, Y1_hat_small
         )
 
         self.assertTrue(np.isfinite(ate_small[EFFECT]))
@@ -210,13 +205,12 @@ class TestTMLENumericalStability(TestEffectBase):
         large_ps = np.tile(self.ps, repetitions)
         large_Y0_hat = np.tile(self.Y0_hat, repetitions)
         large_Y1_hat = np.tile(self.Y1_hat, repetitions)
-        large_Yhat = np.tile(self.Yhat, repetitions)
 
         ate_large = compute_tmle_ate(
-            large_A, large_Y, large_ps, large_Y0_hat, large_Y1_hat, large_Yhat
+            large_A, large_Y, large_ps, large_Y0_hat, large_Y1_hat
         )
         ate_original = compute_tmle_ate(
-            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat
         )
 
         # Results should be very similar
@@ -227,7 +221,7 @@ class TestTMLENumericalStability(TestEffectBase):
         results = []
         for _ in range(5):
             ate_result = compute_tmle_ate(
-                self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
+                self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat
             )
             results.append(ate_result[EFFECT])
 
@@ -244,9 +238,7 @@ class TestTMLEInputValidation(TestEffectBase):
         A_short = self.A[:-100]
 
         with self.assertRaises((ValueError, IndexError)):
-            compute_tmle_ate(
-                A_short, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
-            )
+            compute_tmle_ate(A_short, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
 
     def test_nan_values_in_inputs(self):
         """Test TMLE behavior when inputs contain NaN values"""
@@ -254,9 +246,7 @@ class TestTMLEInputValidation(TestEffectBase):
         ps_with_nan[0] = np.nan
 
         with self.assertRaises(Exception):
-            compute_tmle_ate(
-                self.A, self.Y, ps_with_nan, self.Y0_hat, self.Y1_hat, self.Yhat
-            )
+            compute_tmle_ate(self.A, self.Y, ps_with_nan, self.Y0_hat, self.Y1_hat)
 
 
 class TestTMLEReturnStructure(TestEffectBase):
@@ -264,9 +254,7 @@ class TestTMLEReturnStructure(TestEffectBase):
 
     def test_ate_return_keys(self):
         """Test that ATE results contain all expected keys"""
-        ate_result = compute_tmle_ate(
-            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
-        )
+        ate_result = compute_tmle_ate(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
 
         expected_keys = {
             EFFECT,
@@ -289,9 +277,7 @@ class TestTMLEReturnStructure(TestEffectBase):
 
     def test_att_return_keys(self):
         """Test that ATT results contain all expected keys"""
-        att_result = compute_tmle_att(
-            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
-        )
+        att_result = compute_tmle_att(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
 
         expected_keys = {
             EFFECT,
@@ -314,9 +300,7 @@ class TestTMLEReturnStructure(TestEffectBase):
 
     def test_rr_return_keys(self):
         """Test that RR results contain all expected keys"""
-        rr_result = compute_tmle_rr(
-            self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat, self.Yhat
-        )
+        rr_result = compute_tmle_rr(self.A, self.Y, self.ps, self.Y0_hat, self.Y1_hat)
 
         expected_keys = {
             EFFECT,

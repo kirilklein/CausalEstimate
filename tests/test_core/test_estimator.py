@@ -10,7 +10,6 @@ from CausalEstimate.utils.constants import (
     OUTCOME_COL,
     PS_COL,
     TREATMENT_COL,
-    PROBAS_COL,
     PROBAS_T1_COL,
     PROBAS_T0_COL,
     EFFECT,
@@ -48,7 +47,6 @@ class TestMultiEstimatorCombined(unittest.TestCase):
                 TREATMENT_COL: treatment,
                 OUTCOME_COL: outcome,
                 PS_COL: propensity_score,
-                PROBAS_COL: outcome_probability,
                 PROBAS_T1_COL: outcome_treated_probability,
                 PROBAS_T0_COL: outcome_control_probability,
             }
@@ -72,7 +70,6 @@ class TestMultiEstimatorCombined(unittest.TestCase):
             treatment_col=TREATMENT_COL,
             outcome_col=OUTCOME_COL,
             ps_col=PS_COL,
-            probas_col=PROBAS_COL,
             probas_t1_col=PROBAS_T1_COL,
             probas_t0_col=PROBAS_T0_COL,
             effect_type="ATT",

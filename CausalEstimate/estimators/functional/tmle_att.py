@@ -12,8 +12,6 @@ Van der Laan MJ, Rose S. Targeted learning: causal inference for observational a
 But slightly modified for simpler implementation, following advice from: https://stats.stackexchange.com/questions/520472/can-targeted-maximum-likelihood-estimation-find-the-average-treatment-effect-on/534018#534018
 """
 
-from typing import Optional
-
 import numpy as np
 
 from CausalEstimate.estimators.functional.utils import (
@@ -31,16 +29,14 @@ def compute_tmle_att(
     ps: np.ndarray,
     Y0_hat: np.ndarray,
     Y1_hat: np.ndarray,
-    Yhat: Optional[np.ndarray] = None,
     clip_percentile: float = 1,
     eps: float = 1e-9,
 ) -> dict:
     """
     Estimate the Average Treatment Effect on the Treated (ATT) using TMLE.
 
-    `Yhat` is accepted and ignored, for backwards compatibility only: each
-    arm is now fluctuated from its own predictions, so the prediction at the
-    observed treatment is derived rather than supplied.
+    Each arm is fluctuated from its own predictions, so the prediction
+    at the observed treatment is derived rather than supplied.
     """
     treated_mask = A == 1
     if not np.any(treated_mask):

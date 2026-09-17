@@ -44,7 +44,6 @@ class TestTMLECoverage(unittest.TestCase):
                 sim_data["ps"],
                 sim_data["Y0_hat"],
                 sim_data["Y1_hat"],
-                sim_data["Yhat"],
             )
 
             true_ate = sim_data["true_ate"]
@@ -74,7 +73,6 @@ class TestTMLECoverage(unittest.TestCase):
                 sim_data["ps"],
                 sim_data["Y0_hat"],
                 sim_data["Y1_hat"],
-                sim_data["Yhat"],
             )
             true_att = sim_data["true_att"]
             if np.isfinite(result[CI95_LOWER]) and (
@@ -103,7 +101,6 @@ class TestTMLECoverage(unittest.TestCase):
                 sim_data["ps"],
                 sim_data["Y0_hat"],
                 sim_data["Y1_hat"],
-                sim_data["Yhat"],
             )
             true_rr = sim_data["true_rr"]
             if np.isfinite(result[CI95_LOWER]) and (
@@ -147,7 +144,6 @@ class TestTMLECoverageMisspecified(unittest.TestCase):
                 sim_data["ps"],
                 sim_data["Y0_hat"],
                 sim_data["Y1_hat"],
-                sim_data["Yhat"],
             )
 
             true_ate = sim_data["true_ate"]
@@ -177,7 +173,6 @@ class TestTMLECoverageMisspecified(unittest.TestCase):
                 sim_data["ps"],
                 sim_data["Y0_hat"],
                 sim_data["Y1_hat"],
-                sim_data["Yhat"],
             )
             true_att = sim_data["true_att"]
             if np.isfinite(result[CI95_LOWER]) and (
@@ -206,7 +201,6 @@ class TestTMLECoverageMisspecified(unittest.TestCase):
                 sim_data["ps"],
                 sim_data["Y0_hat"],
                 sim_data["Y1_hat"],
-                sim_data["Yhat"],
             )
             true_rr = sim_data["true_rr"]
             if np.isfinite(result[CI95_LOWER]) and (
