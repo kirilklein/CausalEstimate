@@ -12,7 +12,6 @@ from CausalEstimate.simulation.binary_simulation import (
 from CausalEstimate.utils.constants import (
     OUTCOME_COL,
     PID_COL,
-    PROBAS_COL,
     PROBAS_T0_COL,
     PROBAS_T1_COL,
     PS_COL,
@@ -44,16 +43,12 @@ def generate_simulation_data(
     outcome_model_coeffs = np.array(beta[:4])
     X_y1_design = np.column_stack([np.ones(n), np.ones(n), X_raw])
     X_y0_design = np.column_stack([np.ones(n), np.zeros(n), X_raw])
-    X_y_obs_design = np.column_stack([np.ones(n), A, X_raw])
 
     Y1_hat = expit(
         X_y1_design @ outcome_model_coeffs + noise_level * rng.normal(size=n)
     )
     Y0_hat = expit(
         X_y0_design @ outcome_model_coeffs + noise_level * rng.normal(size=n)
-    )
-    Yhat = expit(
-        X_y_obs_design @ outcome_model_coeffs + noise_level * rng.normal(size=n)
     )
 
     # 3. Finalize data and compute true values
@@ -65,7 +60,6 @@ def generate_simulation_data(
         "ps": np.clip(ps, eps, 1 - eps),
         "Y1_hat": np.clip(Y1_hat, eps, 1 - eps),
         "Y0_hat": np.clip(Y0_hat, eps, 1 - eps),
-        "Yhat": np.clip(Yhat, eps, 1 - eps),
         **compute_true_effects(data, beta),
     }
 
@@ -102,7 +96,6 @@ class TestEffectBase(unittest.TestCase):
         cls.ps = sim_data["ps"]
         cls.Y1_hat = sim_data["Y1_hat"]
         cls.Y0_hat = sim_data["Y0_hat"]
-        cls.Yhat = sim_data["Yhat"]
         cls.true_ate = sim_data["true_ate"]
         cls.true_att = sim_data["true_att"]
         cls.true_rr = sim_data["true_rr"]
@@ -114,7 +107,6 @@ class TestEffectBase(unittest.TestCase):
                 PS_COL: cls.ps,
                 PROBAS_T1_COL: cls.Y1_hat,
                 PROBAS_T0_COL: cls.Y0_hat,
-                PROBAS_COL: cls.Yhat,
                 PID_COL: np.arange(len(cls.A)),
             }
         )
@@ -162,7 +154,6 @@ class ContinuousEffectBase(unittest.TestCase):
                 PS_COL: ps,
                 PROBAS_T1_COL: Y1_hat,
                 PROBAS_T0_COL: Y0_hat,
-                PROBAS_COL: np.where(A == 1, Y1_hat, Y0_hat),
                 PID_COL: np.arange(n),
             }
         )

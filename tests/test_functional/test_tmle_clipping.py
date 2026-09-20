@@ -47,7 +47,6 @@ class TestTMLEClipping(unittest.TestCase):
         # Create outcome predictions (clipped to avoid logit issues)
         self.Y1_hat = np.clip(np.random.uniform(0.5, 0.9, size=n), 0.01, 0.99)
         self.Y0_hat = np.clip(np.random.uniform(0.1, 0.5, size=n), 0.01, 0.99)
-        self.Yhat = np.where(self.A == 1, self.Y1_hat, self.Y0_hat)
 
     def test_ate_clipping_reduces_extreme_weights(self):
         """Clipping pulls in the upper tail of the ATE targeting weights."""
@@ -94,7 +93,6 @@ class TestTMLEClipping(unittest.TestCase):
             self.ps_extreme,
             self.Y0_hat,
             self.Y1_hat,
-            self.Yhat,
             clip_percentile=1.0,
         )
 
@@ -105,7 +103,6 @@ class TestTMLEClipping(unittest.TestCase):
             self.ps_extreme,
             self.Y0_hat,
             self.Y1_hat,
-            self.Yhat,
             clip_percentile=0.9,
         )
 
@@ -126,7 +123,6 @@ class TestTMLEClipping(unittest.TestCase):
             self.ps_extreme,
             self.Y0_hat,
             self.Y1_hat,
-            self.Yhat,
             clip_percentile=1.0,
         )
 
@@ -137,7 +133,6 @@ class TestTMLEClipping(unittest.TestCase):
             self.ps_extreme,
             self.Y0_hat,
             self.Y1_hat,
-            self.Yhat,
             clip_percentile=0.85,
         )
 
@@ -158,7 +153,6 @@ class TestTMLEClipping(unittest.TestCase):
             self.ps_extreme,
             self.Y0_hat,
             self.Y1_hat,
-            self.Yhat,
             clip_percentile=1.0,
         )
 
@@ -169,7 +163,6 @@ class TestTMLEClipping(unittest.TestCase):
             self.ps_extreme,
             self.Y0_hat,
             self.Y1_hat,
-            self.Yhat,
             clip_percentile=0.9,
         )
 

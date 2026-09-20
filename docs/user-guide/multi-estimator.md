@@ -25,7 +25,6 @@ tmle = TMLE(
     treatment_col="treatment",
     outcome_col="outcome",
     ps_col="ps",
-    probas_col="predicted_outcome",
     probas_t1_col="predicted_outcome_treated",
     probas_t0_col="predicted_outcome_control",
 )

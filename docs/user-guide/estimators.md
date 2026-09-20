@@ -52,7 +52,7 @@ aipw = AIPW(
 
 ## TMLE — targeted maximum likelihood estimation
 
-Doubly robust like AIPW, but updates the initial outcome predictions with a targeting step, which typically improves finite-sample behavior. Additionally requires predictions under the observed treatment.
+Doubly robust like AIPW, but updates the initial outcome predictions with a targeting step, which typically improves finite-sample behavior.
 
 ```python
 from CausalEstimate.estimators import TMLE
@@ -62,7 +62,6 @@ tmle = TMLE(
     treatment_col="treatment",
     outcome_col="outcome",
     ps_col="ps",
-    probas_col="predicted_outcome",
     probas_t1_col="predicted_outcome_treated",
     probas_t0_col="predicted_outcome_control",
 )

@@ -5,7 +5,6 @@ from CausalEstimate.utils.constants import (
     TREATMENT_COL,
     OUTCOME_COL,
     PS_COL,
-    PROBAS_COL,
     PROBAS_T0_COL,
     PROBAS_T1_COL,
 )
@@ -58,7 +57,6 @@ def check_inputs(
     A=None,
     Y=None,
     ps=None,
-    Yhat=None,
     Y0_hat=None,
     Y1_hat=None,
     variable_names=None,
@@ -71,7 +69,6 @@ def check_inputs(
         A (array-like, optional): Treatment assignment vector.
         Y (array-like, optional): Outcome vector.
         ps (array-like, optional): Propensity score vector.
-        Yhat (array-like, optional): Predicted outcome vector.
         Y0_hat (array-like, optional): Predicted outcome under control.
         Y1_hat (array-like, optional): Predicted outcome under treatment.
         variable_names (dict, optional): Mapping from variable to custom name for error messages.
@@ -85,7 +82,6 @@ def check_inputs(
         TREATMENT_COL: "Treatment",
         OUTCOME_COL: "Outcome",
         PS_COL: "Propensity Score",
-        PROBAS_COL: "Predicted Outcome",
         PROBAS_T0_COL: "Predicted Outcome under Control",
         PROBAS_T1_COL: "Predicted Outcome under Treatment",
     }
@@ -97,8 +93,6 @@ def check_inputs(
     check_pred = check_probability_array if binary_outcome else check_finite_array
 
     check_outcome(Y, variable_names[OUTCOME_COL])
-    if Yhat is not None:
-        check_pred(Yhat, variable_names[PROBAS_COL])
     if Y0_hat is not None:
         check_pred(Y0_hat, variable_names[PROBAS_T0_COL])
     if Y1_hat is not None:

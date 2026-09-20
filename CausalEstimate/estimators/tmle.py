@@ -40,7 +40,6 @@ class TMLE(BaseEstimator):
         treatment_col: str = "treatment",
         outcome_col: str = "outcome",
         ps_col: str = "ps",
-        probas_col: str = "probas",
         probas_t1_col: str = "probas_t1",
         probas_t0_col: str = "probas_t0",
         clip_percentile: float = 1,
@@ -60,7 +59,6 @@ class TMLE(BaseEstimator):
             treatment_col: Name of treatment column
             outcome_col: Name of outcome column
             ps_col: Name of propensity score column
-            probas_col: Name of predicted probabilities column
             probas_t1_col: Name of predicted probabilities under treatment column
             probas_t0_col: Name of predicted probabilities under control column
             clip_percentile: Upper percentile for clipping, in (0, 1]. Default 1 (no clipping).
@@ -78,7 +76,6 @@ class TMLE(BaseEstimator):
         )
 
         # TMLE-specific parameters
-        self.probas_col = probas_col
         self.probas_t1_col = probas_t1_col
         self.probas_t0_col = probas_t0_col
         self.clip_percentile = clip_percentile
@@ -90,16 +87,15 @@ class TMLE(BaseEstimator):
         # Check TMLE-specific columns
         check_required_columns(
             df,
-            [self.probas_col, self.probas_t1_col, self.probas_t0_col],
+            [self.probas_t1_col, self.probas_t0_col],
         )
 
-        A, Y, ps, Yhat, Y1_hat, Y0_hat = self._get_numpy_arrays(
+        A, Y, ps, Y1_hat, Y0_hat = self._get_numpy_arrays(
             df,
             [
                 self.treatment_col,
                 self.outcome_col,
                 self.ps_col,
-                self.probas_col,
                 self.probas_t1_col,
                 self.probas_t0_col,
             ],
@@ -108,15 +104,13 @@ class TMLE(BaseEstimator):
         is_binary = self.effect_type in BINARY_OUTCOME_EFFECTS or (
             self.y_bounds is None and set(np.unique(Y)) <= {0, 1}
         )
-        check_inputs(
-            A, Y, ps, Yhat=Yhat, Y1_hat=Y1_hat, Y0_hat=Y0_hat, binary_outcome=is_binary
-        )
+        check_inputs(A, Y, ps, Y1_hat=Y1_hat, Y0_hat=Y0_hat, binary_outcome=is_binary)
 
         if not (0 < self.clip_percentile <= 1):
             raise ValueError("clip_percentile must be in (0, 1].")
 
         if is_binary:
-            return self._targeted_effect(A, Y, ps, Y0_hat, Y1_hat, Yhat)
+            return self._targeted_effect(A, Y, ps, Y0_hat, Y1_hat)
 
         lo, hi = self.y_bounds if self.y_bounds is not None else (Y.min(), Y.max())
         if not (np.isfinite(lo) and np.isfinite(hi) and hi > lo):
@@ -129,7 +123,7 @@ class TMLE(BaseEstimator):
             return np.clip((x - lo) / scale, 0, 1)
 
         result = self._targeted_effect(
-            A, to_unit(Y), ps, to_unit(Y0_hat), to_unit(Y1_hat), to_unit(Yhat)
+            A, to_unit(Y), ps, to_unit(Y0_hat), to_unit(Y1_hat)
         )
         for k in _DIFF_KEYS + _CI_KEYS:
             if k in result:
@@ -139,7 +133,7 @@ class TMLE(BaseEstimator):
                 result[k] = lo + result[k] * scale
         return result
 
-    def _targeted_effect(self, A, Y, ps, Y0_hat, Y1_hat, Yhat) -> dict:
+    def _targeted_effect(self, A, Y, ps, Y0_hat, Y1_hat) -> dict:
         if self.effect_type in ["ATE", "ARR"]:
             return compute_tmle_ate(
                 A,
@@ -147,7 +141,6 @@ class TMLE(BaseEstimator):
                 ps,
                 Y0_hat,
                 Y1_hat,
-                Yhat,
                 clip_percentile=self.clip_percentile,
                 eps=self.eps,
             )
@@ -158,7 +151,6 @@ class TMLE(BaseEstimator):
                 ps,
                 Y0_hat,
                 Y1_hat,
-                Yhat,
                 clip_percentile=self.clip_percentile,
                 eps=self.eps,
             )
@@ -169,7 +161,6 @@ class TMLE(BaseEstimator):
                 ps,
                 Y0_hat,
                 Y1_hat,
-                Yhat,
                 clip_percentile=self.clip_percentile,
                 eps=self.eps,
             )
