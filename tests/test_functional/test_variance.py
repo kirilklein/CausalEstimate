@@ -122,13 +122,24 @@ class TestInfluenceCurveHelpers(unittest.TestCase):
         expected = self.w * (self.Y - mu) / self.w.mean()
         np.testing.assert_allclose(ic, expected, rtol=1e-12)
 
-    def test_normalise_flag_only_rescales_the_residual_term(self):
-        mu = float(self.Q.mean())
+    def test_normalise_flag_switches_on_the_denominator_contribution(self):
+        """
+        normalize=True means the arm mean is a ratio, so the flag does two
+        things: it rescales the residual by mean(w) AND subtracts r inside it.
+        normalize=False (TMLE) has no ratio, hence no r.
+        """
+        d = self.w.mean()
+        r = (self.w * (self.Y - self.Q)).mean() / d
+        mu = float(self.Q.mean()) + r  # the mean the ratio estimator reports
         norm = _compute_ic_mu(self.Y, self.w, self.Q, mu, normalize=True)
         raw = _compute_ic_mu(self.Y, self.w, self.Q, mu, normalize=False)
-        residual = self.w * (self.Y - self.Q)
         np.testing.assert_allclose(
-            norm - raw, residual / self.w.mean() - residual, rtol=1e-12
+            norm,
+            self.w * (self.Y - self.Q - r) / d + (self.Q - self.Q.mean()),
+            rtol=1e-12,
+        )
+        np.testing.assert_allclose(
+            raw, self.w * (self.Y - self.Q) + (self.Q - mu), rtol=1e-12
         )
 
     def test_treated_restricted_curve_centres_on_a_over_p(self):
@@ -376,25 +387,30 @@ class TestAgainstExplicitEIF(unittest.TestCase):
         A, Y, ps, Q1, Q0 = d["A"], d["Y"], d["ps"], d["Y1_hat"], d["Y0_hat"]
         p = A.mean()
 
+        # AIPW arm means are ratios, mu = Qbar + mean(w (Y - Q)) / mean(w), so
+        # the curve carries the denominator contribution r: the residual is
+        # centred at r and the plug-in term at Qbar, NOT at mu.
         with self.subTest(label="aipw/ATE"):
-            r = compute_aipw_ate(A, Y, ps, Q0, Q1)
+            res = compute_aipw_ate(A, Y, ps, Q0, Q1)
             W = compute_ipw_weights(A, ps, weight_type="ATE")
             w1, w0 = A * W, (1 - A) * W
-            mu_1, mu_0 = r[EFFECT_treated], r[EFFECT_untreated]
-            ic_1 = w1 * (Y - Q1) / w1.mean() + (Q1 - mu_1)
-            ic_0 = w0 * (Y - Q0) / w0.mean() + (Q0 - mu_0)
-            self._check("aipw/ATE", r[STD_ERR], ic_1 - ic_0)
+            r1 = (w1 * (Y - Q1)).mean() / w1.mean()
+            r0 = (w0 * (Y - Q0)).mean() / w0.mean()
+            ic_1 = w1 * (Y - Q1 - r1) / w1.mean() + (Q1 - Q1.mean())
+            ic_0 = w0 * (Y - Q0 - r0) / w0.mean() + (Q0 - Q0.mean())
+            self._check("aipw/ATE", res[STD_ERR], ic_1 - ic_0)
 
         with self.subTest(label="aipw/ATT"):
-            r = compute_aipw_att(A, Y, ps, Q0)
+            res = compute_aipw_att(A, Y, ps, Q0)
             W = compute_ipw_weights(A, ps, weight_type="ATT")
             w0 = (1 - A) * W
-            mu_1, mu_0 = r[EFFECT_treated], r[EFFECT_untreated]
-            # mu_1 is the raw treated mean; mu_0 carries the augmentation
-            # and centres on A/p because it is a mean over the treated.
+            mu_1 = res[EFFECT_treated]
+            r0 = (w0 * (Y - Q0)).mean() / w0.mean()
+            # mu_1 is the raw treated mean; the control arm centres its
+            # plug-in term on A/p because it is a mean over the treated.
             ic_1 = (A / p) * (Y - mu_1)
-            ic_0 = w0 * (Y - Q0) / w0.mean() + (A / p) * (Q0 - mu_0)
-            self._check("aipw/ATT", r[STD_ERR], ic_1 - ic_0)
+            ic_0 = w0 * (Y - Q0 - r0) / w0.mean() + (A / p) * (Q0 - Q0[A == 1].mean())
+            self._check("aipw/ATT", res[STD_ERR], ic_1 - ic_0)
 
     def test_tmle_rr_curve(self):
         """
@@ -471,6 +487,171 @@ class TestClippingKeepsEstimateAndSEConsistent(unittest.TestCase):
 
     def _args(self):
         return self.d["A"], self.d["Y"], self.d["ps"]
+
+
+class TestHajekDenominatorContribution(unittest.TestCase):
+    """
+    The AIPW arm mean is a ratio,
+
+        mu = Qbar + mean(w (Y - Q)) / mean(w),
+
+    so its influence curve has to differentiate the denominator as well as the
+    numerator. The quotient rule leaves the mean weighted residual
+    r = mean(w (Y - Q)) / mean(w) INSIDE the residual term; subtracting it
+    outside instead costs r (w / mean(w) - 1), which vanishes only when r = 0,
+    i.e. when the outcome model is correctly specified. Weight clipping does
+    not by itself make r nonzero.
+
+    Reference: Khan and Ugander, "Adaptive normalization for IPW estimation",
+    Theorem 1, for the Hajek denominator contribution.
+    """
+
+    @staticmethod
+    def _degenerate(n=2000, seed=4):
+        """
+        Y = A exactly, with Q == 0 in both arms. Then mu_1 = 1 and mu_0 = 0
+        algebraically, for ANY sample containing both arms and any weights, so
+        every correct influence curve is identically zero.
+        """
+        rng = np.random.default_rng(seed)
+        X = rng.normal(size=n)
+        ps = 1.0 / (1.0 + np.exp(-0.8 * X))
+        A = rng.binomial(1, ps).astype(float)
+        return A, A.copy(), ps, np.zeros(n), np.zeros(n)
+
+    def test_degenerate_ate_has_exactly_zero_standard_error(self):
+        A, Y, ps, Q0, Q1 = self._degenerate()
+        r = compute_aipw_ate(A, Y, ps, Q0, Q1)
+        self.assertAlmostEqual(r[EFFECT], 1.0, places=12)
+        self.assertAlmostEqual(r[STD_ERR], 0.0, places=12)
+        self.assertAlmostEqual(r[CI95_LOWER], 1.0, places=12)
+        self.assertAlmostEqual(r[CI95_UPPER], 1.0, places=12)
+
+    def test_degenerate_att_has_exactly_zero_standard_error(self):
+        """
+        The control arm has to carry a nonzero residual for this to bite, so
+        Y = 1 - A rather than Y = A: with Y = A the ATT passes either way,
+        because Y - Q_0 is zero on every control unit.
+        """
+        A, _, ps, Q0, _ = self._degenerate()
+        Y = 1.0 - A
+        r = compute_aipw_att(A, Y, ps, Q0)
+        self.assertAlmostEqual(r[EFFECT], -1.0, places=12)
+        self.assertAlmostEqual(r[STD_ERR], 0.0, places=12)
+
+    def test_ipw_curve_is_unaffected_because_its_r_is_identically_zero(self):
+        """
+        With Q == mu the Hajek mean solves mean(w (Y - mu)) = 0 by
+        construction, so r is zero to machine precision and the IPW curve is
+        the one it always was. Same for TMLE, via normalize=False.
+        """
+        d = _sim(n=1500, seed=13)
+        A, Y, ps = d["A"], d["Y"], d["ps"]
+        res = compute_ipw_ate(A, Y, ps)
+        W = compute_ipw_weights(A, ps, weight_type="ATE")
+        w1, w0 = A * W, (1 - A) * W
+        mu_1, mu_0 = res[EFFECT_treated], res[EFFECT_untreated]
+        for label, w, mu in [("treated", w1, mu_1), ("control", w0, mu_0)]:
+            with self.subTest(arm=label):
+                r = (w * (Y - mu)).mean() / w.mean()
+                self.assertAlmostEqual(r, 0.0, places=12)
+        ic = w1 * (Y - mu_1) / w1.mean() - w0 * (Y - mu_0) / w0.mean()
+        self.assertAlmostEqual(
+            res[STD_ERR], float(np.sqrt(np.var(ic, ddof=1) / len(Y))), places=12
+        )
+
+    # A badly biased outcome model on noisy data: flattened towards a constant
+    # and shifted in opposite directions per arm, which leaves a large mean
+    # weighted residual (r ~ 0.36 on the ATE control arm, ~0.43 for the ATT)
+    # while the propensity scores stay correct.
+    @staticmethod
+    def _misspecified(n=1500, seed=7):
+        d = _sim(n=n, seed=seed, noise_level=0.3)
+        m = dict(d)
+        m["Y1_hat"] = np.clip(0.15 * np.asarray(d["Y1_hat"]) + 0.55, 0.01, 0.99)
+        m["Y0_hat"] = np.clip(0.15 * np.asarray(d["Y0_hat"]) + 0.10, 0.01, 0.99)
+        return m
+
+    @staticmethod
+    def _bootstrap_se(fn, d, n_boot=400, seed=99):
+        rng = np.random.default_rng(seed)
+        n = len(d["Y"])
+        keys = ("A", "Y", "ps", "Y0_hat", "Y1_hat")
+        estimates = []
+        for _ in range(n_boot):
+            idx = rng.integers(0, n, n)
+            estimates.append(fn({k: np.asarray(d[k])[idx] for k in keys})[EFFECT])
+        return float(np.std(estimates, ddof=1))
+
+    _AIPW = [
+        (
+            "aipw/ATE",
+            lambda x: compute_aipw_ate(
+                x["A"], x["Y"], x["ps"], x["Y0_hat"], x["Y1_hat"]
+            ),
+        ),
+        ("aipw/ATT", lambda x: compute_aipw_att(x["A"], x["Y"], x["ps"], x["Y0_hat"])),
+    ]
+
+    def test_misspecified_outcome_model_still_agrees_with_the_bootstrap(self):
+        """
+        The case the r term exists for. Tighter than the suite-wide bootstrap
+        check, because this is the regime where the two formulas diverge.
+        """
+        d = self._misspecified()
+        for label, fn in self._AIPW:
+            with self.subTest(label=label):
+                analytic = fn(d)[STD_ERR]
+                boot = self._bootstrap_se(fn, d)
+                ratio = analytic / boot
+                self.assertTrue(
+                    0.9 <= ratio <= 1.1,
+                    f"{label}: analytic SE {analytic:.5f} vs bootstrap "
+                    f"{boot:.5f} (ratio {ratio:.3f})",
+                )
+
+    def test_dropping_the_denominator_term_would_inflate_the_se(self):
+        """
+        Restates the superseded curve -- r subtracted outside the residual --
+        and checks it is materially worse against the bootstrap, so the test
+        above genuinely discriminates between the two rather than passing on
+        both. The ATT is the more dramatic of the pair (~57% inflation); the
+        suite-wide bootstrap tolerance in TestAnalyticSEMatchesBootstrap is
+        wide enough to miss the ATE case at ~11%.
+        """
+        d = self._misspecified()
+        A, Y, ps = np.asarray(d["A"]), np.asarray(d["Y"]), np.asarray(d["ps"])
+        Q1, Q0 = np.asarray(d["Y1_hat"]), np.asarray(d["Y0_hat"])
+        p = A.mean()
+
+        def se(ic):
+            return float(np.sqrt(np.var(ic, ddof=1) / len(ic)))
+
+        res = compute_aipw_ate(A, Y, ps, Q0, Q1)
+        W = compute_ipw_weights(A, ps, weight_type="ATE")
+        w1, w0 = A * W, (1 - A) * W
+        mu_1, mu_0 = res[EFFECT_treated], res[EFFECT_untreated]
+        superseded_ate = (w1 * (Y - Q1) / w1.mean() + (Q1 - mu_1)) - (
+            w0 * (Y - Q0) / w0.mean() + (Q0 - mu_0)
+        )
+
+        res_att = compute_aipw_att(A, Y, ps, Q0)
+        W_att = compute_ipw_weights(A, ps, weight_type="ATT")
+        w0_att = (1 - A) * W_att
+        mu_1t, mu_0t = res_att[EFFECT_treated], res_att[EFFECT_untreated]
+        superseded_att = (A / p) * (Y - mu_1t) - (
+            w0_att * (Y - Q0) / w0_att.mean() + (A / p) * (Q0 - mu_0t)
+        )
+
+        for label, superseded, reported in [
+            ("aipw/ATE", superseded_ate, res[STD_ERR]),
+            ("aipw/ATT", superseded_att, res_att[STD_ERR]),
+        ]:
+            with self.subTest(label=label):
+                # Mean-zero does NOT separate them -- both curves are centred,
+                # which is why this defect survived that check.
+                self.assertAlmostEqual(float(superseded.mean()), 0.0, places=8)
+                self.assertGreater(se(superseded), reported * 1.05, msg=label)
 
 
 if __name__ == "__main__":

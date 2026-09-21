@@ -78,8 +78,12 @@ SM_IPWRA_ATT_GMM_SE = 0.01216344
 IC_SE = {
     "ipw/ATE": 0.01294992,
     "ipw/ATT": 0.01207411,
-    "aipw/ATE": 0.01292281,
-    "aipw/ATT": 0.01209165,
+    # The AIPW pins carry the Hajek denominator contribution (the r term in
+    # _compute_ic_mu); both moved down by well under a tenth of a percent when
+    # it was added, because this outcome model leaves only a small mean
+    # weighted residual. IPW and TMLE are unaffected by construction.
+    "aipw/ATE": 0.01291868,
+    "aipw/ATT": 0.01209017,
     "tmle/ATE": 0.01265818,
     "tmle/ATT": 0.01213402,
 }

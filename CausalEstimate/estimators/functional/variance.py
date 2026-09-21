@@ -85,13 +85,12 @@ def compute_ci_aipw(
     clipping), and mu_1/mu_0 the same point estimates -- NOT mean(Q_1) and
     mean(Q_0), since the augmentation term shifts them.
 
-    The residual term is normalised by mean(w) to match the self-normalised
-    point estimate. Under correct specification of the outcome model this is a
-    second-order difference (the un-normalised form has the same influence
-    function, because mean(w (Y - Q)) -> 0 makes the denominator's contribution
-    vanish at first order), but it keeps the SE consistent with the estimate
-    under misspecification or weight clipping, where that term no longer tends
-    to zero.
+    The point estimate is a ratio, mu = Qbar + mean(w (Y - Q)) / mean(w), so
+    the influence curve is the ratio's -- both numerator and denominator are
+    differentiated. See _compute_ic_mu for the resulting r term. Under a
+    correctly specified outcome model r -> 0 and this agrees with the plain
+    (and with the un-normalised) form; under misspecification it does not, and
+    the ratio curve is the one that matches the estimate actually reported.
 
     Q_1 is unused for ATT, where mu_1 is the observed treated mean.
 
@@ -215,7 +214,7 @@ def _compute_ic_mu(
     """
     Influence curve for a single arm mean,
 
-        IC_i = w_i (Y_i - Q_i) / d + c_i (Q_i - mu)
+        IC_i = w_i (Y_i - Q_i - r) / d + c_i (Q_i - Qbar)
 
     with d = mean(w) when normalize else 1, and c = 1 for unconditional means
     or A/P(A=1) for treated-restricted ones (ATT).
@@ -226,15 +225,32 @@ def _compute_ic_mu(
     the outcome regressions gives AIPW, and the targeted Q_star gives TMLE
     (with normalize=False, since targeting already solves the score equation).
 
-    Mean-zero by construction, which is the cheapest available regression test.
+    The self-normalised arm mean is a ratio, mu = Qbar + mean(w (Y - Q)) / d,
+    so differentiating it holds the denominator responsible too: the quotient
+    rule leaves r = mean(w (Y - Q)) / d inside the residual, not outside it.
+    Dropping it -- i.e. subtracting the constant r rather than r w / d -- costs
+    a term r (w / d - 1), which vanishes only when r = 0, that is when the
+    outcome model is correctly specified. Under misspecification it inflates
+    the SE, and weight clipping does not by itself make r nonzero.
+
+    r is recovered as mu - Qbar rather than passed in, so the curve is pinned
+    to the caller's own point estimate; with normalize=False there is no ratio
+    and r is identically zero.
+
+    Mean-zero by construction -- but note that BOTH the correct curve and the
+    r-outside-the-residual one are mean-zero, so that property alone does not
+    catch the denominator contribution.
     """
     if np.isnan(mu):
         return np.full(Y.shape, np.nan, dtype=float)
     denom = w.mean() if normalize else 1.0
     if np.isclose(denom, 0.0, atol=eps):
         return np.full(Y.shape, np.nan, dtype=float)
-    centre = (Q - mu) if A_over_p is None else A_over_p * (Q - mu)
-    return w * (Y - Q) / denom + centre
+    # Hajek denominator contribution: zero unless the estimate is a ratio.
+    r = (w * (Y - Q)).mean() / denom if normalize else 0.0
+    Q_bar = mu - r
+    centre = (Q - Q_bar) if A_over_p is None else A_over_p * (Q - Q_bar)
+    return w * (Y - Q - r) / denom + centre
 
 
 def _compute_ic_log_ratio(
