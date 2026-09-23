@@ -64,8 +64,10 @@ class Matching(BaseEstimator):
                 examining the relationship between adolescent marijuana use and adult outcomes."
                 Developmental psychology 44.2 (2008): 395.
         """
+        df = df.copy().reset_index(
+            drop=True
+        )  # Reset index so Y.index aligns with positional IDs
         Y = df[self.outcome_col]
-        df = df.copy()  # Create a copy to avoid SettingWithCopyWarning
 
         # Add tiny random noise to propensity scores to break ties
         eps = 1e-10  # Small enough to not meaningfully affect matching

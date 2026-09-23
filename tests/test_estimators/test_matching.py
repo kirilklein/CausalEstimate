@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from CausalEstimate.estimators.functional.matching import compute_matching_ate
+from CausalEstimate.estimators.matching import Matching
 from CausalEstimate.matching.matching import match_optimal
 from CausalEstimate.utils.constants import (
     CONTROL_PID_COL,
@@ -127,6 +128,76 @@ class TestComputeMatchingATE_ps_and_outcome_interaction(BaseTestComputeMatchingA
             self.data[OUTCOME_COL], match_optimal(self.data)
         )
         self.assertNotAlmostEqual(ate_matching[EFFECT], self.true_ate, delta=0.05)
+
+
+class TestMatchingIndexInvariance(unittest.TestCase):
+    """Regression tests for issue #90.
+
+    Matching._compute_effect must return the same effect regardless of
+    whether the input DataFrame carries a clean RangeIndex, a shifted
+    integer index, or a shuffled/bootstrapped index.
+    """
+
+    def _make_df(self, n=400, random_state=0):
+        rng = np.random.RandomState(random_state)
+        ps = rng.uniform(0.2, 0.8, n)
+        treatment = rng.binomial(1, ps)
+        outcome = rng.binomial(1, 0.2 + 0.3 * treatment)
+        return pd.DataFrame(
+            {PS_COL: ps, TREATMENT_COL: treatment, OUTCOME_COL: outcome}
+        )
+
+    def _estimator(self):
+        return Matching(
+            caliper=0.1,
+            strict=False,
+            match_optimal=False,
+        )
+
+    def test_shifted_index_matches_range_index(self):
+        """Shifting the index by 1000 must not produce NaN or change the effect."""
+        df = self._make_df()
+        m = self._estimator()
+        effect_range = m.compute_effect(df)[EFFECT]
+        effect_shifted = m.compute_effect(df.set_index(df.index + 1000))[EFFECT]
+        self.assertFalse(
+            np.isnan(effect_shifted),
+            "Effect is NaN when DataFrame index is shifted — index alignment bug.",
+        )
+        self.assertAlmostEqual(
+            effect_range,
+            effect_shifted,
+            delta=0.05,
+            msg="Shifted index produced a different effect from RangeIndex.",
+        )
+
+    def test_shuffled_index_matches_range_index(self):
+        """Shuffling row order must not change the estimated effect."""
+        df = self._make_df()
+        m = self._estimator()
+        effect_range = m.compute_effect(df)[EFFECT]
+        effect_shuffled = m.compute_effect(df.sample(frac=1, random_state=1))[EFFECT]
+        self.assertFalse(
+            np.isnan(effect_shuffled),
+            "Effect is NaN after shuffle — index alignment bug.",
+        )
+        self.assertAlmostEqual(
+            effect_range,
+            effect_shuffled,
+            delta=0.05,
+            msg="Shuffled index produced a different effect from RangeIndex.",
+        )
+
+    def test_bootstrap_sample_does_not_produce_nan(self):
+        """A bootstrap-resampled DataFrame (duplicate indices) must not yield NaN."""
+        df = self._make_df()
+        m = self._estimator()
+        bootstrap_df = df.sample(n=len(df), replace=True, random_state=2)
+        effect = m.compute_effect(bootstrap_df)[EFFECT]
+        self.assertFalse(
+            np.isnan(effect),
+            "Effect is NaN on bootstrap sample — duplicated indices break index join.",
+        )
 
 
 if __name__ == "__main__":
