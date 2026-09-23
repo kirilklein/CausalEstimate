@@ -26,7 +26,7 @@ Many causal-inference libraries combine model fitting and effect estimation. Cau
 
 - **Bring your own predictions.** Fit propensity and outcome models with scikit-learn, XGBoost, a deep model, or an external system. CausalEstimate uses the resulting columns to estimate effects.
 - **Pandas-native.** Pass a DataFrame with named columns and get back a plain dictionary.
-- **Focused.** Estimate ATE, ATT, and risk ratios. TMLE includes influence-curve standard errors, and every estimator supports bootstrap confidence intervals. Built-in diagnostics help assess overlap, covariate balance, and weights.
+- **Focused.** Estimate ATE, ATT, and risk ratios. TMLE, AIPW and IPW include influence-curve standard errors, and every estimator supports bootstrap confidence intervals. Built-in diagnostics help assess overlap, covariate balance, and weights.
 
 Choose [DoWhy](https://github.com/py-why/dowhy) or [EconML](https://github.com/py-why/EconML) instead if you need an end-to-end modeling pipeline, causal-graph construction, or heterogeneous treatment effects.
 

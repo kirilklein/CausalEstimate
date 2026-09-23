@@ -51,7 +51,7 @@ print(results)
 - `"n_bootstraps"` — the number of bootstrap samples
 - `"bootstrap_samples"` — the raw bootstrap estimates, if `return_bootstrap_samples=True`
 
-Without bootstrapping (`n_bootstraps=1`), `"n_bootstraps"` is reported as 0 and the bootstrap summary keys (`"std_err"`, `"CI95_lower"`, `"CI95_upper"`) may be absent.
+Without bootstrapping (`n_bootstraps=1`), each entry is the estimator's own output with `"n_bootstraps"` set to 0. For `IPW`, `AIPW` and `TMLE` that includes analytic `"std_err"`, `"CI95_lower"` and `"CI95_upper"` from the influence curve (Wald intervals, effect ± 1.96·SE; for risk ratios, the SE is on the log scale and the interval is exponentiated).
 
 ## Common-support filtering
 
