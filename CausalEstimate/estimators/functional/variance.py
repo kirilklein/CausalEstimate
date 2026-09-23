@@ -36,6 +36,11 @@ def compute_ci(
     normalize=False in the RR branch below. AIPW and IPW, whose point
     estimates use self-normalised weights, go through compute_ci_aipw() and
     compute_ci_ipw() instead.
+
+    The nuisance models are treated as fixed; the bootstrap remains the option
+    that accounts for their estimation. Any clipping applied to the targeting
+    weights is also treated as fixed, including data-adaptive clipping through
+    clip_percentile. In settings where clip_percentile < 1, bootstrap is recommended.
     """
     n = len(Y)
     if n == 0:
@@ -95,7 +100,9 @@ def compute_ci_aipw(
     Q_1 is unused for ATT, where mu_1 is the observed treated mean.
 
     The nuisance models are treated as fixed; the bootstrap remains the option
-    that accounts for their estimation.
+    that accounts for their estimation. Any clipping applied to W is also
+    treated as fixed, including data-adaptive clipping through clip_percentile.
+    In settings where clip_percentile < 1, bootstrap is recommended.
     """
     if len(Y) == 0:
         return {STD_ERR: np.nan, CI95_LOWER: np.nan, CI95_UPPER: np.nan}
@@ -150,7 +157,9 @@ def compute_ci_ipw(
     Horvitz-Thompson influence curve and an inflated SE.
 
     The propensity score is treated as fixed; the bootstrap remains the option
-    that accounts for nuisance estimation.
+    that accounts for nuisance estimation. Any clipping applied to W is also
+    treated as fixed, including data-adaptive clipping through clip_percentile.
+    In settings where clip_percentile < 1, bootstrap is recommended.
     """
     if len(Y) == 0:
         return {STD_ERR: np.nan, CI95_LOWER: np.nan, CI95_UPPER: np.nan}
@@ -230,10 +239,10 @@ def _compute_ic_mu(
     rule leaves r = mean(w (Y - Q)) / d inside the residual, not outside it.
     Dropping it -- i.e. subtracting the constant r rather than r w / d -- costs
     a term r (w / d - 1), which vanishes only when r = 0, that is when the
-    outcome model is correctly specified. Under misspecification it inflates
-    the SE, and weight clipping does not by itself make r nonzero.
+    outcome model is correctly specified. Under misspecification it makes
+    the SE inconsistent, and weight clipping does not by itself make r nonzero.
 
-    r is recovered as mu - Qbar rather than passed in, so the curve is pinned
+    Qbar is recovered as mu - r rather than passed in, so the curve is pinned
     to the caller's own point estimate; with normalize=False there is no ratio
     and r is identically zero.
 
