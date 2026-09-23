@@ -12,10 +12,18 @@ from CausalEstimate.estimators.functional.utils import (
     compute_ipw_weights,
     check_score_equations,
     estimate_arm_fluctuation,
+    safe_ratio,
     target_outcome_models,
     _one_step_fluctuation,
 )
+from CausalEstimate.estimators.functional.variance import (
+    compute_ci,
+    _compute_ic_log_ratio,
+)
 from CausalEstimate.utils.constants import (
+    CI95_LOWER,
+    CI95_UPPER,
+    STD_ERR,
     INITIAL_EFFECT,
     ADJUSTMENT_treated,
     ADJUSTMENT_untreated,
@@ -62,6 +70,40 @@ class TestTMLEUtils(unittest.TestCase):
                 Y1_hat_one, Y0_hat_zero, Y1_hat_one, Y0_hat_zero, rr=True
             )
             self.assertEqual(results[INITIAL_EFFECT], np.inf)
+
+
+class TestRiskRatioCI(unittest.TestCase):
+    def test_near_zero_control_mean_gives_nan_ci(self):
+        """
+        Regression for #145: a control mean below safe_ratio's threshold but
+        above the IC's gave RR = inf with a finite SE and CI [inf, inf].
+        """
+        A = np.array([1, 0] * 5)
+        Y = np.array([1, 0, 0, 0, 1, 0, 1, 0, 0, 0])
+        Q_star_1 = np.full(10, 0.5)
+        Q_star_0 = np.full(10, 5e-9)
+
+        with self.assertWarns(RuntimeWarning):
+            rr = safe_ratio(Q_star_1.mean(), Q_star_0.mean())
+        self.assertEqual(rr, np.inf)
+        # The IC agrees on its own, independently of the psi check.
+        ic = _compute_ic_log_ratio(np.ones(10), np.ones(10), 0.5, 5e-9)
+        self.assertTrue(np.all(np.isnan(ic)))
+
+        ci = compute_ci(
+            effect_type="RR",
+            psi=rr,
+            Q_star_1=Q_star_1,
+            Q_star_0=Q_star_0,
+            Y=Y,
+            A=A,
+            Yhat_star=np.where(A == 1, Q_star_1, Q_star_0),
+            w1=A / 0.5,
+            w0=(1 - A) / 0.5,
+        )
+        self.assertTrue(np.isnan(ci[STD_ERR]))
+        self.assertTrue(np.isnan(ci[CI95_LOWER]))
+        self.assertTrue(np.isnan(ci[CI95_UPPER]))
 
 
 class TestArmWeights(unittest.TestCase):

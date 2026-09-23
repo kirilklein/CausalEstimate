@@ -17,6 +17,9 @@ from scipy.special import expit, logit
 
 MARGINAL_EFFECTS = ("ATE", "RR")
 TREATED_EFFECTS = ("ATT",)
+# A ratio denominator within this of zero makes the ratio undefined. Shared by
+# safe_ratio and the log-ratio influence curve so they cannot disagree.
+RATIO_DENOM_ATOL = 1e-8
 EffectType = Literal["ATE", "RR", "ATT"]
 
 
@@ -412,7 +415,7 @@ def safe_ratio(
             f"{label} has non-finite inputs; returning np.nan.", RuntimeWarning
         )
         return np.nan
-    if np.isclose(denominator, 0.0, atol=1e-8):
+    if np.isclose(denominator, 0.0, atol=RATIO_DENOM_ATOL):
         warnings.warn(
             f"{label} denominator is 0 or nearly 0; returning np.inf.",
             RuntimeWarning,
