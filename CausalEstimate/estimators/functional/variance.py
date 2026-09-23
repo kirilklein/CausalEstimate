@@ -1,5 +1,6 @@
 import numpy as np
 
+from CausalEstimate.estimators.functional.utils import RATIO_DENOM_ATOL
 from CausalEstimate.utils.constants import CI95_LOWER, CI95_UPPER, STD_ERR
 
 RATIO_EFFECTS = ("RR", "RRT")
@@ -278,14 +279,14 @@ def _compute_ic_log_ratio(
     """
     if np.isnan(mu_1) or np.isnan(mu_0):
         return np.full(ic_mu1.shape, np.nan, dtype=float)
-    if mu_1 <= eps or mu_0 <= eps:
+    if mu_1 <= eps or mu_0 <= eps or np.isclose(mu_0, 0.0, atol=RATIO_DENOM_ATOL):
         return np.full(ic_mu1.shape, np.nan, dtype=float)
     return ic_mu1 / mu_1 - ic_mu0 / mu_0
 
 
 def _summarise_ic(effect_type: str, psi: float, ic: np.ndarray) -> dict:
     """Standard error and 95% CI from a mean-zero influence curve."""
-    if np.isnan(psi) or np.any(np.isnan(ic)):
+    if not np.isfinite(psi) or np.any(np.isnan(ic)):
         return {STD_ERR: np.nan, CI95_LOWER: np.nan, CI95_UPPER: np.nan}
 
     n = len(ic)
