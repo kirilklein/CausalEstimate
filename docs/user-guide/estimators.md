@@ -75,4 +75,6 @@ Estimates effects by comparing matched treated/control pairs on the propensity s
 
 `IPW`, `AIPW` and `TMLE` all accept `clip_percentile` (default `1`, no clipping) and `eps` (default `1e-9`). `clip_percentile=0.99` clips inverse-probability weights at their 99th percentile, which tames extreme propensity scores at the cost of some bias. Set the same value on every estimator in a `MultiEstimator` so their results stay comparable.
 
+Note that clipping through `clip_percentile` estimates the clipping cutoff on the data. This can bias the analytic standard errors returned by `IPW`, `AIPW` and `TMLE`, which treat the clipping cutoff as fixed. When setting `clip_percentile < 1`, it is recommended to use bootstrap inference through [`MultiEstimator`](multi-estimator.md) with `n_bootstraps > 1`. Each resample re-runs the estimator and recomputes the cutoff, so the bootstrap standard error accounts for it.
+
 See the [API Reference](../api/estimators.md) for full signatures.
