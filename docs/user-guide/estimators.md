@@ -12,8 +12,8 @@ CausalEstimate provides IPW, AIPW, TMLE, and propensity-score matching for obser
 | Estimator | ATE | ATT | RR | RRT | ARR |
 |-----------|:---:|:---:|:--:|:---:|:---:|
 | IPW       | ✓   | ✓   | ✓  | ✓   | ✓   |
-| AIPW      | ✓   | ✓   | –  | –   | ✓   |
-| TMLE      | ✓   | ✓   | ✓  | –   | ✓   |
+| AIPW      | ✓   | ✓   | ✓  | ✓   | ✓   |
+| TMLE      | ✓   | ✓   | ✓  | ✓   | ✓   |
 | Matching  | ✓*  | –   | –  | –   | ✓*  |
 
 ATE: average treatment effect · ATT: ATE on the treated · RR: risk ratio · RRT: risk ratio on the treated · ARR: absolute risk reduction.

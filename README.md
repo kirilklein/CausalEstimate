@@ -86,8 +86,8 @@ To compare several estimators or add bootstrap confidence intervals, see [Multip
 | Estimator | ATE | ATT | RR | RRT | ARR |
 |-----------|:---:|:---:|:--:|:---:|:---:|
 | IPW       | ✓   | ✓   | ✓  | ✓   | ✓   |
-| AIPW      | ✓   | ✓   | –  | –   | ✓   |
-| TMLE      | ✓   | ✓   | ✓  | –   | ✓   |
+| AIPW      | ✓   | ✓   | ✓  | ✓   | ✓   |
+| TMLE      | ✓   | ✓   | ✓  | ✓   | ✓   |
 | Matching  | ✓*  | –   | –  | –   | ✓*  |
 
 ATE is the average treatment effect, and ATT is the average treatment effect among treated units. RR is the risk ratio, RRT is the risk ratio among treated units, and ARR is the absolute risk reduction.
