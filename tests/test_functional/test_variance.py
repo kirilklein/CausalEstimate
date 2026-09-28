@@ -19,6 +19,8 @@ import numpy as np
 from CausalEstimate.estimators.functional.aipw import (
     compute_aipw_ate,
     compute_aipw_att,
+    compute_aipw_rr,
+    compute_aipw_rrt,
 )
 from CausalEstimate.estimators.functional.ipw import (
     compute_ipw_ate,
@@ -27,7 +29,10 @@ from CausalEstimate.estimators.functional.ipw import (
     compute_ipw_risk_ratio_treated,
 )
 from CausalEstimate.estimators.functional.tmle import compute_tmle_ate, compute_tmle_rr
-from CausalEstimate.estimators.functional.tmle_att import compute_tmle_att
+from CausalEstimate.estimators.functional.tmle_att import (
+    compute_tmle_att,
+    compute_tmle_rrt,
+)
 from CausalEstimate.estimators.functional.utils import (
     compute_ipw_weights,
     target_outcome_models,
@@ -75,6 +80,16 @@ ESTIMATORS = [
         False,
     ),
     (
+        "aipw/RR",
+        lambda d: compute_aipw_rr(d["A"], d["Y"], d["ps"], d["Y0_hat"], d["Y1_hat"]),
+        True,
+    ),
+    (
+        "aipw/RRT",
+        lambda d: compute_aipw_rrt(d["A"], d["Y"], d["ps"], d["Y0_hat"]),
+        True,
+    ),
+    (
         "tmle/ATE",
         lambda d: compute_tmle_ate(d["A"], d["Y"], d["ps"], d["Y0_hat"], d["Y1_hat"]),
         False,
@@ -87,6 +102,11 @@ ESTIMATORS = [
     (
         "tmle/RR",
         lambda d: compute_tmle_rr(d["A"], d["Y"], d["ps"], d["Y0_hat"], d["Y1_hat"]),
+        True,
+    ),
+    (
+        "tmle/RRT",
+        lambda d: compute_tmle_rrt(d["A"], d["Y"], d["ps"], d["Y0_hat"], d["Y1_hat"]),
         True,
     ),
 ]
@@ -144,7 +164,7 @@ class TestInfluenceCurveHelpers(unittest.TestCase):
 
     def test_treated_restricted_curve_centres_on_a_over_p(self):
         """
-        A/P(A=1) weighting is what makes an ATT arm curve mean-zero, but
+        A/P(A=1) weighting is what makes an ATT/RRT arm curve mean-zero, but
         only at the augmented mean the AIPW estimator actually reports: the
         treated mean of Q plus the weighted residual.
         """
@@ -214,19 +234,21 @@ class TestComputeCIValidation(unittest.TestCase):
     def setUp(self):
         self.d = _sim(n=400, seed=3)
 
-    def test_rr_requires_the_arm_weights(self):
+    def test_ratio_effects_require_the_arm_weights(self):
         A = self.d["A"]
         Yhat_star = self.d["Y1_hat"] * A + (1 - A) * self.d["Y0_hat"]
-        with self.assertRaises(ValueError):
-            compute_ci(
-                effect_type="RR",
-                psi=1.2,
-                Q_star_1=self.d["Y1_hat"],
-                Q_star_0=self.d["Y0_hat"],
-                Y=self.d["Y"],
-                A=self.d["A"],
-                Yhat_star=Yhat_star,
-            )
+        for effect_type in ("RR", "RRT"):
+            with self.subTest(effect_type=effect_type):
+                with self.assertRaises(ValueError):
+                    compute_ci(
+                        effect_type=effect_type,
+                        psi=1.2,
+                        Q_star_1=self.d["Y1_hat"],
+                        Q_star_0=self.d["Y0_hat"],
+                        Y=self.d["Y"],
+                        A=self.d["A"],
+                        Yhat_star=Yhat_star,
+                    )
 
     def test_unsupported_effect_type_raises(self):
         W = compute_ipw_weights(self.d["A"], self.d["ps"])
@@ -252,14 +274,24 @@ class TestComputeCIValidation(unittest.TestCase):
         out = compute_ci_aipw("ATE", 0.1, empty, empty, empty, empty, empty, 0.5, 0.4)
         self.assertTrue(all(np.isnan(v) for v in out.values()))
 
-    def test_no_treated_units_returns_nan_for_the_att(self):
+    def test_no_treated_units_returns_nan_for_treated_estimands(self):
         n = len(self.d["Y"])
         A0 = np.zeros(n, dtype=int)
         W = compute_ipw_weights(A0, self.d["ps"], weight_type="ATT")
-        out = compute_ci_aipw(
-            "ATT", 1.0, self.d["Y"], A0, W, None, self.d["Y0_hat"], 0.5, 0.4
-        )
-        self.assertTrue(all(np.isnan(v) for v in out.values()))
+        for effect_type in ("ATT", "RRT"):
+            with self.subTest(effect_type=effect_type):
+                out = compute_ci_aipw(
+                    effect_type,
+                    1.0,
+                    self.d["Y"],
+                    A0,
+                    W,
+                    None,
+                    self.d["Y0_hat"],
+                    0.5,
+                    0.4,
+                )
+                self.assertTrue(all(np.isnan(v) for v in out.values()))
 
 
 class TestReportedCIIsConsistentWithStdErr(unittest.TestCase):
@@ -390,29 +422,42 @@ class TestAgainstExplicitEIF(unittest.TestCase):
         # AIPW arm means are ratios, mu = Qbar + mean(w (Y - Q)) / mean(w), so
         # the curve carries the denominator contribution r: the residual is
         # centred at r and the plug-in term at Qbar, NOT at mu.
-        with self.subTest(label="aipw/ATE"):
-            res = compute_aipw_ate(A, Y, ps, Q0, Q1)
-            W = compute_ipw_weights(A, ps, weight_type="ATE")
-            w1, w0 = A * W, (1 - A) * W
-            r1 = (w1 * (Y - Q1)).mean() / w1.mean()
-            r0 = (w0 * (Y - Q0)).mean() / w0.mean()
-            ic_1 = w1 * (Y - Q1 - r1) / w1.mean() + (Q1 - Q1.mean())
-            ic_0 = w0 * (Y - Q0 - r0) / w0.mean() + (Q0 - Q0.mean())
-            self._check("aipw/ATE", res[STD_ERR], ic_1 - ic_0)
+        for label, fn in [
+            ("aipw/ATE", lambda: compute_aipw_ate(A, Y, ps, Q0, Q1)),
+            ("aipw/RR", lambda: compute_aipw_rr(A, Y, ps, Q0, Q1)),
+        ]:
+            with self.subTest(label=label):
+                res = fn()
+                W = compute_ipw_weights(A, ps, weight_type="ATE")
+                w1, w0 = A * W, (1 - A) * W
+                mu_1, mu_0 = res[EFFECT_treated], res[EFFECT_untreated]
+                r1 = (w1 * (Y - Q1)).mean() / w1.mean()
+                r0 = (w0 * (Y - Q0)).mean() / w0.mean()
+                ic_1 = w1 * (Y - Q1 - r1) / w1.mean() + (Q1 - Q1.mean())
+                ic_0 = w0 * (Y - Q0 - r0) / w0.mean() + (Q0 - Q0.mean())
+                ic = ic_1 / mu_1 - ic_0 / mu_0 if label.endswith("RR") else ic_1 - ic_0
+                self._check(label, res[STD_ERR], ic)
 
-        with self.subTest(label="aipw/ATT"):
-            res = compute_aipw_att(A, Y, ps, Q0)
-            W = compute_ipw_weights(A, ps, weight_type="ATT")
-            w0 = (1 - A) * W
-            mu_1 = res[EFFECT_treated]
-            r0 = (w0 * (Y - Q0)).mean() / w0.mean()
-            # mu_1 is the raw treated mean; the control arm centres its
-            # plug-in term on A/p because it is a mean over the treated.
-            ic_1 = (A / p) * (Y - mu_1)
-            ic_0 = w0 * (Y - Q0 - r0) / w0.mean() + (A / p) * (Q0 - Q0[A == 1].mean())
-            self._check("aipw/ATT", res[STD_ERR], ic_1 - ic_0)
+        for label, fn in [
+            ("aipw/ATT", lambda: compute_aipw_att(A, Y, ps, Q0)),
+            ("aipw/RRT", lambda: compute_aipw_rrt(A, Y, ps, Q0)),
+        ]:
+            with self.subTest(label=label):
+                res = fn()
+                W = compute_ipw_weights(A, ps, weight_type="ATT")
+                w0 = (1 - A) * W
+                mu_1, mu_0 = res[EFFECT_treated], res[EFFECT_untreated]
+                r0 = (w0 * (Y - Q0)).mean() / w0.mean()
+                # mu_1 is the raw treated mean; the control arm centres its
+                # plug-in term on A/p because it is a mean over the treated.
+                ic_1 = (A / p) * (Y - mu_1)
+                ic_0 = w0 * (Y - Q0 - r0) / w0.mean() + (A / p) * (
+                    Q0 - Q0[A == 1].mean()
+                )
+                ic = ic_1 / mu_1 - ic_0 / mu_0 if label.endswith("RRT") else ic_1 - ic_0
+                self._check(label, res[STD_ERR], ic)
 
-    def test_tmle_rr_curve(self):
+    def test_tmle_ratio_curves(self):
         """
         The targeting step solves each arm's score equation, so the residual
         term carries no Hajek normaliser -- and each arm's own weight enters
@@ -421,13 +466,23 @@ class TestAgainstExplicitEIF(unittest.TestCase):
         """
         d = self.d
         A, Y, ps, Q1, Q0 = d["A"], d["Y"], d["ps"], d["Y1_hat"], d["Y0_hat"]
+        p = A.mean()
 
-        r = compute_tmle_rr(A, Y, ps, Q0, Q1)
-        res = target_outcome_models(A, Y, ps, Q1, Q0, effect_type="RR")
-        mu_1, mu_0 = r[EFFECT_treated], r[EFFECT_untreated]
-        ic_1 = res.w1 * (Y - res.Q_star_1) + (res.Q_star_1 - mu_1)
-        ic_0 = res.w0 * (Y - res.Q_star_0) + (res.Q_star_0 - mu_0)
-        self._check("tmle/RR", r[STD_ERR], ic_1 / mu_1 - ic_0 / mu_0)
+        with self.subTest(label="tmle/RR"):
+            r = compute_tmle_rr(A, Y, ps, Q0, Q1)
+            res = target_outcome_models(A, Y, ps, Q1, Q0, effect_type="RR")
+            mu_1, mu_0 = r[EFFECT_treated], r[EFFECT_untreated]
+            ic_1 = res.w1 * (Y - res.Q_star_1) + (res.Q_star_1 - mu_1)
+            ic_0 = res.w0 * (Y - res.Q_star_0) + (res.Q_star_0 - mu_0)
+            self._check("tmle/RR", r[STD_ERR], ic_1 / mu_1 - ic_0 / mu_0)
+
+        with self.subTest(label="tmle/RRT"):
+            r = compute_tmle_rrt(A, Y, ps, Q0, Q1)
+            res = target_outcome_models(A, Y, ps, Q1, Q0, effect_type="RRT")
+            mu_1, mu_0 = r[EFFECT_treated], r[EFFECT_untreated]
+            ic_1 = res.w1 * (Y - res.Q_star_1) + (A / p) * (res.Q_star_1 - mu_1)
+            ic_0 = res.w0 * (Y - res.Q_star_0) + (A / p) * (res.Q_star_0 - mu_0)
+            self._check("tmle/RRT", r[STD_ERR], ic_1 / mu_1 - ic_0 / mu_0)
 
     def test_a_negated_arm_weight_is_detected(self):
         """
@@ -472,6 +527,12 @@ class TestClippingKeepsEstimateAndSEConsistent(unittest.TestCase):
             (
                 "aipw/ATE",
                 lambda c: compute_aipw_ate(
+                    *self._args(), self.d["Y0_hat"], self.d["Y1_hat"], clip_percentile=c
+                ),
+            ),
+            (
+                "aipw/RR",
+                lambda c: compute_aipw_rr(
                     *self._args(), self.d["Y0_hat"], self.d["Y1_hat"], clip_percentile=c
                 ),
             ),

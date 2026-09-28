@@ -23,8 +23,12 @@ def compute_ci(
     Standard error and 95% confidence interval for the TMLE estimators, from
     the influence curve.
 
-    Difference effects combine the arm weights as H = w1 − w0;
-    RR uses the arm weights separately.
+    Difference effects (ATE, ATT) use the single combined clever covariate
+    H = w1 - w0, matching their one-parameter fluctuation. Ratio effects
+    (RR, RRT) need the arm-wise targeting weights w1 and w0 from the
+    two-parameter targeting step, which cannot be reconstructed from the
+    propensity scores here because clipping is applied inside that step
+    (issue #98), and because the RRT weights depend on P(A=1).
 
     w1 and w0 are the non-negative, off-arm-zero weights carried by
     `TargetingResult`; pass them through unchanged. Each arm mean's influence
@@ -34,7 +38,7 @@ def compute_ci(
     The targeting step solves mean(w * (Y - Q_star)) = 0 for each arm by
     construction, so the plug-in arm means are already correctly centred and
     the canonical influence function carries no Hajek normaliser -- hence
-    normalize=False in the RR branch below. AIPW and IPW, whose point
+    normalize=False in the ratio branch below. AIPW and IPW, whose point
     estimates use self-normalised weights, go through compute_ci_aipw() and
     compute_ci_ipw() instead.
 
@@ -53,16 +57,15 @@ def compute_ci(
     elif effect_type == "ATT":
         p_treated = np.mean(A)
         ic = _compute_ic_att(psi, Q_star_1, Q_star_0, Y, A, Yhat_star, H, p_treated)
-    elif effect_type == "RR":
+    elif effect_type in RATIO_EFFECTS:
         if w1 is None or w0 is None:
             raise ValueError(
-                "effect_type 'RR' requires the arm-wise targeting weights w1 "
-                "and w0 from the targeting step."
+                f"effect_type '{effect_type}' requires the arm-wise targeting "
+                "weights w1 and w0 from the targeting step."
             )
-        mu_1 = float(Q_star_1.mean())
-        mu_0 = float(Q_star_0.mean())
-        ic_mu1 = _compute_ic_mu(Y, w1, Q_star_1, mu_1, normalize=False, eps=eps)
-        ic_mu0 = _compute_ic_mu(Y, w0, Q_star_0, mu_0, normalize=False, eps=eps)
+        ic_mu1, ic_mu0, mu_1, mu_0 = _targeted_ratio_arm_ics(
+            effect_type, Y, A, Q_star_1, Q_star_0, w1, w0, eps
+        )
         ic = _compute_ic_log_ratio(ic_mu1, ic_mu0, mu_1, mu_0, eps)
     else:
         raise ValueError(
@@ -70,6 +73,54 @@ def compute_ci(
         )
 
     return _summarise_ic(effect_type, psi, ic)
+
+
+def _targeted_ratio_arm_ics(
+    effect_type: str,
+    Y: np.ndarray,
+    A: np.ndarray,
+    Q_star_1: np.ndarray,
+    Q_star_0: np.ndarray,
+    w1: np.ndarray,
+    w0: np.ndarray,
+    eps: float,
+):
+    """
+    Arm-mean influence curves and point estimates for the targeted ratios.
+
+    RR compares the two marginal means E[Y(1)] and E[Y(0)]; RRT compares the
+    same two arm means taken over the treated only. The two differ solely in
+    the population each mean is averaged over, so RRT centres its plug-in
+    terms on A/P(A=1) instead of on 1.
+
+    Both read their arm means off the targeted predictions rather than
+    recomputing them from Y, so the influence curves stay attached to the
+    point estimate even when an arm was separated and its fluctuation clamped.
+    For RRT the treated-arm curve then reduces to (A/p)(Y - mu_1) whenever the
+    score equation is solved exactly, which is the familiar form.
+    """
+    if effect_type == "RR":
+        mu_1 = float(Q_star_1.mean())
+        mu_0 = float(Q_star_0.mean())
+        ic_mu1 = _compute_ic_mu(Y, w1, Q_star_1, mu_1, normalize=False, eps=eps)
+        ic_mu0 = _compute_ic_mu(Y, w0, Q_star_0, mu_0, normalize=False, eps=eps)
+        return ic_mu1, ic_mu0, mu_1, mu_0
+
+    p_treated = float(np.mean(A))
+    if np.isclose(p_treated, 0.0, atol=eps):
+        nan_ic = np.full(Y.shape, np.nan, dtype=float)
+        return nan_ic, nan_ic, np.nan, np.nan
+
+    A_over_p = A / p_treated
+    mu_1 = float((A_over_p * Q_star_1).mean())
+    mu_0 = float((A_over_p * Q_star_0).mean())
+    ic_mu1 = _compute_ic_mu(
+        Y, w1, Q_star_1, mu_1, normalize=False, A_over_p=A_over_p, eps=eps
+    )
+    ic_mu0 = _compute_ic_mu(
+        Y, w0, Q_star_0, mu_0, normalize=False, A_over_p=A_over_p, eps=eps
+    )
+    return ic_mu1, ic_mu0, mu_1, mu_0
 
 
 def compute_ci_aipw(
@@ -98,7 +149,7 @@ def compute_ci_aipw(
     (and with the un-normalised) form; under misspecification it does not, and
     the ratio curve is the one that matches the estimate actually reported.
 
-    Q_1 is unused for ATT, where mu_1 is the observed treated mean.
+    Q_1 is unused for ATT and RRT, where mu_1 is the observed treated mean.
 
     The nuisance models are treated as fixed; the bootstrap remains the option
     that accounts for their estimation. Any clipping applied to W is also
@@ -110,10 +161,10 @@ def compute_ci_aipw(
 
     w1, w0 = A * W, (1 - A) * W
 
-    if effect_type in ["ATE", "ARR"]:
+    if effect_type in ["ATE", "ARR", "RR"]:
         ic_mu1 = _compute_ic_mu(Y, w1, Q_1, mu_1, eps=eps)
         ic_mu0 = _compute_ic_mu(Y, w0, Q_0, mu_0, eps=eps)
-    elif effect_type == "ATT":
+    elif effect_type in ["ATT", "RRT"]:
         p_treated = np.mean(A)
         if np.isclose(p_treated, 0.0, atol=eps):
             return {STD_ERR: np.nan, CI95_LOWER: np.nan, CI95_UPPER: np.nan}
@@ -127,7 +178,10 @@ def compute_ci_aipw(
             f"CI calculation for effect type '{effect_type}' is not supported."
         )
 
-    ic = ic_mu1 - ic_mu0
+    if effect_type in RATIO_EFFECTS:
+        ic = _compute_ic_log_ratio(ic_mu1, ic_mu0, mu_1, mu_0, eps)
+    else:
+        ic = ic_mu1 - ic_mu0
 
     return _summarise_ic(effect_type, psi, ic)
 
@@ -227,7 +281,7 @@ def _compute_ic_mu(
         IC_i = w_i (Y_i - Q_i - r) / d + c_i (Q_i - Qbar)
 
     with d = mean(w) when normalize else 1, and c = 1 for unconditional means
-    or A/P(A=1) for treated-restricted ones (ATT).
+    or A/P(A=1) for treated-restricted ones (ATT/RRT).
 
     w is that arm's own non-negative weight, zero off-arm.
 

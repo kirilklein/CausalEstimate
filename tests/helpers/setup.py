@@ -138,6 +138,7 @@ class ContinuousEffectBase(unittest.TestCase):
 
         cls.true_ate = (mu1 - mu0).mean()
         cls.true_att = (mu1 - mu0)[A == 1].mean()
+        cls.true_atc = (mu1 - mu0)[A == 0].mean()
 
         Xc = sm.add_constant(X)
         cls.sm_te = TreatmentEffect(

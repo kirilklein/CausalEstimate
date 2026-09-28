@@ -3,6 +3,11 @@ import warnings
 from typing import Literal, NamedTuple, Tuple
 
 from CausalEstimate.utils.constants import (
+    CI95_LOWER,
+    CI95_UPPER,
+    EFFECT,
+    EFFECT_treated,
+    EFFECT_untreated,
     INITIAL_EFFECT,
     ADJUSTMENT_treated,
     ADJUSTMENT_untreated,
@@ -16,11 +21,11 @@ from statsmodels.genmod.generalized_linear_model import GLM
 from scipy.special import expit, logit
 
 MARGINAL_EFFECTS = ("ATE", "RR")
-TREATED_EFFECTS = ("ATT",)
+TREATED_EFFECTS = ("ATT", "RRT")
 # A ratio denominator within this of zero makes the ratio undefined. Shared by
 # safe_ratio and the log-ratio influence curve so they cannot disagree.
 RATIO_DENOM_ATOL = 1e-8
-EffectType = Literal["ATE", "RR", "ATT"]
+EffectType = Literal["ATE", "RR", "ATT", "RRT"]
 
 
 class TargetingResult(NamedTuple):
@@ -73,8 +78,12 @@ def compute_arm_weights(
 
         ATE / RR   (marginal arm means):
             w1 = A/ps                 w0 = (1-A)/(1-ps)
-        ATT        (treated subpopulation):
+        ATT / RRT  (treated subpopulation):
             w1 = A/p_treated          w0 = (1-A) * ps/(p_treated (1-ps))
+
+    The weights depend only on which population the arm means are taken over,
+    not on whether they are later differenced or ratioed, so ATE shares with
+    RR and ATT shares with RRT.
 
     Both weights are non-negative; the direction of each fluctuation is
     determined by the root of its score equation, not by a sign convention on
@@ -84,7 +93,7 @@ def compute_arm_weights(
     ----------
     A: Binary treatment assignment (0 or 1).
     ps: Propensity scores.
-    effect_type: One of "ATE", "RR", "ATT".
+    effect_type: One of "ATE", "RR", "ATT", "RRT".
     clip_percentile: Upper quantile at which to clip each arm's weights, as a
         PROPORTION in (0, 1]. 1 (default) applies no clipping; 0.99 clips the
         top 1%. This is the same convention as `compute_ipw_weights`.
@@ -326,8 +335,8 @@ def target_outcome_models(
     max_shift: float = 30.0,
 ) -> TargetingResult:
     """
-    Run the full targeting step for any of the three supported estimands:
-    ATE, ATT, and RR.
+    Run the full targeting step for any of the supported estimands: ATE, RR,
+    ATT and RRT. The ATC reuses the ATT with the arms swapped.
 
     This is the single entry point every TMLE estimator should use. The
     estimands differ only in their weights (see `compute_arm_weights`) and in
@@ -438,6 +447,7 @@ def compute_initial_effect(
     Q_star_1: np.ndarray,
     Q_star_0: np.ndarray,
     rr: bool = False,
+    mask: np.ndarray = None,
 ) -> dict:
     """
     Untargeted effect plus the size of the targeting adjustment in each arm.
@@ -448,6 +458,10 @@ def compute_initial_effect(
     Q_star_1, Q_star_0 : targeted predictions under treatment / control.
     rr : if True the initial effect is the ratio of arm means (guarded by
         `safe_ratio`, so it may be np.inf or np.nan); otherwise the difference.
+    mask : optional boolean array restricting every mean to a subpopulation,
+        e.g. A == 1 for the RRT, so the initial effect and the adjustments
+        refer to the same population as the targeted estimate. None (default)
+        averages over everyone.
 
     Returns
     -------
@@ -456,6 +470,10 @@ def compute_initial_effect(
     adjustments are mean(Q* - Q) per arm: near-zero means the targeting step
     barely moved the initial fit.
     """
+    if mask is not None:
+        Y1_hat, Y0_hat = Y1_hat[mask], Y0_hat[mask]
+        Q_star_1, Q_star_0 = Q_star_1[mask], Q_star_0[mask]
+
     initial_effect_1 = float(Y1_hat.mean())
     initial_effect_0 = float(Y0_hat.mean())
 
@@ -475,6 +493,39 @@ def compute_initial_effect(
         ADJUSTMENT_treated: adjustment_1,
         ADJUSTMENT_untreated: adjustment_0,
     }
+
+
+# Result keys that trade places when the arms are swapped.
+_ARM_KEY_PAIRS = (
+    (EFFECT_treated, EFFECT_untreated),
+    (INITIAL_EFFECT_treated, INITIAL_EFFECT_untreated),
+    (ADJUSTMENT_treated, ADJUSTMENT_untreated),
+)
+
+
+def att_result_as_atc(result: dict) -> dict:
+    """
+    Turn an ATT result computed with the arms swapped into the ATC.
+
+    With A -> 1-A, ps -> 1-ps and Y1_hat <-> Y0_hat, the "treated" are the
+    controls, so the ATT of the swapped data is E[Y(0) - Y(1) | A=0]. The ATC
+    is its negation: the differences change sign, the per-arm keys trade
+    places, and the CI bounds swap and change sign. STD_ERR is unchanged.
+
+    This keeps the ATC exactly equal to the ATT machinery, including its
+    influence curves, clipping and edge-case handling, with no mirrored code
+    to keep in sync. Warnings raised along the way refer to the swapped arms.
+    """
+    out = dict(result)
+    for key_1, key_0 in _ARM_KEY_PAIRS:
+        if key_1 in result:
+            out[key_1], out[key_0] = result[key_0], result[key_1]
+    for key in (EFFECT, INITIAL_EFFECT):
+        if key in result:
+            out[key] = -result[key]
+    if CI95_LOWER in result:
+        out[CI95_LOWER], out[CI95_UPPER] = -result[CI95_UPPER], -result[CI95_LOWER]
+    return out
 
 
 # --- Centralized Weight Calculation Functions --------------------------------

@@ -5,7 +5,11 @@ import pandas as pd
 
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.tmle import compute_tmle_ate, compute_tmle_rr
-from CausalEstimate.estimators.functional.tmle_att import compute_tmle_att
+from CausalEstimate.estimators.functional.tmle_att import (
+    compute_tmle_atc,
+    compute_tmle_att,
+    compute_tmle_rrt,
+)
 from CausalEstimate.utils.checks import check_inputs, check_required_columns
 from CausalEstimate.utils.constants import (
     ADJUSTMENT_treated,
@@ -50,7 +54,7 @@ class TMLE(BaseEstimator):
         Targeted Maximum Likelihood Estimation (TMLE) estimator.
 
         Binary outcomes use the logistic fluctuation directly. A continuous
-        outcome (ATE/ATT only) is rescaled to [0, 1] with ``y_bounds``
+        outcome (ATE/ATT/ATC only) is rescaled to [0, 1] with ``y_bounds``
         (default: observed min/max of the outcome), targeted on that scale,
         and the results are mapped back (Gruber & van der Laan, 2010).
 
@@ -154,8 +158,28 @@ class TMLE(BaseEstimator):
                 clip_percentile=self.clip_percentile,
                 eps=self.eps,
             )
+        elif self.effect_type == "ATC":
+            return compute_tmle_atc(
+                A,
+                Y,
+                ps,
+                Y0_hat,
+                Y1_hat,
+                clip_percentile=self.clip_percentile,
+                eps=self.eps,
+            )
         elif self.effect_type == "RR":
             return compute_tmle_rr(
+                A,
+                Y,
+                ps,
+                Y0_hat,
+                Y1_hat,
+                clip_percentile=self.clip_percentile,
+                eps=self.eps,
+            )
+        elif self.effect_type == "RRT":
+            return compute_tmle_rrt(
                 A,
                 Y,
                 ps,

@@ -26,7 +26,7 @@ Many causal-inference libraries combine model fitting and effect estimation. Cau
 
 - **Bring your own predictions.** Fit propensity and outcome models with scikit-learn, XGBoost, a deep model, or an external system. CausalEstimate uses the resulting columns to estimate effects.
 - **Pandas-native.** Pass a DataFrame with named columns and get back a plain dictionary.
-- **Focused.** Estimate ATE, ATT, and risk ratios. TMLE, AIPW and IPW include influence-curve standard errors, and every estimator supports bootstrap confidence intervals. Built-in diagnostics help assess overlap, covariate balance, and weights.
+- **Focused.** Estimate ATE, ATT, ATC, and risk ratios. TMLE, AIPW and IPW include influence-curve standard errors, and every estimator supports bootstrap confidence intervals. Built-in diagnostics help assess overlap, covariate balance, and weights.
 
 Choose [DoWhy](https://github.com/py-why/dowhy) or [EconML](https://github.com/py-why/EconML) instead if you need an end-to-end modeling pipeline, causal-graph construction, or heterogeneous treatment effects.
 
@@ -83,14 +83,14 @@ To compare several estimators or add bootstrap confidence intervals, see [Multip
 
 ## What's included
 
-| Estimator | ATE | ATT | RR | RRT | ARR |
-|-----------|:---:|:---:|:--:|:---:|:---:|
-| IPW       | ✓   | ✓   | ✓  | ✓   | ✓   |
-| AIPW      | ✓   | ✓   | –  | –   | ✓   |
-| TMLE      | ✓   | ✓   | ✓  | –   | ✓   |
-| Matching  | ✓*  | –   | –  | –   | ✓*  |
+| Estimator | ATE | ATT | ATC | RR | RRT | ARR |
+|-----------|:---:|:---:|:---:|:--:|:---:|:---:|
+| IPW       | ✓   | ✓   | ✓   | ✓  | ✓   | ✓   |
+| AIPW      | ✓   | ✓   | ✓   | ✓  | ✓   | ✓   |
+| TMLE      | ✓   | ✓   | ✓   | ✓  | ✓   | ✓   |
+| Matching  | ✓*  | –   | –   | –  | –   | ✓*  |
 
-ATE is the average treatment effect, and ATT is the average treatment effect among treated units. RR is the risk ratio, RRT is the risk ratio among treated units, and ARR is the absolute risk reduction.
+ATE is the average treatment effect, and ATT and ATC are the average treatment effects among treated and control units. RR is the risk ratio, RRT is the risk ratio among treated units, and ARR is the absolute risk reduction.
 \* With a caliper, the matched population is neither the full nor the treated population; interpret accordingly.
 
 - **Diagnostics** (`CausalEstimate.diagnostics`): covariate balance, positivity and overlap metrics, effective sample size, and weight summaries.
