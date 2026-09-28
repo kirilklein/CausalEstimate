@@ -10,7 +10,7 @@ ATE:
     treatment weighting (IPTW) with survival analysis.
     Statistics in medicine, 35(30), pp.5642-5655.
 
-ATT:
+ATT (and, with the arms swapped, ATC):
     Reifeis et. al. (2022).
     On variance of the treatment effect in the treated when estimated by
     inverse probability weighting.
@@ -28,7 +28,10 @@ from typing import Tuple
 
 import numpy as np
 
-from CausalEstimate.estimators.functional.utils import compute_ipw_weights
+from CausalEstimate.estimators.functional.utils import (
+    att_result_as_atc,
+    compute_ipw_weights,
+)
 from CausalEstimate.estimators.functional.variance import compute_ci_ipw
 from CausalEstimate.utils.constants import EFFECT, EFFECT_treated, EFFECT_untreated
 
@@ -88,6 +91,22 @@ def compute_ipw_att(
     att = mu_1 - mu_0
     ci_results = compute_ci_ipw("ATT", att, Y, A, W, mu_1, mu_0, eps=eps)
     return {EFFECT: att, EFFECT_treated: mu_1, EFFECT_untreated: mu_0, **ci_results}
+
+
+def compute_ipw_atc(
+    A: np.ndarray,
+    Y: np.ndarray,
+    ps: np.ndarray,
+    clip_percentile: float = 1,
+    eps: float = 1e-9,
+) -> dict:
+    """
+    Computes the Average Treatment Effect on the Controls (ATC) using IPW, as
+    the ATT with the arms swapped (see `att_result_as_atc`).
+    """
+    return att_result_as_atc(
+        compute_ipw_att(1 - A, Y, 1 - ps, clip_percentile=clip_percentile, eps=eps)
+    )
 
 
 def compute_ipw_risk_ratio_treated(

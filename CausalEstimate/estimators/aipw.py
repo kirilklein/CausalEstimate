@@ -5,6 +5,7 @@ import pandas as pd
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.aipw import (
     compute_aipw_ate,
+    compute_aipw_atc,
     compute_aipw_att,
     compute_aipw_rr,
     compute_aipw_rrt,
@@ -56,7 +57,7 @@ class AIPW(BaseEstimator):
         """
         Computes the causal effect estimate using the Augmented Inverse Probability Weighting (AIPW) method.
 
-        Depending on the specified effect type, calculates the average treatment effect (ATE), average risk reduction (ARR), average treatment effect on the treated (ATT), risk ratio (RR), or risk ratio in the treated (RRT) using the provided DataFrame. Requires columns for treatment assignment, observed outcome, propensity score, and predicted potential outcomes under treatment and control.
+        Depending on the specified effect type, calculates the average treatment effect (ATE), average risk reduction (ARR), average treatment effect on the treated (ATT) or on the controls (ATC), risk ratio (RR), or risk ratio in the treated (RRT) using the provided DataFrame. Requires columns for treatment assignment, observed outcome, propensity score, and predicted potential outcomes under treatment and control.
 
         Args:
             df: Input DataFrame containing the necessary columns for effect estimation.
@@ -109,6 +110,10 @@ class AIPW(BaseEstimator):
         elif self.effect_type == "ATT":
             return compute_aipw_att(
                 A, Y, ps, Y0_hat, clip_percentile=self.clip_percentile, eps=self.eps
+            )
+        elif self.effect_type == "ATC":
+            return compute_aipw_atc(
+                A, Y, ps, Y1_hat, clip_percentile=self.clip_percentile, eps=self.eps
             )
         elif self.effect_type == "RR":
             return compute_aipw_rr(

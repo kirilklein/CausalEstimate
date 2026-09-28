@@ -7,6 +7,7 @@ from scipy.special import expit, logit
 from statsmodels.genmod.generalized_linear_model import GLM
 
 from CausalEstimate.estimators.functional.utils import (
+    att_result_as_atc,
     compute_arm_weights,
     compute_initial_effect,
     compute_ipw_weights,
@@ -23,11 +24,15 @@ from CausalEstimate.estimators.functional.variance import (
 from CausalEstimate.utils.constants import (
     CI95_LOWER,
     CI95_UPPER,
+    EFFECT,
+    EFFECT_treated,
+    EFFECT_untreated,
     STD_ERR,
     INITIAL_EFFECT,
     ADJUSTMENT_treated,
     ADJUSTMENT_untreated,
     INITIAL_EFFECT_treated,
+    INITIAL_EFFECT_untreated,
 )
 
 
@@ -474,6 +479,52 @@ class TestIPWWeightFunction(unittest.TestCase):
             ]
         )
         np.testing.assert_allclose(weights, expected)
+
+
+class TestATTResultAsATC(unittest.TestCase):
+    """The key mapping that turns an arm-swapped ATT into the ATC."""
+
+    def test_negates_differences_and_swaps_arms(self):
+        att = {
+            EFFECT: 0.1,
+            EFFECT_treated: 0.3,
+            EFFECT_untreated: 0.2,
+            INITIAL_EFFECT: 0.05,
+            INITIAL_EFFECT_treated: 0.25,
+            INITIAL_EFFECT_untreated: 0.2,
+            ADJUSTMENT_treated: 0.05,
+            ADJUSTMENT_untreated: 0.0,
+            STD_ERR: 0.02,
+            CI95_LOWER: 0.06,
+            CI95_UPPER: 0.14,
+        }
+        atc = att_result_as_atc(att)
+        self.assertEqual(
+            atc,
+            {
+                EFFECT: -0.1,
+                EFFECT_treated: 0.2,
+                EFFECT_untreated: 0.3,
+                INITIAL_EFFECT: -0.05,
+                INITIAL_EFFECT_treated: 0.2,
+                INITIAL_EFFECT_untreated: 0.25,
+                ADJUSTMENT_treated: 0.0,
+                ADJUSTMENT_untreated: 0.05,
+                STD_ERR: 0.02,
+                CI95_LOWER: -0.14,
+                CI95_UPPER: -0.06,
+            },
+        )
+        self.assertEqual(att[EFFECT], 0.1, "input must not be mutated")
+
+    def test_passes_through_a_partial_result(self):
+        """The NaN early return carries only the effect and the arm means."""
+        atc = att_result_as_atc(
+            {EFFECT: np.nan, EFFECT_treated: 1.0, EFFECT_untreated: 2.0}
+        )
+        self.assertEqual(set(atc), {EFFECT, EFFECT_treated, EFFECT_untreated})
+        self.assertTrue(np.isnan(atc[EFFECT]))
+        self.assertEqual((atc[EFFECT_treated], atc[EFFECT_untreated]), (2.0, 1.0))
 
 
 if __name__ == "__main__":

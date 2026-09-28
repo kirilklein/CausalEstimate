@@ -34,6 +34,15 @@ class TestIPWContinuousOutcome(ContinuousEffectBase):
         )
         self.assertAlmostEqual(result[EFFECT], self.true_att, delta=0.1)
 
+    def test_atc_matches_statsmodels(self):
+        result = IPW(effect_type="ATC", outcome_col=OUTCOME_COL).compute_effect(
+            self.data
+        )
+        self.assertAlmostEqual(
+            result[EFFECT], self.sm_te.ipw(effect_group=0).effect[0], places=5
+        )
+        self.assertAlmostEqual(result[EFFECT], self.true_atc, delta=0.1)
+
     def test_rr_rejects_continuous_outcome(self):
         with self.assertRaises(ValueError):
             IPW(effect_type="RR", outcome_col=OUTCOME_COL).compute_effect(self.data)

@@ -3,6 +3,11 @@ import warnings
 from typing import Literal, NamedTuple, Tuple
 
 from CausalEstimate.utils.constants import (
+    CI95_LOWER,
+    CI95_UPPER,
+    EFFECT,
+    EFFECT_treated,
+    EFFECT_untreated,
     INITIAL_EFFECT,
     ADJUSTMENT_treated,
     ADJUSTMENT_untreated,
@@ -330,8 +335,8 @@ def target_outcome_models(
     max_shift: float = 30.0,
 ) -> TargetingResult:
     """
-    Run the full targeting step for any of the three supported estimands:
-    ATE, ATT, and RR.
+    Run the full targeting step for any of the supported estimands: ATE, RR,
+    ATT and RRT. The ATC reuses the ATT with the arms swapped.
 
     This is the single entry point every TMLE estimator should use. The
     estimands differ only in their weights (see `compute_arm_weights`) and in
@@ -488,6 +493,39 @@ def compute_initial_effect(
         ADJUSTMENT_treated: adjustment_1,
         ADJUSTMENT_untreated: adjustment_0,
     }
+
+
+# Result keys that trade places when the arms are swapped.
+_ARM_KEY_PAIRS = (
+    (EFFECT_treated, EFFECT_untreated),
+    (INITIAL_EFFECT_treated, INITIAL_EFFECT_untreated),
+    (ADJUSTMENT_treated, ADJUSTMENT_untreated),
+)
+
+
+def att_result_as_atc(result: dict) -> dict:
+    """
+    Turn an ATT result computed with the arms swapped into the ATC.
+
+    With A -> 1-A, ps -> 1-ps and Y1_hat <-> Y0_hat, the "treated" are the
+    controls, so the ATT of the swapped data is E[Y(0) - Y(1) | A=0]. The ATC
+    is its negation: the differences change sign, the per-arm keys trade
+    places, and the CI bounds swap and change sign. STD_ERR is unchanged.
+
+    This keeps the ATC exactly equal to the ATT machinery, including its
+    influence curves, clipping and edge-case handling, with no mirrored code
+    to keep in sync. Warnings raised along the way refer to the swapped arms.
+    """
+    out = dict(result)
+    for key_1, key_0 in _ARM_KEY_PAIRS:
+        if key_1 in result:
+            out[key_1], out[key_0] = result[key_0], result[key_1]
+    for key in (EFFECT, INITIAL_EFFECT):
+        if key in result:
+            out[key] = -result[key]
+    if CI95_LOWER in result:
+        out[CI95_LOWER], out[CI95_UPPER] = -result[CI95_UPPER], -result[CI95_LOWER]
+    return out
 
 
 # --- Centralized Weight Calculation Functions --------------------------------

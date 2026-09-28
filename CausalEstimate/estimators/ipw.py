@@ -3,6 +3,7 @@ import pandas as pd
 from CausalEstimate.estimators.base import BaseEstimator
 from CausalEstimate.estimators.functional.ipw import (
     compute_ipw_ate,
+    compute_ipw_atc,
     compute_ipw_att,
     compute_ipw_risk_ratio,
     compute_ipw_risk_ratio_treated,
@@ -52,6 +53,10 @@ class IPW(BaseEstimator):
             )
         elif self.effect_type == "ATT":
             return compute_ipw_att(
+                A, Y, ps, clip_percentile=self.clip_percentile, eps=self.eps
+            )
+        elif self.effect_type == "ATC":
+            return compute_ipw_atc(
                 A, Y, ps, clip_percentile=self.clip_percentile, eps=self.eps
             )
         elif self.effect_type == "RR":

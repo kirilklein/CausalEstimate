@@ -6,8 +6,9 @@ fluctuation per arm and returns the targeted predictions together with the
 weights it used. The estimands differ only in the choice of weights and in
 how the two targeted arm means are combined.
 
-The ATT estimator lives in a separate module and uses the same function
-with effect_type="ATT".
+The ATT, RRT and ATC estimators live in a separate module; the ATT and RRT
+use the same function with their own effect_type, and the ATC is the ATT
+with the arms swapped.
 """
 
 import numpy as np

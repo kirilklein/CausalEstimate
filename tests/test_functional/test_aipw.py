@@ -219,6 +219,18 @@ class TestAIPW_RR_properties(TestEffectBase):
         self.assertTrue(np.isinf(rr[EFFECT]))
         self.assertTrue(np.isnan(rr[STD_ERR]))
 
+    def test_arm_mean_outside_unit_interval_warns(self):
+        """
+        High Y0_hat on the controls, all of whom have Y = 0, drives the AIPW
+        control mean below zero: the ratio is then not a risk ratio.
+        """
+        Y = self.Y * self.A
+        Y0 = 0.9 * (1 - self.A).astype(float)
+        with self.assertWarnsRegex(RuntimeWarning, r"mu_0 = .* outside \(0, 1\]"):
+            rr = compute_aipw_rr(self.A, Y, self.ps, Y0, self.Y1_hat)
+        self.assertLess(rr[EFFECT_untreated], 0)
+        self.assertTrue(np.isnan(rr[STD_ERR]))
+
     def test_empty_arm_returns_nan_not_inf(self):
         """An empty arm leaves its mean 0/0 = NaN; the RR is unidentified."""
         for A in (np.ones_like(self.A), np.zeros_like(self.A)):

@@ -9,18 +9,18 @@ CausalEstimate provides IPW, AIPW, TMLE, and propensity-score matching for obser
 
 ## Supported effect types
 
-| Estimator | ATE | ATT | RR | RRT | ARR |
-|-----------|:---:|:---:|:--:|:---:|:---:|
-| IPW       | ✓   | ✓   | ✓  | ✓   | ✓   |
-| AIPW      | ✓   | ✓   | ✓  | ✓   | ✓   |
-| TMLE      | ✓   | ✓   | ✓  | ✓   | ✓   |
-| Matching  | ✓*  | –   | –  | –   | ✓*  |
+| Estimator | ATE | ATT | ATC | RR | RRT | ARR |
+|-----------|:---:|:---:|:---:|:--:|:---:|:---:|
+| IPW       | ✓   | ✓   | ✓   | ✓  | ✓   | ✓   |
+| AIPW      | ✓   | ✓   | ✓   | ✓  | ✓   | ✓   |
+| TMLE      | ✓   | ✓   | ✓   | ✓  | ✓   | ✓   |
+| Matching  | ✓*  | –   | –   | –  | –   | ✓*  |
 
-ATE: average treatment effect · ATT: ATE on the treated · RR: risk ratio · RRT: risk ratio on the treated · ARR: absolute risk reduction.
+ATE: average treatment effect · ATT: ATE on the treated · ATC: ATE on the controls · RR: risk ratio · RRT: risk ratio on the treated · ARR: absolute risk reduction.
 
 \* With a caliper, the matched population is strictly neither the full nor the treated population; interpret accordingly.
 
-**Continuous outcomes.** ATE and ATT work for any numeric outcome in `IPW`, `AIPW` and `TMLE`; the risk-based effect types (RR, RRT, ARR) require a binary 0/1 outcome. `TMLE` rescales a continuous outcome and its predictions to [0, 1] using the observed min/max before targeting and maps the result back; pass `y_bounds=(min, max)` to use known bounds instead.
+**Continuous outcomes.** ATE, ATT and ATC work for any numeric outcome in `IPW`, `AIPW` and `TMLE`; the risk-based effect types (RR, RRT, ARR) require a binary 0/1 outcome. `TMLE` rescales a continuous outcome and its predictions to [0, 1] using the observed min/max before targeting and maps the result back; pass `y_bounds=(min, max)` to use known bounds instead.
 
 ## IPW — inverse probability weighting
 
